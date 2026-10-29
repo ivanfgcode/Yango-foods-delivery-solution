@@ -1,0 +1,10 @@
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[deploy]
+healthcheckPath = "/health"
+healthcheckTimeout = 120
+restartPolicyType = "ALWAYS"
+# 1 réplica: las sesiones de navegador por cuenta y SQLite viven en este proceso y en el volumen.
+numReplicas = 1

@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>{{ p.name }} · Pedidos a domicilio</title>
+<meta name="description" content="{{ profile.tagline or ('Pide ' ~ p.name ~ ' a domicilio') }}">
+<meta name="theme-color" content="{{ theme.primary }}">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="{{ fonts_href }}">
+<link rel="stylesheet" href="/static/store.css">
+</head>
+<body style="{{ css_vars }}" class="{{ 'list' if theme.card_layout == 'list' else '' }}">
+<header class="top{{ ' dark' if theme.dark_header else '' }}">
+  <div class="wrap">
+    <a class="brand" href="/{{ p.slug }}">
+      {% if theme.logo_url %}<img src="{{ theme.logo_url }}" alt="">{% else %}<span class="mono">{{ p.name[:1] }}</span>{% endif %}
+      <b>{{ p.name }}</b>
+    </a>
+    <div class="spacer"></div>
+    <button class="cart-btn" id="openCart" type="button" aria-label="Ver carrito">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6h15l-1.5 9h-12z"/><path d="M6 6 5 3H2"/><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/></svg>
+      <span class="lbl">Carrito</span><span class="count" id="cartCount">0</span>
+    </button>
+  </div>
+</header>
+
+<div class="wrap">
+  <section class="hero {{ theme.hero_style }}">
+    {% if theme.cover_url and theme.hero_style != 'minimal' %}<img class="cover" src="{{ theme.cover_url }}" alt="">{% endif %}
+    <div class="in">
+      <h1>{{ p.name }}</h1>
+      {% if profile.tagline %}<p>{{ profile.tagline }}</p>{% endif %}
+      <div class="chips">
+        <span class="chip">🛵 Delivery</span>
+        {% if profile.hours_text %}<span class="chip">🕒 {{ profile.hours_text }}</span>{% endif %}
+        <span class="chip">💵 Efectivo o QR al mensajero</span>
+      </div>
+    </div>
+  </section>
+  {% if not p.accepting_orders %}<div class="closed">Ahora no estamos recibiendo pedidos. Puedes ver el menú.</div>
+  {% elif profile.announcement %}<div class="announce"><span class="tag">Hoy</span><span>{{ profile.announcement }}</span></div>{% endif %}
+  <label class="search"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+    <span class="sr">Buscar</span><input id="search" type="search" placeholder="Buscar en el menú" autocomplete="off"></label>
+</div>
+
+<nav class="cats" aria-label="Categorías"><div class="wrap" id="cats"></div></nav>
+<main class="wrap" id="menu"><p class="note" style="padding:40px 0">Cargando menú…</p></main>
+
+<footer class="foot">
+  {% if profile.about %}<p>{{ profile.about }}</p>{% endif %}
+  {% if profile.whatsapp %}<p>WhatsApp: {{ profile.whatsapp }}</p>{% endif %}
+  <p>Entrega realizada por mensajeros de Yango.</p>
+</footer>
+
+<div class="float-cart" id="floatCart"><button class="btn" type="button" id="floatCartBtn"></button></div>
+
+<div class="scrim" id="scrim"></div>
+
+<!-- Producto -->
+<div class="sheet modal" id="itemSheet" role="dialog" aria-modal="true" aria-labelledby="itemName">
+  <div class="hd"><h3 id="itemName"></h3><button class="x" type="button" data-close aria-label="Cerrar">×</button></div>
+  <div class="sc" id="itemBody"></div>
+  <div class="fo">
+    <div class="err" id="itemErr"></div>
+    <div class="row"><div class="qty round"><button type="button" id="qMinus" aria-label="Menos">−</button><span id="qVal">1</span><button type="button" id="qPlus" aria-label="Más">+</button></div>
+    <button class="btn" type="button" id="addBtn">Agregar al carrito</button></div>
+  </div>
+</div>
+
+<!-- Carrito y checkout -->
+<aside class="sheet drawer" id="cartSheet" role="dialog" aria-modal="true" aria-labelledby="cartTitle">
+  <div class="hd"><button class="x" type="button" id="backBtn" aria-label="Volver" hidden>‹</button><h3 id="cartTitle">Tu pedido</h3><button class="x" type="button" data-close aria-label="Cerrar">×</button></div>
+  <div class="sc">
+    <div id="cartView"></div>
+    <form id="checkoutView" hidden autocomplete="on" novalidate>
+      <div class="step-h">1. ¿Dónde entregamos?</div>
+      <div class="mapbox">
+        <div id="map"></div>
+        <div class="pin-dot"></div>
+        <div class="pin" id="pin"><svg width="38" height="50" viewBox="0 0 38 50"><path d="M19 0C8.5 0 0 8.3 0 18.6 0 32.5 19 50 19 50s19-17.5 19-31.4C38 8.3 29.5 0 19 0z" fill="{{ theme.primary }}"/><circle cx="19" cy="18.5" r="7" fill="#fff"/></svg></div>
+        <button class="locate" type="button" id="locateBtn">◎ Mi ubicación</button>
+      </div>
+      <div class="quote loading" id="quoteBox"><span class="dot"></span><span id="quoteText">Mueve el mapa hasta tu puerta</span></div>
+      <label class="field"><span>Dirección</span><input id="fAddr" name="street-address" autocomplete="street-address" placeholder="Calle o avenida" required></label>
+      <label class="field"><span>N° de casa, edificio o referencia *</span><input id="fRef" placeholder="Ej.: Casa 24, portón negro, frente a la farmacia" required></label>
+      <label class="field"><span>Nota para el mensajero (opcional)</span><input id="fNote" maxlength="200" placeholder="Ej.: tocar el timbre 2 veces"></label>
+
+      <div class="step-h">2. Tus datos</div>
+      <div class="two">
+        <label class="field"><span>Nombre</span><input id="fFirst" autocomplete="given-name" required></label>
+        <label class="field"><span>Apellido</span><input id="fLast" autocomplete="family-name" required></label>
+      </div>
+      <label class="field"><span>Celular</span><div class="phone"><b>{{ '+591' }}</b><input id="fPhone" inputmode="numeric" autocomplete="tel-national" maxlength="12" placeholder="7XXXXXXX" required></div></label>
+
+      <div class="step-h">3. Pago al mensajero</div>
+      <div class="pay">
+        <label><input type="radio" name="pay" value="cash" checked> 💵 Efectivo</label>
+        <label><input type="radio" name="pay" value="qr"> 📱 QR</label>
+      </div>
+      <label class="field" id="changeField"><span>¿Con cuánto pagas? (opcional, para el cambio)</span><input id="fChange" inputmode="decimal" placeholder="Ej.: 100"></label>
+      <p class="note">Pagas al recibir: el mensajero de Yango cobra el pedido y el envío.</p>
+    </form>
+  </div>
+  <div class="fo" id="cartFoot"></div>
+</aside>
+<div class="toast" id="toast"></div>
+
+<script>window.STORE = {{ store_json | safe }};</script>
+<script src="/static/store.js"></script>
+</body>
+</html>

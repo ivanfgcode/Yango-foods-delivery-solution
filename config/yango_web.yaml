@@ -1,0 +1,49 @@
+# food.yango.com (web de clientes) para el bot. Ver README.md («Cómo funciona»).
+#
+# VERIFICADO (2026-10-29, sin sesión, restaurante público wrap_roll_-_san_martin):
+#   brand_place, catalog, menu, finalsuggest. Responden 200 llamados con fetch() desde una página de food.yango.com.
+# POR VERIFICAR con sesión de una cuenta real (tools/record_traffic.py): todo lo de `order`.
+
+home_path: "/{locale}"                     # página que mantiene abierta cada pestaña del pool
+
+endpoints:
+  # URL de marca → local concreto (slug, id, coordenadas). La web la pide al abrir /r/<brand_slug>.
+  brand_place_regex: "eats-catalog/v2/brand/place"
+  catalog: "/api/v2/catalog/{place_slug}?latitude={lat}&longitude={lon}&shippingType=delivery"
+  menu: "/api/v2/menu/retrieve/{place_slug}?latitude={lat}&longitude={lon}&autoTranslate=false"
+  finalsuggest: "/eats/v1/persuggest/v1/finalsuggest"
+  cart: "/api/v1/cart?longitude={lon}&latitude={lat}&screen=menu&shippingType=delivery&autoTranslate=false"
+
+session:
+  # Sin sesión la cabecera muestra «Log in». Con sesión no aparece.
+  logged_out_texts: ["Log in", "Iniciar sesión", "Войти"]
+  captcha_texts: ["Please enter the characters", "Introduce los caracteres", "captcha"]
+
+order:
+  verified: false                  # true cuando se grabe un pedido real y se ajusten los pasos
+  # 1) Vaciar el carrito de la cuenta (cada cuenta = un restaurante, un pedido a la vez).
+  clear_cart: {method: DELETE, path: "/api/v1/cart"}
+  # 2) Agregar cada plato. Placeholders: {item_id} {quantity} {place_slug} {item_options} (lista JSON).
+  add_item:
+    method: POST
+    path: "/api/v1/cart"
+    body: {item_id: "{item_id}", quantity: "{quantity}", place_slug: "{place_slug}",
+           place_business: "restaurant", item_options: "{item_options}"}
+  # 3) Leer el carrito en la dirección del cliente y comparar con lo cotizado (subtotal y envío).
+  cart_subtotal_path: "decimal_subtotal"
+  cart_delivery_fee_path: "decimal_delivery_fee"
+  cart_total_path: "decimal_total"
+  # 4) Checkout en la web (UI). Cada paso: goto | click | fill | press | wait_text | capture.
+  #    {address_text} {reference} {comment} {lat} {lon} {place_slug} {locale} se reemplazan.
+  checkout_steps:
+    - {action: goto, path: "/{locale}/checkout"}
+    - {action: click, names: ["Dirección", "Address", "Cambiar dirección", "Change address"], optional: true}
+    - {action: fill, labels: ["Calle y número", "Street and house", "Dirección", "Address"], value: "{address_text}"}
+    - {action: click, names: ["{address_text}"], optional: true}
+    - {action: fill, labels: ["Departamento", "Apartment", "Depto"], value: "{reference}", optional: true}
+    - {action: fill, labels: ["Comentario para el mensajero", "Comment for courier", "Comentario", "Comment"], value: "{comment}"}
+    - {action: click, names: ["Efectivo", "Cash", "Наличные"]}
+    - {action: click, names: ["Hacer pedido", "Realizar pedido", "Place order", "Pedir", "Оформить заказ"]}
+    - {action: capture, response_regex: "/api/v1/orders|eats-orders|order_nr", json_paths: ["order_nr", "orderNr", "order.order_nr"]}
+  # Botones que el bot NUNCA pulsa.
+  never_click: ["Cancelar pedido", "Cancel order", "Pagar con tarjeta", "Card", "Agregar tarjeta"]

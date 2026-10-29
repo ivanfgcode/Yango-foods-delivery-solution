@@ -1,0 +1,141 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Admin · Pedidos propios</title>
+<link rel="stylesheet" href="/static/panel.css">
+</head>
+<body>
+{% if not logged %}
+<div class="login card"><h2>Admin · Pedidos propios</h2>
+  <form id="f"><label class="f"><span>Clave de administrador</span><input type="password" id="k" required></label>
+  <button class="btn acc" style="width:100%">Entrar</button><div class="msg bad" id="m"></div></form></div>
+<script>
+document.getElementById("f").onsubmit = async (e) => { e.preventDefault();
+  const r = await fetch("/api/admin/login", {method: "POST", headers: {"content-type": "application/json"}, body: JSON.stringify({key: document.getElementById("k").value})});
+  if (r.ok) location.reload(); else document.getElementById("m").textContent = "Clave incorrecta"; };
+</script>
+{% else %}
+<div class="bar"><b>Pedidos propios · Admin</b>
+  <div class="tabs" id="tabs"><button class="on" data-t="orders">Pedidos</button><button data-t="partners">Restaurantes</button><button data-t="accounts">Cuentas Yango</button><button data-t="events">Eventos</button></div>
+  <div class="sp"></div><span class="muted" id="src"></span></div>
+<div class="page">
+  <div class="stats" id="stats" style="margin-bottom:16px"></div>
+
+  <section id="t-orders">
+    <div class="card"><div class="row" style="margin-bottom:10px"><h2 style="margin:0;flex:1">Pedidos</h2>
+      <select id="fStatus" style="width:auto"><option value="">Todos</option><option>manual</option><option>revision</option><option>en_cola</option><option>colocando</option><option>colocado</option><option>cancelado</option></select>
+      <button class="btn ghost sm" id="reload">Actualizar</button></div>
+      <div class="tw"><table><thead><tr><th>Hora</th><th>N°</th><th>Restaurante / cuenta</th><th>Cliente y dirección</th><th>Productos</th><th>Total</th><th>Estado</th><th></th></tr></thead><tbody id="ob"></tbody></table></div></div>
+  </section>
+
+  <section id="t-partners" hidden>
+    <div class="card"><h2>Nuevo restaurante</h2>
+      <form id="np" class="row" style="align-items:flex-end">
+        <label class="f" style="flex:1 1 160px"><span>Nombre</span><input name="name" required></label>
+        <label class="f" style="flex:1 1 140px"><span>Slug (URL)</span><input name="slug" required pattern="[a-z0-9-]+" placeholder="wrap-roll"></label>
+        <label class="f" style="flex:1 1 140px"><span>Cuenta Yango</span><input name="account" required placeholder="wrap_roll"></label>
+        <label class="f" style="flex:3 1 320px"><span>URL en food.yango.com</span><input name="yango_url" type="url" placeholder="https://food.yango.com/bo/santa-cruz-de-la-sierra/r/..."></label>
+        <label class="f" style="flex:1 1 140px"><span>Contraseña portal</span><input name="password" type="password" minlength="8"></label>
+        <button class="btn acc" style="margin-bottom:12px">Crear</button>
+      </form><div class="msg" id="npMsg"></div></div>
+    <div class="card"><h2>Restaurantes</h2><div class="tw"><table><thead><tr><th>Restaurante</th><th>Cuenta</th><th>Local Yango</th><th>Menú</th><th>Estado</th><th></th></tr></thead><tbody id="pb"></tbody></table></div></div>
+  </section>
+
+  <section id="t-accounts" hidden>
+    <div class="card"><h2>Cargar sesión (cookies JSON)</h2>
+      <p class="muted">Entra a food.yango.com con la cuenta en tu navegador (teléfono + SMS), exporta las cookies con la extensión «Cookie-Editor» (Export → JSON) y pégalas aquí. Una cuenta por restaurante.</p>
+      <label class="f"><span>Cuenta</span><input id="acName" placeholder="wrap_roll"></label>
+      <label class="f"><span>Cookies (JSON)</span><textarea id="acJson" style="min-height:120px" placeholder='[{"name":"Session_id","value":"...","domain":".yango.com",...}]'></textarea></label>
+      <button class="btn acc" id="acSave">Cargar sesión</button><div class="msg" id="acMsg"></div></div>
+    <div class="card"><h2>Cuentas</h2><div class="tw"><table><thead><tr><th>Cuenta</th><th>Restaurantes</th><th>Estado</th><th>Detalle</th><th>Sesión cargada</th><th></th></tr></thead><tbody id="ab"></tbody></table></div></div>
+  </section>
+
+  <section id="t-events" hidden><div class="card"><h2>Eventos</h2><div class="tw"><table><thead><tr><th>Hora</th><th>Tipo</th><th>Cuenta</th><th>Detalle</th></tr></thead><tbody id="eb"></tbody></table></div></div></section>
+</div>
+<script>
+(() => {
+  const CUR = {{ currency | tojson }};
+  const $ = (s) => document.querySelector(s), $$ = (s) => [...document.querySelectorAll(s)];
+  const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const api = (p, opt) => fetch(`/api/admin${p}`, opt).then(async (r) => { const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.detail || "Error"); return d; });
+  const post = (p, body, method = "POST") => api(p, {method, headers: {"content-type": "application/json"}, body: JSON.stringify(body)});
+  const when = (s) => s ? new Date(s).toLocaleString("es-BO", {dateStyle: "short", timeStyle: "short"}) : "";
+  let tab = "orders";
+
+  async function stats() {
+    const h = await api("/health");
+    $("#src").textContent = `fuente: ${h.source.source}${h.order_placement_enabled ? " · colocación automática ON" : " · colocación automática OFF (manual)"}`;
+    const o = h.orders;
+    $("#stats").innerHTML = [["Por cargar a mano", o.manual || 0], ["En revisión", o.revision || 0], ["En cola", (o.en_cola || 0) + (o.colocando || 0)], ["Colocados", o.colocado || 0],
+      ["Cotizaciones (caché / Yango)", `${h.quotes.hits} / ${h.quotes.misses}`]].map(([l, v]) => `<div class="stat"><b>${esc(v)}</b><span>${esc(l)}</span></div>`).join("");
+  }
+  async function orders() {
+    const rows = await api(`/orders${$("#fStatus").value ? `?status=${$("#fStatus").value}` : ""}`);
+    $("#ob").innerHTML = rows.map((o) => `<tr>
+      <td>${esc(when(o.created_at))}</td><td class="mono">${esc(o.number)}</td>
+      <td>${esc(o.partner_name)}<br><span class="muted mono">${esc(o.account)}</span></td>
+      <td>${esc(o.customer.first_name)} ${esc(o.customer.last_name)} · ${esc(o.customer.phone)}<br><span class="muted">${esc(o.address.text)} · ${esc(o.address.reference)}</span><br>
+        <a class="muted" target="_blank" rel="noopener" href="https://yandex.com/maps/?pt=${o.address.lon},${o.address.lat}&z=17">📍 ${o.address.lat}, ${o.address.lon}</a></td>
+      <td>${o.items.map((i) => `${i.quantity}× ${esc(i.name)}${i.options.length ? ` <span class="muted">(${esc(i.options.map((x) => x.name).join(", "))})</span>` : ""}`).join("<br>")}</td>
+      <td>${CUR}${o.total}<br><span class="muted">envío ${CUR}${o.delivery_fee} · ${esc(o.payment.label)}</span></td>
+      <td><span class="pill ${esc(o.status)}">${esc(o.status)}</span>${o.yango_order_nr ? `<br><span class="mono">${esc(o.yango_order_nr)}</span>` : ""}${o.error ? `<br><span class="muted">${esc(o.error)}</span>` : ""}</td>
+      <td style="white-space:nowrap">${["manual", "revision"].includes(o.status) ? `<button class="btn sm" data-a="colocado" data-t="${esc(o.token)}">Marcar colocado</button> <button class="btn ghost sm" data-a="reintentar" data-t="${esc(o.token)}">Reintentar bot</button><br>
+        <button class="btn ghost sm" data-copy="${esc(o.yango_comment)}" style="margin-top:4px">Copiar comentario</button> ` : ""}
+        ${o.status !== "cancelado" && o.status !== "colocado" ? `<button class="btn ghost sm" data-a="cancelar" data-t="${esc(o.token)}" style="margin-top:4px">Cancelar</button>` : ""}</td></tr>`).join("")
+      || `<tr><td colspan="8" class="muted">Sin pedidos.</td></tr>`;
+    $$("[data-a]").forEach((b) => (b.onclick = async () => {
+      const body = {action: b.dataset.a};
+      if (body.action === "colocado") { body.yango_order_nr = prompt("N° de pedido en Yango (ej. 261029-BO1234567)"); if (!body.yango_order_nr) return; }
+      if (body.action === "cancelar" && !confirm("¿Cancelar este pedido? (si ya está en Yango, cancélalo también allí)")) return;
+      try { await post(`/orders/${b.dataset.t}/status`, body); refresh(); } catch (e) { alert(e.message); }
+    }));
+    $$("[data-copy]").forEach((b) => (b.onclick = () => { navigator.clipboard.writeText(b.dataset.copy); b.textContent = "Copiado ✓"; }));
+  }
+  async function partnersTab() {
+    const rows = await api("/partners");
+    $("#pb").innerHTML = rows.map((p) => `<tr>
+      <td><b>${esc(p.name)}</b><br><a href="/${esc(p.slug)}" target="_blank" rel="noopener" class="mono">/${esc(p.slug)}</a> · <a href="/${esc(p.slug)}/portal" target="_blank" rel="noopener">portal</a></td>
+      <td class="mono">${esc(p.account)}</td>
+      <td>${p.place_slug ? `<span class="mono">${esc(p.place_slug)}</span><br><span class="muted">${esc(p.place_address || "")}</span>` : `<span class="muted">sin resolver</span>`}<br><a class="muted" href="${esc(p.yango_url || "#")}" target="_blank" rel="noopener">${esc((p.yango_url || "").slice(0, 60))}</a></td>
+      <td>${p.menu ? `${esc(when(p.menu.synced_at))}${p.menu.error ? `<br><span class="pill error">${esc(p.menu.error)}</span>` : ""}` : `<span class="muted">—</span>`}</td>
+      <td><span class="pill ${p.enabled ? "ok" : "cancelado"}">${p.enabled ? "activo" : "inactivo"}</span> ${p.accepting_orders ? "" : `<span class="pill manual">pausado</span>`}</td>
+      <td style="white-space:nowrap"><button class="btn sm" data-sync="${esc(p.slug)}">Sincronizar</button> <button class="btn ghost sm" data-pw="${esc(p.slug)}">Contraseña</button> <button class="btn ghost sm" data-toggle="${esc(p.slug)}" data-on="${p.enabled ? 1 : 0}">${p.enabled ? "Desactivar" : "Activar"}</button></td></tr>`).join("")
+      || `<tr><td colspan="6" class="muted">Sin restaurantes.</td></tr>`;
+    $$("[data-sync]").forEach((b) => (b.onclick = async () => { b.disabled = true; b.textContent = "…"; try { const r = await post(`/partners/${b.dataset.sync}/sync`, {}); alert(`Menú: ${r.items} productos en ${r.categories} categorías`); } catch (e) { alert(e.message); } partnersTab(); }));
+    $$("[data-pw]").forEach((b) => (b.onclick = async () => { const pw = prompt("Nueva contraseña del portal (mín. 8)"); if (!pw) return; try { await post(`/partners/${b.dataset.pw}/password`, {password: pw}); alert("Listo"); } catch (e) { alert(e.message); } }));
+    $$("[data-toggle]").forEach((b) => (b.onclick = async () => { await post(`/partners/${b.dataset.toggle}`, {enabled: b.dataset.on === "1" ? 0 : 1}, "PUT"); partnersTab(); }));
+  }
+  $("#np").onsubmit = async (e) => {
+    e.preventDefault(); const body = Object.fromEntries(new FormData(e.target));
+    try { await post("/partners", body); e.target.reset(); $("#npMsg").className = "msg ok"; $("#npMsg").textContent = "Creado. Carga la sesión de la cuenta y pulsa Sincronizar."; partnersTab(); }
+    catch (err) { $("#npMsg").className = "msg bad"; $("#npMsg").textContent = err.message; }
+  };
+  async function accounts() {
+    const rows = await api("/accounts");
+    $("#ab").innerHTML = rows.map((a) => `<tr><td class="mono">${esc(a.name)}</td><td>${a.partners.map(esc).join(", ")}</td><td><span class="pill ${esc(a.status)}">${esc(a.status)}</span></td>
+      <td class="muted">${esc(a.detail || "")}<br>${esc(when(a.checked_at))}</td><td>${a.has_session ? esc(when(a.session_imported_at)) : `<span class="muted">no</span>`}</td>
+      <td><button class="btn sm" data-check="${esc(a.name)}">Probar</button> <button class="btn ghost sm" data-load="${esc(a.name)}">Cargar cookies</button></td></tr>`).join("");
+    $$("[data-check]").forEach((b) => (b.onclick = async () => { b.textContent = "…"; try { const r = await post(`/accounts/${b.dataset.check}/check`, {}); alert(r.ok ? "Sesión activa ✓" : `Sesión caída: ${r.detail}`); } catch (e) { alert(e.message); } accounts(); }));
+    $$("[data-load]").forEach((b) => (b.onclick = () => { $("#acName").value = b.dataset.load; $("#acJson").focus(); }));
+  }
+  $("#acSave").onclick = async () => {
+    const name = $("#acName").value.trim();
+    try { const r = await api(`/accounts/${encodeURIComponent(name)}/cookies`, {method: "POST", headers: {"content-type": "application/json"}, body: $("#acJson").value});
+      $("#acMsg").className = "msg ok"; $("#acMsg").textContent = `Sesión cargada (${r.cookies} cookies).`; $("#acJson").value = ""; accounts(); }
+    catch (e) { $("#acMsg").className = "msg bad"; $("#acMsg").textContent = e.message; }
+  };
+  async function events() {
+    const rows = await api("/events?limit=300");
+    $("#eb").innerHTML = rows.map((e) => `<tr><td>${esc(when(e.at))}</td><td class="mono">${esc(e.kind)}</td><td class="mono">${esc(e.account || "")}</td><td class="muted mono" style="max-width:600px;word-break:break-word">${esc((e.detail || "").slice(0, 400))}</td></tr>`).join("");
+  }
+  const loaders = {orders, partners: partnersTab, accounts, events};
+  function refresh() { stats(); loaders[tab](); }
+  $$("#tabs button").forEach((b) => (b.onclick = () => { tab = b.dataset.t; $$("#tabs button").forEach((x) => x.classList.toggle("on", x === b)); Object.keys(loaders).forEach((t) => ($(`#t-${t}`).hidden = t !== tab)); refresh(); }));
+  $("#fStatus").onchange = orders; $("#reload").onclick = refresh;
+  refresh(); setInterval(() => { if (tab === "orders") refresh(); }, 15000);
+})();
+</script>
+{% endif %}
+</body>
+</html>

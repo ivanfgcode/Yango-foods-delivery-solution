@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Portal · {{ p.name }}</title>
+<link rel="stylesheet" href="/static/panel.css">
+</head>
+<body>
+{% if not logged %}
+<div class="login card">
+  <h2>Portal de {{ p.name }}</h2>
+  <p class="muted">Personaliza tu web de pedidos y mira tus pedidos.</p>
+  <form id="loginForm">
+    <label class="f"><span>Contraseña</span><input type="password" id="pw" autocomplete="current-password" required></label>
+    <button class="btn acc" style="width:100%">Entrar</button>
+    <div class="msg bad" id="loginMsg"></div>
+  </form>
+</div>
+<script>
+document.getElementById("loginForm").onsubmit = async (e) => {
+  e.preventDefault();
+  const r = await fetch({{ ('/api/' ~ p.slug ~ '/portal/login') | tojson }}, {method: "POST", headers: {"content-type": "application/json"}, body: JSON.stringify({password: document.getElementById("pw").value})});
+  if (r.ok) location.reload(); else document.getElementById("loginMsg").textContent = (await r.json()).detail || "Error";
+};
+</script>
+{% else %}
+<div class="bar">
+  <b>{{ p.name }}</b>
+  <div class="tabs" id="tabs"><button class="on" data-t="design">Diseño</button><button data-t="info">Textos</button><button data-t="orders">Pedidos</button></div>
+  <div class="sp"></div>
+  <label class="switch" title="Pausar o reanudar pedidos en tu web"><input type="checkbox" id="accepting"> <span id="acceptLbl">Recibiendo pedidos</span></label>
+  <a class="btn ghost sm" id="openStore" target="_blank" rel="noopener">Ver mi web ↗</a>
+  <button class="btn ghost sm" id="logout">Salir</button>
+</div>
+
+<div class="page">
+  <section id="t-design" class="grid2">
+    <div>
+      <div class="card"><h2>Marca</h2>
+        <label class="f"><span>Logo</span><div class="upl"><img id="logoPrev" alt=""><input type="file" accept="image/png,image/jpeg,image/webp" data-up="logo_url"></div></label>
+        <label class="f"><span>Foto de portada</span><div class="upl"><img id="coverPrev" alt=""><input type="file" accept="image/png,image/jpeg,image/webp" data-up="cover_url"></div></label>
+        <label class="f"><span>Estilo de portada</span><div class="seg" data-k="hero_style"><button data-v="cover">Foto grande</button><button data-v="compact">Compacta</button><button data-v="minimal">Mínima</button></div></label>
+        <label class="switch"><input type="checkbox" data-k="dark_header"> Cabecera oscura</label>
+      </div>
+      <div class="card"><h2>Colores</h2>
+        <div class="colors">
+          {% for k, lbl in [('primary','Principal'),('on_primary','Texto sobre principal'),('background','Fondo'),('surface','Tarjetas'),('text','Texto'),('muted','Texto secundario')] %}
+          <label class="color"><input type="color" data-k="{{ k }}"><span><small>{{ lbl }}</small><span class="mono" data-hex="{{ k }}"></span></span></label>
+          {% endfor %}
+        </div>
+        <div class="row" style="margin-top:12px" id="presets"></div>
+      </div>
+      <div class="card"><h2>Tipografía y tamaños</h2>
+        <label class="f"><span>Títulos</span><select data-k="heading_font">{% for f in fonts %}<option>{{ f }}</option>{% endfor %}</select></label>
+        <label class="f"><span>Texto</span><select data-k="body_font">{% for f in fonts %}<option>{{ f }}</option>{% endfor %}</select></label>
+        <label class="f"><span>Tamaño de letra: <b id="v-base_font_size"></b>px</span><input type="range" min="14" max="19" data-k="base_font_size"></label>
+        <label class="f"><span>Esquinas redondeadas: <b id="v-radius"></b>px</span><input type="range" min="0" max="32" data-k="radius"></label>
+        <label class="f"><span>Productos</span><div class="seg" data-k="card_layout"><button data-v="grid">Cuadrícula</button><button data-v="list">Lista</button></div></label>
+        <label class="f"><span>Tamaño de tarjeta</span><div class="seg" data-k="card_size"><button data-v="s">Chica</button><button data-v="m">Mediana</button><button data-v="l">Grande</button></div></label>
+        <label class="f"><span>Forma de la foto</span><div class="seg" data-k="image_ratio"><button data-v="1/1">Cuadrada</button><button data-v="4/3">4:3</button><button data-v="16/9">Panorámica</button></div></label>
+        <div class="row"><button class="btn ghost sm" id="resetTheme">Restablecer diseño</button><span class="msg" id="saveMsg"></span></div>
+      </div>
+    </div>
+    <div class="preview" id="preview">
+      <div class="ph">Vista previa <span class="sp" style="flex:1"></span><div class="seg" id="device" style="width:200px"><button data-v="desktop" class="on">Escritorio</button><button data-v="mobile">Celular</button></div></div>
+      <iframe id="frame" title="Vista previa"></iframe>
+    </div>
+  </section>
+
+  <section id="t-info" hidden>
+    <div class="card" style="max-width:720px"><h2>Textos de tu web</h2>
+      <label class="f"><span>Frase debajo del nombre</span><input data-p="tagline" maxlength="120"></label>
+      <label class="f"><span>Aviso destacado</span><input data-p="announcement" maxlength="160" placeholder="Ej.: 2x1 en wraps los martes"></label>
+      <label class="f"><span>Horario (texto)</span><input data-p="hours_text" maxlength="120" placeholder="Lun a Dom 11:00 – 22:00"></label>
+      <label class="f"><span>Sobre nosotros</span><textarea data-p="about" maxlength="600"></textarea></label>
+      <label class="f"><span>WhatsApp</span><input data-p="whatsapp" maxlength="20"></label>
+      <label class="f"><span>Instagram</span><input data-p="instagram" maxlength="60"></label>
+      <button class="btn acc" id="saveProfile">Guardar textos</button><div class="msg" id="profileMsg"></div>
+      <p class="muted" id="menuInfo" style="margin-top:16px"></p>
+    </div>
+  </section>
+
+  <section id="t-orders" hidden>
+    <div class="card"><h2>Pedidos de tu web</h2><div class="tw"><table><thead><tr><th>Hora</th><th>N°</th><th>Cliente</th><th>Productos</th><th>Total</th><th>Pago</th><th>Estado</th><th>N° Yango</th></tr></thead><tbody id="ordersBody"></tbody></table></div></div>
+  </section>
+</div>
+
+<script>
+(() => {
+  const SLUG = {{ p.slug | tojson }}, CUR = {{ currency | tojson }}, DEFAULTS = {{ defaults | tojson }};
+  const $ = (s) => document.querySelector(s), $$ = (s) => [...document.querySelectorAll(s)];
+  const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const API = (p, opt) => fetch(`/api/${SLUG}/portal${p}`, opt).then(async (r) => { const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.detail || "Error"); return d; });
+  const json = (method, body) => ({method, headers: {"content-type": "application/json"}, body: JSON.stringify(body)});
+  let theme = {}, me = null;
+  const RELOAD_KEYS = ["heading_font", "body_font", "card_layout", "hero_style", "logo_url", "cover_url", "dark_header"];
+  const PRESETS = [
+    {name: "Tomate", primary: "#E8402F", on_primary: "#FFFFFF", background: "#FAF7F2", surface: "#FFFFFF", text: "#1D1B19", muted: "#6F6A64"},
+    {name: "Bosque", primary: "#2F7D4A", on_primary: "#FFFFFF", background: "#F3F6F1", surface: "#FFFFFF", text: "#16241B", muted: "#5D6B61"},
+    {name: "Noche", primary: "#F5B700", on_primary: "#1A1A1A", background: "#121212", surface: "#1E1E1E", text: "#F5F5F5", muted: "#A0A0A0"},
+    {name: "Océano", primary: "#1565C0", on_primary: "#FFFFFF", background: "#F3F7FC", surface: "#FFFFFF", text: "#0F1C2E", muted: "#5B6B80"},
+    {name: "Rosa", primary: "#D81B60", on_primary: "#FFFFFF", background: "#FFF5F8", surface: "#FFFFFF", text: "#2A1520", muted: "#7A5D69"},
+  ];
+
+  function cssVars(t) {
+    const size = {s: "190px", m: "240px", l: "310px"}[t.card_size];
+    return {"--primary": t.primary, "--on-primary": t.on_primary, "--bg": t.background, "--surface": t.surface, "--text": t.text, "--muted": t.muted,
+      "--radius": t.radius + "px", "--card-min": size, "--img-ratio": t.image_ratio, "--base-size": t.base_font_size + "px"};
+  }
+  function fill() {
+    $$("[data-k]").forEach((el) => {
+      const k = el.dataset.k, v = theme[k];
+      if (el.classList.contains("seg")) el.querySelectorAll("button").forEach((b) => b.classList.toggle("on", b.dataset.v === v));
+      else if (el.type === "checkbox") el.checked = !!v;
+      else el.value = v;
+    });
+    $$("[data-hex]").forEach((el) => (el.textContent = theme[el.dataset.hex]));
+    $("#v-radius").textContent = theme.radius; $("#v-base_font_size").textContent = theme.base_font_size;
+    for (const [id, k] of [["#logoPrev", "logo_url"], ["#coverPrev", "cover_url"]]) { const img = $(id); img.style.visibility = theme[k] ? "visible" : "hidden"; if (theme[k]) img.src = theme[k]; }
+  }
+  function push() { const f = $("#frame"); try { f.contentWindow.postMessage({type: "theme", vars: cssVars(theme)}, location.origin); } catch (e) {} }
+  let saveTimer, pending = {}, needReload = false;
+  function change(k, v) {
+    theme[k] = v; pending[k] = v; if (RELOAD_KEYS.includes(k)) needReload = true;
+    fill(); push(); $("#saveMsg").className = "msg"; $("#saveMsg").textContent = "Guardando…";
+    clearTimeout(saveTimer); saveTimer = setTimeout(save, 500);
+  }
+  async function save() {
+    const body = pending; pending = {};
+    try {
+      theme = await API("/theme", json("PUT", body)); fill();
+      $("#saveMsg").className = "msg ok"; $("#saveMsg").textContent = "Guardado ✓";
+      if (needReload) { needReload = false; $("#frame").contentWindow.location.reload(); }
+    } catch (e) { $("#saveMsg").className = "msg bad"; $("#saveMsg").textContent = e.message; }
+  }
+  $$("[data-k]").forEach((el) => {
+    const k = el.dataset.k;
+    if (el.classList.contains("seg")) el.querySelectorAll("button").forEach((b) => (b.onclick = (e) => { e.preventDefault(); change(k, b.dataset.v); }));
+    else el.addEventListener("input", () => change(k, el.type === "checkbox" ? el.checked : el.type === "range" ? +el.value : el.type === "color" ? el.value.toUpperCase() : el.value));
+  });
+  $("#presets").innerHTML = PRESETS.map((p, i) => `<button class="btn ghost sm" data-preset="${i}"><span style="display:inline-block;width:12px;height:12px;border-radius:50%;background:${p.primary};vertical-align:-1px"></span> ${esc(p.name)}</button>`).join("");
+  $$("[data-preset]").forEach((b) => (b.onclick = () => { const p = PRESETS[+b.dataset.preset]; for (const k of Object.keys(p)) if (k !== "name") change(k, p[k]); }));
+  $("#resetTheme").onclick = () => { if (confirm("¿Volver al diseño por defecto?")) for (const k of Object.keys(DEFAULTS)) if (!["logo_url", "cover_url"].includes(k)) change(k, DEFAULTS[k]); };
+  $$("[data-up]").forEach((inp) => (inp.onchange = async () => {
+    if (!inp.files[0]) return;
+    const fd = new FormData(); fd.append("file", inp.files[0]);
+    try { const r = await API("/upload", {method: "POST", body: fd}); change(inp.dataset.up, r.url); } catch (e) { alert(e.message); }
+    inp.value = "";
+  }));
+  $$("#device button").forEach((b) => (b.onclick = () => { $$("#device button").forEach((x) => x.classList.toggle("on", x === b)); $("#preview").classList.toggle("mobile", b.dataset.v === "mobile"); }));
+  $$("#tabs button").forEach((b) => (b.onclick = () => {
+    $$("#tabs button").forEach((x) => x.classList.toggle("on", x === b));
+    ["design", "info", "orders"].forEach((t) => ($(`#t-${t}`).hidden = t !== b.dataset.t));
+    if (b.dataset.t === "orders") loadOrders();
+  }));
+  $("#accepting").onchange = async (e) => { await API("/accepting", json("PUT", {accepting: e.target.checked})); $("#acceptLbl").textContent = e.target.checked ? "Recibiendo pedidos" : "Pedidos en pausa"; };
+  $("#logout").onclick = async () => { await API("/logout", {method: "POST"}); location.reload(); };
+  $("#saveProfile").onclick = async () => {
+    const body = {}; $$("[data-p]").forEach((el) => (body[el.dataset.p] = el.value));
+    try { await API("/profile", json("PUT", body)); $("#profileMsg").className = "msg ok"; $("#profileMsg").textContent = "Guardado ✓"; $("#frame").contentWindow.location.reload(); }
+    catch (e) { $("#profileMsg").className = "msg bad"; $("#profileMsg").textContent = e.message; }
+  };
+  async function loadOrders() {
+    const rows = await API("/orders");
+    $("#ordersBody").innerHTML = rows.map((o) => `<tr><td>${esc(new Date(o.created_at).toLocaleString("es-BO"))}</td><td class="mono">${esc(o.number)}</td>
+      <td>${esc(o.customer)}<br><span class="muted">${esc(o.phone)}</span></td><td>${o.items.map((i) => `${i.quantity}× ${esc(i.name)}`).join("<br>")}</td>
+      <td>${CUR}${o.total}</td><td>${esc(o.payment)}</td><td><span class="pill ${esc(o.status)}">${esc(o.status)}</span></td><td class="mono">${esc(o.yango_order_nr || "")}</td></tr>`).join("")
+      || `<tr><td colspan="8" class="muted">Todavía no hay pedidos.</td></tr>`;
+  }
+  API("/me").then((d) => {
+    me = d; theme = d.theme; fill();
+    $("#accepting").checked = d.accepting_orders; $("#acceptLbl").textContent = d.accepting_orders ? "Recibiendo pedidos" : "Pedidos en pausa";
+    $("#openStore").href = `/${SLUG}`; $("#frame").src = `/${SLUG}?preview=1`;
+    $$("[data-p]").forEach((el) => (el.value = (d.profile || {})[el.dataset.p] || ""));
+    $("#menuInfo").textContent = d.menu_items ? `Menú sincronizado desde Yango: ${d.menu_items} productos (${new Date(d.menu_synced_at).toLocaleString("es-BO")}). Precios y productos se editan en Yango.` : "El menú todavía no se sincronizó desde Yango.";
+  });
+  $("#frame").addEventListener("load", push);
+})();
+</script>
+{% endif %}
+</body>
+</html>

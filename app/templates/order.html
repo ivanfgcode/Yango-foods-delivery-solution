@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Pedido · {{ p.name }}</title>
+<meta name="theme-color" content="{{ theme.primary }}">
+<link rel="stylesheet" href="{{ fonts_href }}">
+<link rel="stylesheet" href="/static/store.css">
+</head>
+<body style="{{ css_vars }}">
+<header class="top{{ ' dark' if theme.dark_header else '' }}"><div class="wrap">
+  <a class="brand" href="/{{ p.slug }}">{% if theme.logo_url %}<img src="{{ theme.logo_url }}" alt="">{% else %}<span class="mono">{{ p.name[:1] }}</span>{% endif %}<b>{{ p.name }}</b></a>
+</div></header>
+<main class="wrap">
+  <div class="status-card">
+    <p class="note" id="num"></p>
+    <h1 id="title"></h1>
+    <ul class="steps" id="steps"></ul>
+    <div id="detail"></div>
+    <p class="note">El mensajero de Yango te llamará si necesita ubicarte. Pagas al recibir.</p>
+    <p style="margin-top:18px"><a class="btn ghost" href="/{{ p.slug }}" style="text-decoration:none">Volver al menú</a></p>
+  </div>
+</main>
+<script>
+(() => {
+  const SLUG = {{ p.slug | tojson }}, TOKEN = {{ token | tojson }}, CUR = {{ currency | tojson }};
+  let o = {{ order_json | safe }};
+  const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const money = (n) => `${CUR}${Number(n).toLocaleString("es-BO", {maximumFractionDigits: 2})}`;
+  const ORDER = ["recibido", "confirmando", "confirmado"];
+  function stage(s) { return s === "colocado" ? 2 : (s === "colocando" || s === "manual" || s === "revision") ? 1 : 0; }
+  function render() {
+    document.getElementById("num").textContent = `Pedido #${o.number}`;
+    document.getElementById("title").textContent = o.status_text;
+    const st = o.status === "cancelado" ? -1 : stage(o.status);
+    const labels = ["Pedido recibido", "Confirmando con el restaurante", "Confirmado · en preparación y entrega"];
+    document.getElementById("steps").innerHTML = labels.map((l, i) => `<li class="${i <= st ? "done" : ""}${i === st ? " now" : ""}"><i></i>${esc(l)}</li>`).join("");
+    document.getElementById("detail").innerHTML = `
+      ${o.items.map((i) => `<div class="sum" style="color:var(--text)"><span>${i.quantity}× ${esc(i.name)}${i.options.length ? `<br><small class="note">${esc(i.options.join(", "))}</small>` : ""}</span><span>${money(i.amount)}</span></div>`).join("")}
+      <div class="sum"><span>Envío</span><span>${money(o.delivery_fee)}</span></div>
+      ${o.service_fee ? `<div class="sum"><span>Tarifa de servicio</span><span>${money(o.service_fee)}</span></div>` : ""}
+      <div class="sum total"><span>Total · ${esc(o.payment)}</span><span>${money(o.total)}</span></div>
+      <p class="note">📍 ${esc(o.address)} · ${esc(o.reference)}${o.eta_min ? `<br>⏱️ Tiempo estimado: ${o.eta_min}–${o.eta_max} min` : ""}</p>`;
+  }
+  render();
+  const poll = setInterval(async () => {
+    try { const r = await fetch(`/api/${SLUG}/orders/${TOKEN}`); if (r.ok) { o = await r.json(); render(); if (o.status === "colocado" || o.status === "cancelado") clearInterval(poll); } } catch (e) {}
+  }, 5000);
+})();
+</script>
+</body>
+</html>
