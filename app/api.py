@@ -3,6 +3,7 @@ import asyncio
 import hmac
 import json
 import logging
+import os
 import secrets
 import time
 from collections import defaultdict, deque
@@ -27,7 +28,7 @@ def seed_demo() -> None:
         return
     partners.create("wrap-roll", "Wrap & Roll", "cuenta_demo",
                     yango_url="https://food.yango.com/bo/santa-cruz-de-la-sierra/r/wrap_roll_-_san_martin",
-                    password="demo12345",
+                    password=os.getenv("DEMO_PORTAL_PASSWORD", "demo12345"),
                     theme={"primary": "#F25C54"},
                     profile={"tagline": "Wraps frescos a tu puerta", "hours_text": "Todos los días 11:00 – 22:00",
                              "announcement": "-20% en combos de hoy"})
