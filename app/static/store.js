@@ -5,6 +5,7 @@
   const $ = (s, el = document) => el.querySelector(s);
   const $$ = (s, el = document) => [...el.querySelectorAll(s)];
   const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
+  const icon = (n) => `<svg class="ic" aria-hidden="true"><use href="/static/icons.svg#${n}"></use></svg>`;
   const money = (n) => `${S.currency}${Number(n).toLocaleString("es-BO", {maximumFractionDigits: 2})}`;
   const round2 = (n) => Math.round(n * 100) / 100;
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -158,7 +159,7 @@
       if (g.max > 1 && checked.length > g.max) { e.target.checked = false; toast(`Máximo ${g.max}`); checked = checked.filter((c) => c !== e.target); }
       cur.sel[g.id] = checked.map((c) => c.value);
       const need = Math.max(g.min, g.required ? 1 : 0), tag = $(".grp-h span", gEl);
-      if (need) { const ok = cur.sel[g.id].length >= need; tag.classList.toggle("done", ok); tag.classList.toggle("req", !ok); tag.textContent = ok ? "✓ Listo" : tag.dataset.rule; }
+      if (need) { const ok = cur.sel[g.id].length >= need; tag.classList.toggle("done", ok); tag.classList.toggle("req", !ok); tag.innerHTML = ok ? `${icon("check")}Listo` : esc(tag.dataset.rule); }
       refreshItem();
     }));
     showErr($("#itemErr"), "");
@@ -224,8 +225,8 @@
       $("#cartView").innerHTML = cart.length ? cart.map((l, i) => { const it = menu.items[l.item_id]; return `<div class="line" style="animation-delay:${i * 40}ms">
         ${it.image ? `<img src="${esc(it.image)}" alt="">` : `<span class="noimg"></span>`}
         <div class="nm"><b>${esc(it.name)}</b>${optionNames(l) ? `<small>${esc(optionNames(l))}</small>` : ""}<small>${money(lineAmount(l))}</small></div>
-        <div class="qty"><button type="button" data-d="-1" data-i="${i}" aria-label="Menos">${l.quantity === 1 ? "🗑" : "−"}</button><span>${l.quantity}</span><button type="button" data-d="1" data-i="${i}" aria-label="Más">+</button></div></div>`; }).join("")
-        : `<div class="empty-cart"><div class="ico">🛍️</div><p>Tu carrito está vacío</p><p class="note">Agrega algo rico del menú</p></div>`;
+        <div class="qty"><button type="button" data-d="-1" data-i="${i}" aria-label="Menos">${icon(l.quantity === 1 ? "trash-2" : "minus")}</button><span>${l.quantity}</span><button type="button" data-d="1" data-i="${i}" aria-label="Más">${icon("plus")}</button></div></div>`; }).join("")
+        : `<div class="empty-cart"><div class="ico">${icon("shopping-bag")}</div><p>Tu carrito está vacío</p><p class="note">Agrega algo rico del menú</p></div>`;
       $$("[data-d]", $("#cartView")).forEach((b) => (b.onclick = () => {
         const l = cart[+b.dataset.i]; l.quantity += +b.dataset.d; if (l.quantity <= 0) cart.splice(+b.dataset.i, 1); saveCart();
       }));
@@ -281,7 +282,7 @@
       else if (q.below_min_order) setQuoteBox("bad", `El pedido mínimo es <b>${money(q.min_order)}</b>`);
       else if (q.delivery_fee == null) setQuoteBox("bad", "No pudimos calcular el envío para este pedido");
       else setQuoteBox("ok", `Envío <b>${q.delivery_fee ? money(q.delivery_fee) : "gratis"}</b>${q.eta_min ? ` · llega en ${q.eta_min}–${q.eta_max} min` : ""}${q.surge ? " · alta demanda" : ""}`);
-      if (q.available && q.eta_min) $("#metaEta").innerHTML = `🛵 <b>${q.eta_min}–${q.eta_max} min</b>`;
+      if (q.available && q.eta_min) $("#metaEta").innerHTML = `${icon("bike")}<b>${q.eta_min}–${q.eta_max} min</b>`;
     } catch (e) {
       if (seq !== quoteSeq) return;
       quote = null; setQuoteBox("bad", esc(e.message));
@@ -290,6 +291,29 @@
   }
   function loadScript(src) { return new Promise((ok, ko) => { const s = document.createElement("script"); s.src = src; s.onload = ok; s.onerror = ko; document.head.appendChild(s); }); }
   function loadCss(href) { const l = document.createElement("link"); l.rel = "stylesheet"; l.href = href; document.head.appendChild(l); }
+  // Mapa de Yandex (los mismos datos que usan Yango y Yango Maps: calles y números de casa de Bolivia).
+  // La clave YANDEX_MAPS_API_KEY es opcional; sin ella también carga. Leaflet/OSM queda solo de respaldo.
+  async function yandexMap(center, lift) {
+    const key = S.yandexKey ? `apikey=${encodeURIComponent(S.yandexKey)}&` : "";
+    await loadScript(`https://api-maps.yandex.ru/2.1/?${key}lang=${encodeURIComponent(S.mapLang || "es_ES")}`);
+    await new Promise((ok, ko) => { ymaps.ready(ok, ko); setTimeout(() => ko(new Error("ymaps timeout")), 12000); });
+    const m = new ymaps.Map("map", {center, zoom: 17, controls: ["zoomControl"]},
+      {suppressMapOpenBlock: true, yandexMapDisablePoiInteractivity: true, zoomControlSize: "small", zoomControlPosition: {left: 10, top: 10}});
+    m.events.add("actionbegin", () => lift(true));
+    m.events.add("actionend", () => { lift(false); const [la, lo] = m.getCenter(); moved(la, lo); });
+    return {setCenter: (la, lo) => m.setCenter([la, lo], 17, {duration: 300}), resize: () => m.container.fitToViewport()};
+  }
+  async function leafletMap(center, lift) {
+    loadCss("https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css");
+    await loadScript("https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js");
+    $("#map").innerHTML = "";
+    const m = L.map("map", {zoomControl: true}).setView(center, 16);
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {maxZoom: 19, subdomains: "abcd", attribution: "© OpenStreetMap © CARTO"}).addTo(m);
+    m.on("movestart", () => lift(true));
+    m.on("moveend", () => { lift(false); const c = m.getCenter(); moved(c.lat, c.lng); });
+    setTimeout(() => m.invalidateSize(), 350);
+    return {setCenter: (la, lo) => m.flyTo([la, lo], 17, {duration: 0.6}), resize: () => m.invalidateSize()};
+  }
   async function initMap() {
     if (map) { setTimeout(() => map.resize(), 60); if (point) refreshQuote(); return; }
     const saved = store.get(POINT_KEY, null);
@@ -297,23 +321,7 @@
     const pin = $("#pin"), dot = $(".pin-dot");
     const lift = (up) => { pin.classList.toggle("up", up); dot.classList.toggle("up", up); };
     try {
-      if (S.yandexKey) {
-        await loadScript(`https://api-maps.yandex.ru/2.1/?apikey=${encodeURIComponent(S.yandexKey)}&lang=es_ES`);
-        await new Promise((r) => ymaps.ready(r));
-        const m = new ymaps.Map("map", {center, zoom: 16, controls: ["zoomControl"]}, {suppressMapOpenBlock: true});
-        m.events.add("actionbegin", () => lift(true));
-        m.events.add("actionend", () => { lift(false); const [la, lo] = m.getCenter(); moved(la, lo); });
-        map = {setCenter: (la, lo) => { m.setCenter([la, lo], 17, {duration: 300}); }, resize: () => m.container.fitToViewport()};
-      } else {
-        loadCss("https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css");
-        await loadScript("https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js");
-        const m = L.map("map", {zoomControl: true}).setView(center, 16);
-        L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {maxZoom: 19, subdomains: "abcd", attribution: "© OpenStreetMap © CARTO"}).addTo(m);
-        m.on("movestart", () => lift(true));
-        m.on("moveend", () => { lift(false); const c = m.getCenter(); moved(c.lat, c.lng); });
-        map = {setCenter: (la, lo) => m.flyTo([la, lo], 17, {duration: 0.6}), resize: () => m.invalidateSize()};
-        setTimeout(() => m.invalidateSize(), 350);
-      }
+      try { map = await yandexMap(center, lift); } catch (e) { map = await leafletMap(center, lift); }
       moved(center[0], center[1]);
       if (!saved) locate(true);
     } catch (e) { setQuoteBox("bad", "No se pudo cargar el mapa. Revisa tu conexión."); }
@@ -364,7 +372,7 @@
     for (const [k, v] of Object.entries(e.data.vars || {})) document.body.style.setProperty(k, v);
   });
   if (savedPoint) api("/quote", {lat: savedPoint.lat, lon: savedPoint.lon, subtotal: 0}).then((q) => {
-    if (q.available && q.eta_min) $("#metaEta").innerHTML = `🛵 <b>${q.eta_min}–${q.eta_max} min</b>`;
+    if (q.available && q.eta_min) $("#metaEta").innerHTML = `${icon("bike")}<b>${q.eta_min}–${q.eta_max} min</b>`;
   }).catch(() => {});
   api("/menu").then((m) => { menu = m; renderMenu(); saveCart(); })
     .catch((e) => { $("#menu").innerHTML = `<p class="note" style="padding:40px 0">${esc(e.message)}</p>`; });

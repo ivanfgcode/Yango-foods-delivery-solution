@@ -43,6 +43,25 @@ document.getElementById("f").onsubmit = async (e) => { e.preventDefault();
   </section>
 
   <section id="t-accounts" hidden>
+    <div class="card"><h2>Iniciar sesión con teléfono</h2>
+      <p class="muted">El bot abre Yango ID y pide el SMS al número de la cuenta. Escribe aquí el código que llegue. Si Yango muestra captcha, resuélvelo tocando la captura y escribiendo el texto: el bot no lo resuelve solo.</p>
+      <div class="row" style="align-items:flex-end">
+        <label class="f" style="flex:1 1 160px"><span>Cuenta</span><input id="lgName" placeholder="wrap_roll"></label>
+        <label class="f" style="flex:1 1 180px"><span>Celular de la cuenta</span><input id="lgPhone" inputmode="tel" placeholder="7XXXXXXX"></label>
+        <button class="btn acc" id="lgStart" style="margin-bottom:12px"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#log-in"></use></svg>Enviar SMS</button>
+      </div>
+      <div class="msg" id="lgMsg"></div>
+      <div id="lgBox" class="login-box" hidden>
+        <img id="lgShot" alt="Pantalla de Yango ID: toca para hacer clic">
+        <div class="login-ctl">
+          <label class="f"><span>Código del SMS</span><input id="lgCode" inputmode="numeric" autocomplete="one-time-code" maxlength="8"></label>
+          <button class="btn acc" id="lgSendCode"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#shield-check"></use></svg>Enviar código</button>
+          <label class="f" style="margin-top:14px"><span>Escribir texto (captcha u otro campo)</span><input id="lgText" maxlength="80"></label>
+          <div class="row"><button class="btn ghost sm" id="lgType">Escribir</button><button class="btn ghost sm" data-key="Enter">Enter</button><button class="btn ghost sm" data-key="Backspace">Borrar</button></div>
+          <div class="row" style="margin-top:14px"><button class="btn ghost sm" id="lgRefresh">Actualizar captura</button><button class="btn ghost sm" id="lgCancel">Cancelar</button></div>
+        </div>
+      </div>
+    </div>
     <div class="card"><h2>Cargar sesión (cookies JSON)</h2>
       <p class="muted">Entra a food.yango.com con la cuenta en tu navegador (teléfono + SMS), exporta las cookies con la extensión «Cookie-Editor» (Export → JSON) y pégalas aquí. Una cuenta por restaurante.</p>
       <label class="f"><span>Cuenta</span><input id="acName" placeholder="wrap_roll"></label>
@@ -76,7 +95,7 @@ document.getElementById("f").onsubmit = async (e) => { e.preventDefault();
       <td>${esc(when(o.created_at))}</td><td class="mono">${esc(o.number)}</td>
       <td>${esc(o.partner_name)}<br><span class="muted mono">${esc(o.account)}</span></td>
       <td>${esc(o.customer.first_name)} ${esc(o.customer.last_name)} · ${esc(o.customer.phone)}<br><span class="muted">${esc(o.address.text)} · ${esc(o.address.reference)}</span><br>
-        <a class="muted" target="_blank" rel="noopener" href="https://yandex.com/maps/?pt=${o.address.lon},${o.address.lat}&z=17">📍 ${o.address.lat}, ${o.address.lon}</a></td>
+        <a class="muted" target="_blank" rel="noopener" href="https://yandex.com/maps/?pt=${o.address.lon},${o.address.lat}&z=17"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#map-pin"></use></svg>${o.address.lat}, ${o.address.lon}</a></td>
       <td>${o.items.map((i) => `${i.quantity}× ${esc(i.name)}${i.options.length ? ` <span class="muted">(${esc(i.options.map((x) => x.name).join(", "))})</span>` : ""}`).join("<br>")}</td>
       <td>${CUR}${o.total}<br><span class="muted">envío ${CUR}${o.delivery_fee} · ${esc(o.payment.label)}</span></td>
       <td><span class="pill ${esc(o.status)}">${esc(o.status)}</span>${o.yango_order_nr ? `<br><span class="mono">${esc(o.yango_order_nr)}</span>` : ""}${o.error ? `<br><span class="muted">${esc(o.error)}</span>` : ""}</td>
@@ -90,7 +109,7 @@ document.getElementById("f").onsubmit = async (e) => { e.preventDefault();
       if (body.action === "cancelar" && !confirm("¿Cancelar este pedido? (si ya está en Yango, cancélalo también allí)")) return;
       try { await post(`/orders/${b.dataset.t}/status`, body); refresh(); } catch (e) { alert(e.message); }
     }));
-    $$("[data-copy]").forEach((b) => (b.onclick = () => { navigator.clipboard.writeText(b.dataset.copy); b.textContent = "Copiado ✓"; }));
+    $$("[data-copy]").forEach((b) => (b.onclick = () => { navigator.clipboard.writeText(b.dataset.copy); b.textContent = "Copiado"; }));
   }
   async function partnersTab() {
     const rows = await api("/partners");
@@ -115,15 +134,41 @@ document.getElementById("f").onsubmit = async (e) => { e.preventDefault();
     const rows = await api("/accounts");
     $("#ab").innerHTML = rows.map((a) => `<tr><td class="mono">${esc(a.name)}</td><td>${a.partners.map(esc).join(", ")}</td><td><span class="pill ${esc(a.status)}">${esc(a.status)}</span></td>
       <td class="muted">${esc(a.detail || "")}<br>${esc(when(a.checked_at))}</td><td>${a.has_session ? esc(when(a.session_imported_at)) : `<span class="muted">no</span>`}</td>
-      <td><button class="btn sm" data-check="${esc(a.name)}">Probar</button> <button class="btn ghost sm" data-load="${esc(a.name)}">Cargar cookies</button></td></tr>`).join("");
-    $$("[data-check]").forEach((b) => (b.onclick = async () => { b.textContent = "…"; try { const r = await post(`/accounts/${b.dataset.check}/check`, {}); alert(r.ok ? "Sesión activa ✓" : `Sesión caída: ${r.detail}`); } catch (e) { alert(e.message); } accounts(); }));
+      <td><button class="btn sm" data-check="${esc(a.name)}">Probar</button> <button class="btn ghost sm" data-load="${esc(a.name)}">Cargar cookies</button> <button class="btn ghost sm" data-phone="${esc(a.name)}">Entrar con teléfono</button></td></tr>`).join("");
+    $$("[data-check]").forEach((b) => (b.onclick = async () => { b.textContent = "…"; try { const r = await post(`/accounts/${b.dataset.check}/check`, {}); alert(r.ok ? "Sesión activa" : `Sesión caída: ${r.detail}`); } catch (e) { alert(e.message); } accounts(); }));
     $$("[data-load]").forEach((b) => (b.onclick = () => { $("#acName").value = b.dataset.load; $("#acJson").focus(); }));
+    $$("[data-phone]").forEach((b) => (b.onclick = () => { $("#lgName").value = b.dataset.phone; $("#lgPhone").focus(); }));
   }
   $("#acSave").onclick = async () => {
     const name = $("#acName").value.trim();
     try { const r = await api(`/accounts/${encodeURIComponent(name)}/cookies`, {method: "POST", headers: {"content-type": "application/json"}, body: $("#acJson").value});
       $("#acMsg").className = "msg ok"; $("#acMsg").textContent = `Sesión cargada (${r.cookies} cookies).`; $("#acJson").value = ""; accounts(); }
     catch (e) { $("#acMsg").className = "msg bad"; $("#acMsg").textContent = e.message; }
+  };
+  // Login asistido: captura de la pantalla de Yango ID; un toque en la imagen es un clic en esa posición.
+  const lgAcc = () => $("#lgName").value.trim();
+  function lgShow(s) {
+    $("#lgBox").hidden = !s.screenshot || s.state === "listo";
+    if (s.screenshot) { $("#lgShot").src = s.screenshot; $("#lgShot").dataset.w = s.viewport.width; }
+    const bad = s.state === "error", ok = s.state === "listo";
+    $("#lgMsg").className = `msg ${bad ? "bad" : ok ? "ok" : ""}`;
+    $("#lgMsg").textContent = `${s.phone} · ${s.detail}${s.url ? ` (${s.url})` : ""}`;
+    if (ok || bad) { $("#lgBox").hidden = true; accounts(); }
+  }
+  async function lgDo(path, body, method = "POST") {
+    $("#lgMsg").className = "msg"; $("#lgMsg").textContent = "Esperando a Yango…";
+    try { lgShow(await post(`/accounts/${encodeURIComponent(lgAcc())}/login${path}`, body, method)); }
+    catch (e) { $("#lgMsg").className = "msg bad"; $("#lgMsg").textContent = e.message; }
+  }
+  $("#lgStart").onclick = () => lgDo("", {phone: $("#lgPhone").value});
+  $("#lgSendCode").onclick = () => { lgDo("/action", {type: "code", code: $("#lgCode").value}); $("#lgCode").value = ""; };
+  $("#lgType").onclick = () => { lgDo("/action", {type: "text", text: $("#lgText").value}); $("#lgText").value = ""; };
+  $$("[data-key]").forEach((b) => (b.onclick = () => lgDo("/action", {type: "key", key: b.dataset.key})));
+  $("#lgRefresh").onclick = () => lgDo("/action", {type: "refresh"});
+  $("#lgCancel").onclick = async () => { await api(`/accounts/${encodeURIComponent(lgAcc())}/login`, {method: "DELETE"}).catch(() => {}); $("#lgBox").hidden = true; $("#lgMsg").textContent = "Cancelado"; };
+  $("#lgShot").onclick = (e) => {
+    const img = e.currentTarget, r = img.getBoundingClientRect(), k = +img.dataset.w / r.width;
+    lgDo("/action", {type: "click", x: Math.round((e.clientX - r.left) * k), y: Math.round((e.clientY - r.top) * k)});
   };
   async function events() {
     const rows = await api("/events?limit=300");

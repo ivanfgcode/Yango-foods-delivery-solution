@@ -15,8 +15,9 @@ Cada partner tiene un **restaurante oculto** en Yango Foods, visible solo para u
 1. **Catálogo**: el bot lee el menú del restaurante oculto de food.yango.com (`/api/v2/menu/retrieve/{local}`)
    cada `MENU_SYNC_MINUTES`. Platos, precios, promos, fotos y grupos de opciones son los de Yango, con los mismos
    ids que usa el carrito. El partner edita su menú en Yango, como siempre.
-2. **Dirección**: el cliente mueve el mapa hasta su puerta (pin fijo al centro; Yandex Maps con
-   `YANDEX_MAPS_API_KEY`, si no Leaflet/OSM). El punto se geocodifica con el geocodificador de Yango
+2. **Dirección**: el cliente mueve el mapa hasta su puerta (pin fijo al centro). El mapa es **Yandex Maps**
+   (JS API 2.1): los mismos datos que usan Yango y Yango Maps, con calles y números de casa de Bolivia. Carga sin clave;
+   `YANDEX_MAPS_API_KEY` (gratis en developer.tech.yandex.ru) es recomendable en producción. Leaflet/OSM solo si Yandex no carga. El punto se geocodifica con el geocodificador de Yango
    (`/eats/v1/persuggest/v1/finalsuggest`) y el cliente agrega número/referencia (obligatorio) y nota.
 3. **Cotización**: `/api/v2/catalog/{local}?latitude&longitude&shippingType=delivery` da disponibilidad
    (zona y horario), tramos de envío por monto, pedido mínimo, tarifa de servicio, ETA y recargo. No toca el carrito,
@@ -49,9 +50,15 @@ Cada partner tiene un **restaurante oculto** en Yango Foods, visible solo para u
 
 ## Sesiones de las cuentas
 
-El login de Yango ID es por teléfono + SMS y pide captcha: **el bot no inicia sesión solo**. Se entra con la cuenta
-en un navegador, se exportan las cookies (extensión Cookie-Editor → Export → JSON) y se pegan en
-Admin → Cuentas Yango. Cada 5 min se comprueba la sesión; si cae, alerta y los pedidos de esa cuenta pasan a manual.
+El login de Yango ID es por teléfono + SMS y a veces pide captcha. Dos formas de cargar la sesión de una cuenta:
+
+* **Con teléfono (asistido)**: Admin → Cuentas Yango → *Iniciar sesión con teléfono*. El bot abre Yango ID, escribe
+  el número (+591) y pide el SMS. El operador escribe el código; si aparece captcha u otra pantalla, la resuelve él
+  tocando la captura y escribiendo (el bot no resuelve captchas). Al volver a food.yango.com con sesión, se guarda sola.
+* **Cookies**: entrar con la cuenta en un navegador, exportar las cookies (Cookie-Editor → Export → JSON) y pegarlas
+  en Admin → Cuentas Yango.
+
+Cada 5 min se comprueba la sesión; si cae, alerta y los pedidos de esa cuenta pasan a manual.
 
 ## Local
 
@@ -74,5 +81,6 @@ Servicio desde este repo (Dockerfile), **volumen en `/app/data`**, 1 réplica, v
 - [ ] Grabar un pedido real con una cuenta (`python -m tools.record_traffic`) y ajustar `order` en
       `config/yango_web.yaml` (carrito, checkout, captura del N° de pedido). Hasta entonces: colocación manual.
 - [ ] Cuentas cliente (una por restaurante) con acceso a los restaurantes ocultos y sus cookies.
-- [ ] API key de Yandex Maps y dominio propio.
+- [ ] Primer login con teléfono de la cuenta de Wrap & Roll (confirmar `login.session_cookies` en `config/yango_web.yaml`).
+- [ ] API key de Yandex Maps (opcional) y dominio propio.
 - [ ] Seguimiento del estado del pedido en Yango para mostrarlo al cliente.

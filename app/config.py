@@ -70,7 +70,9 @@ class Settings:
         self.currency = os.getenv("CURRENCY_SYMBOL", "Bs")
         self.timezone = os.getenv("TZ_NAME", "America/La_Paz")
 
+        # Mapa del checkout: Yandex Maps (los datos de Yango Maps). La clave es opcional pero recomendada en producción.
         self.yandex_maps_api_key = os.getenv("YANDEX_MAPS_API_KEY", "")
+        self.yandex_maps_lang = os.getenv("YANDEX_MAPS_LANG", "es_ES")
         self.telegram_bot_token = os.getenv("TELEGRAM_BOT_TOKEN", "")
         self.telegram_chat_id = os.getenv("TELEGRAM_CHAT_ID", "")
 

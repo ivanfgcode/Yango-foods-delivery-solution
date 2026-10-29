@@ -18,6 +18,7 @@ from fastapi.templating import Jinja2Templates
 from app import auth, db, geo, menu as menu_mod, orders, partners, quotes, runtime as runtime_mod, themes
 from app.config import ROOT, settings
 from bot import sessions
+from bot.login import LoginError
 
 log = logging.getLogger("api")
 templates = Jinja2Templates(directory=str(ROOT / "app" / "templates"))
@@ -98,11 +99,11 @@ def _store_ctx(p: Dict[str, Any]) -> Dict[str, Any]:
     theme = themes.merge(p["theme"])
     return {"p": p, "theme": theme, "css_vars": themes.css_vars(theme), "fonts_href": themes.fonts_href(theme),
             "profile": p["profile"] or {}, "currency": settings.currency,
-            "yandex_key": settings.yandex_maps_api_key,
             "store_json": script_json({"slug": p["slug"], "name": p["name"], "currency": settings.currency,
                                       "center": [p.get("place_lat") or -17.7833, p.get("place_lon") or -63.1821],
                                       "accepting": bool(p["accepting_orders"]),
                                       "yandexKey": settings.yandex_maps_api_key,
+                                      "mapLang": settings.yandex_maps_lang,
                                       "phonePrefix": settings.phone_prefix})}
 
 
@@ -415,6 +416,40 @@ async def admin_check_account(request: Request, name: str):
     res = await rt().source.check_session(name)
     sessions.set_status(name, "ok" if res["ok"] else "caida", res["detail"])
     return res
+
+
+@app.exception_handler(LoginError)
+async def _login_error(request: Request, exc: LoginError):
+    return JSONResponse({"detail": str(exc)}, status_code=422)
+
+
+@app.post("/api/admin/accounts/{name}/login")
+async def admin_login_start(request: Request, name: str, body: Dict[str, Any] = Body(...)):
+    """Login asistido con el teléfono de la cuenta: el bot pide el SMS, el operador escribe el código."""
+    auth.require_admin(request)
+    try:
+        return await rt().login.start(name, str(body.get("phone") or ""))
+    except sessions.SessionImportError as e:
+        raise HTTPException(422, str(e))
+
+
+@app.get("/api/admin/accounts/{name}/login")
+async def admin_login_status(request: Request, name: str):
+    auth.require_admin(request)
+    return await rt().login.status(name)
+
+
+@app.post("/api/admin/accounts/{name}/login/action")
+async def admin_login_action(request: Request, name: str, body: Dict[str, Any] = Body(...)):
+    auth.require_admin(request)
+    return await rt().login.act(name, body)
+
+
+@app.delete("/api/admin/accounts/{name}/login")
+async def admin_login_cancel(request: Request, name: str):
+    auth.require_admin(request)
+    await rt().login.cancel(name)
+    return {"ok": True}
 
 
 @app.get("/api/admin/orders")

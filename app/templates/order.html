@@ -14,7 +14,7 @@
 </div></header>
 <main class="wrap">
   <div class="status-card">
-    <div class="status-hero" id="hero">🧾</div>
+    <div class="status-hero" id="hero"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#receipt"></use></svg></div>
     <p class="note" id="num"></p>
     <h1 id="title"></h1>
     <ul class="steps" id="steps"></ul>
@@ -35,7 +35,8 @@
     document.getElementById("num").textContent = `Pedido #${o.number}`;
     document.getElementById("title").textContent = o.status_text;
     const hero = document.getElementById("hero");
-    hero.textContent = o.status === "colocado" ? "🛵" : o.status === "cancelado" ? "✖️" : "🧾";
+    const ico = o.status === "colocado" ? "bike" : o.status === "cancelado" ? "circle-x" : "receipt";
+    hero.innerHTML = `<svg class="ic" aria-hidden="true"><use href="/static/icons.svg#${ico}"></use></svg>`;
     hero.classList.toggle("ok", o.status === "colocado");
     const st = o.status === "cancelado" ? -1 : stage(o.status);
     const labels = ["Pedido recibido", "Confirmando con el restaurante", "Confirmado · en preparación y entrega"];
@@ -45,7 +46,7 @@
       <div class="sum"><span>Envío</span><span>${money(o.delivery_fee)}</span></div>
       ${o.service_fee ? `<div class="sum"><span>Tarifa de servicio</span><span>${money(o.service_fee)}</span></div>` : ""}
       <div class="sum total"><span>Total · ${esc(o.payment)}</span><span>${money(o.total)}</span></div>
-      <p class="note">📍 ${esc(o.address)} · ${esc(o.reference)}${o.eta_min ? `<br>⏱️ Tiempo estimado: ${o.eta_min}–${o.eta_max} min` : ""}</p>`;
+      <p class="note"><span class="ln"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#map-pin"></use></svg>${esc(o.address)} · ${esc(o.reference)}</span>${o.eta_min ? `<span class="ln"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#timer"></use></svg>Tiempo estimado: ${o.eta_min}–${o.eta_max} min</span>` : ""}</p>`;
   }
   render();
   const poll = setInterval(async () => {

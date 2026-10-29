@@ -59,3 +59,9 @@ th{font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:var(--mu
 code,.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.85em}
 .upl{display:flex;gap:8px;align-items:center}
 .upl img{width:42px;height:42px;border-radius:8px;object-fit:cover;background:var(--soft)}
+.ic{width:1.1em;height:1.1em;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vertical-align:-.18em;margin-right:4px}
+.login-box[hidden]{display:none}
+.login-box{display:flex;gap:18px;flex-wrap:wrap;margin-top:12px}
+.login-box img{width:300px;max-width:100%;border:1px solid var(--line);border-radius:12px;cursor:crosshair;background:var(--soft)}
+.login-ctl{flex:1 1 240px;min-width:0}
+.login-ctl .row{gap:6px}

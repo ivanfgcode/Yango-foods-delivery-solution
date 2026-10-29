@@ -29,7 +29,7 @@ document.getElementById("loginForm").onsubmit = async (e) => {
   <div class="tabs" id="tabs"><button class="on" data-t="design">Diseño</button><button data-t="info">Textos</button><button data-t="orders">Pedidos</button></div>
   <div class="sp"></div>
   <label class="switch" title="Pausar o reanudar pedidos en tu web"><input type="checkbox" id="accepting"> <span id="acceptLbl">Recibiendo pedidos</span></label>
-  <a class="btn ghost sm" id="openStore" target="_blank" rel="noopener">Ver mi web ↗</a>
+  <a class="btn ghost sm" id="openStore" target="_blank" rel="noopener">Ver mi web<svg class="ic" aria-hidden="true"><use href="/static/icons.svg#external-link"></use></svg></a>
   <button class="btn ghost sm" id="logout">Salir</button>
 </div>
 
@@ -129,7 +129,7 @@ document.getElementById("loginForm").onsubmit = async (e) => {
     const body = pending; pending = {};
     try {
       theme = await API("/theme", json("PUT", body)); fill();
-      $("#saveMsg").className = "msg ok"; $("#saveMsg").textContent = "Guardado ✓";
+      $("#saveMsg").className = "msg ok"; $("#saveMsg").textContent = "Guardado";
       if (needReload) { needReload = false; $("#frame").contentWindow.location.reload(); }
     } catch (e) { $("#saveMsg").className = "msg bad"; $("#saveMsg").textContent = e.message; }
   }
@@ -157,7 +157,7 @@ document.getElementById("loginForm").onsubmit = async (e) => {
   $("#logout").onclick = async () => { await API("/logout", {method: "POST"}); location.reload(); };
   $("#saveProfile").onclick = async () => {
     const body = {}; $$("[data-p]").forEach((el) => (body[el.dataset.p] = el.value));
-    try { await API("/profile", json("PUT", body)); $("#profileMsg").className = "msg ok"; $("#profileMsg").textContent = "Guardado ✓"; $("#frame").contentWindow.location.reload(); }
+    try { await API("/profile", json("PUT", body)); $("#profileMsg").className = "msg ok"; $("#profileMsg").textContent = "Guardado"; $("#frame").contentWindow.location.reload(); }
     catch (e) { $("#profileMsg").className = "msg bad"; $("#profileMsg").textContent = e.message; }
   };
   async function loadOrders() {

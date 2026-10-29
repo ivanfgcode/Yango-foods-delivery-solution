@@ -8,6 +8,7 @@ from app.config import settings
 from app.quotes import QuoteService
 from bot import sessions
 from bot.base import PlacementMismatch, SessionDown, YangoSource
+from bot.login import LoginManager
 
 log = logging.getLogger("runtime")
 
@@ -63,7 +64,7 @@ class Dispatcher:
         label = f"#{o['number']} {partner['name']} {settings.currency}{o['total']:g}"
         if not settings.order_placement_enabled:
             orders.set_status(token, "manual", error="Colocación automática apagada")
-            await alerts.alert("pedido_manual", f"🧾 Pedido nuevo {label}: cargar a mano en Yango con la cuenta "
+            await alerts.alert("pedido_manual", f"[MANUAL] Pedido nuevo {label}: cargar a mano en Yango con la cuenta "
                                                 f"{o['account']}.\nComentario: {o['yango_comment']}")
             return
         attempts = o["attempts"]
@@ -77,19 +78,19 @@ class Dispatcher:
                 return
             except PlacementMismatch as e:
                 orders.set_status(token, "revision", error=str(e))
-                await alerts.alert("pedido_revision", f"⚠️ {label} en revisión: {e}")
+                await alerts.alert("pedido_revision", f"[REVISIÓN] {label} en revisión: {e}")
                 return
             except SessionDown as e:
                 sessions.set_status(o["account"], "caida", str(e))
                 orders.set_status(token, "manual", error=str(e))
-                await alerts.alert("sesion_caida", f"🔒 Cuenta {o['account']} sin sesión ({e}). {label} pasa a manual. "
+                await alerts.alert("sesion_caida", f"[SESIÓN] Cuenta {o['account']} sin sesión ({e}). {label} pasa a manual. "
                                                    "Cargar cookies nuevas en Admin → Cuentas.")
                 return
             except Exception as e:
                 log.warning("colocar %s intento %s: %s", o["number"], attempts, e)
                 if attempts >= settings.order_max_attempts:
                     orders.set_status(token, "manual", error=str(e)[:300])
-                    await alerts.alert("pedido_fallido", f"❌ {label}: el bot no pudo colocarlo ({e}). Cargar a mano.")
+                    await alerts.alert("pedido_fallido", f"[FALLÓ] {label}: el bot no pudo colocarlo ({e}). Cargar a mano.")
                     return
                 orders.set_status(token, "en_cola", error=str(e)[:300], attempts=attempts)
                 await asyncio.sleep(self.retry_delays[min(attempts - 1, len(self.retry_delays) - 1)])
@@ -105,10 +106,15 @@ class Runtime:
         self.source = source or make_source()
         self.quotes = QuoteService(self.source.catalog)
         self.dispatcher = Dispatcher(self)
+        self.login: Optional[LoginManager] = None
         self.tasks: list = []
 
     async def start(self, background: bool = True) -> None:
         await self.source.start()
+        from bot.yango_web import load_config
+        cfg = load_config()
+        self.login = LoginManager({**cfg["login"], "logged_out_texts": cfg["session"]["logged_out_texts"]},
+                                  browser=getattr(self.source, "browser", None))
         self.dispatcher.recover()
         if background:
             self.tasks.append(asyncio.create_task(self._menu_loop(), name="menu"))
@@ -117,6 +123,8 @@ class Runtime:
     async def stop(self) -> None:
         for t in self.tasks + list(self.dispatcher.workers.values()):
             t.cancel()
+        if self.login:
+            await self.login.stop()
         await self.source.stop()
 
     async def sync_partner(self, partner: Dict[str, Any]) -> Dict[str, Any]:
@@ -165,7 +173,7 @@ class Runtime:
                 sessions.set_status(a, "ok" if res["ok"] else "caida", res["detail"])
                 if not res["ok"] and notified.get(a) != res["detail"]:
                     notified[a] = res["detail"]
-                    await alerts.alert("sesion_caida", f"🔒 Cuenta {a}: {res['detail']}. Cargar cookies nuevas.")
+                    await alerts.alert("sesion_caida", f"[SESIÓN] Cuenta {a}: {res['detail']}. Cargar cookies nuevas.")
                 elif res["ok"]:
                     notified.pop(a, None)
             await asyncio.sleep(300)

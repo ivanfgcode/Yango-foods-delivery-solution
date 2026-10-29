@@ -29,6 +29,7 @@ img{display:block;max-width:100%}
 .top.scrolled .brand b,.top.always .brand b{opacity:1;transform:none}
 .spacer{flex:1}
 .addr-pill{display:flex;align-items:center;gap:8px;border:0;background:var(--soft);border-radius:999px;padding:9px 14px;font-weight:600;font-size:.88rem;max-width:260px;min-width:0;transition:background .2s,transform .2s var(--ease)}
+.ic{width:1.15em;height:1.15em;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;vertical-align:-.2em}
 .addr-pill span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .addr-pill:hover{background:color-mix(in srgb,var(--text) 9%,var(--bg))}
 .cart-btn{position:relative;display:flex;align-items:center;gap:8px;border:0;background:var(--text);color:var(--bg);padding:10px 16px;border-radius:999px;font-weight:700;overflow:hidden;transition:transform .2s var(--ease)}
@@ -198,7 +199,7 @@ body.grid-layout .grid .card .bd{padding:0 4px 4px}
 @keyframes copy-pop{35%{transform:scale(.95)}70%{transform:scale(1.03)}}
 .row{display:flex;align-items:center;gap:12px}
 .qty{display:inline-flex;align-items:center;background:var(--soft);border-radius:999px;padding:4px;gap:2px}
-.qty button{width:34px;height:34px;border:0;border-radius:50%;background:var(--bg);font-size:18px;font-weight:700;transition:transform .2s var(--spring)}
+.qty button{display:grid;place-items:center;width:34px;height:34px;border:0;border-radius:50%;background:var(--bg);font-size:18px;font-weight:700;transition:transform .2s var(--spring)}
 .qty button:active{transform:scale(.85)}
 .qty span{min-width:28px;text-align:center;font-weight:800}
 .qty span.tick{animation:copy-pop .35s var(--spring)}
@@ -211,7 +212,7 @@ body.grid-layout .grid .card .bd{padding:0 4px 4px}
 .line .nm b{display:block;font-size:.95rem}
 .line .nm small{color:var(--muted);display:block;font-size:.82rem}
 .empty-cart{text-align:center;color:var(--muted);padding:70px 10px}
-.empty-cart .ico{font-size:46px;animation:float 3s ease-in-out infinite;display:inline-block}
+.empty-cart .ico{font-size:46px;color:var(--muted);animation:float 3s ease-in-out infinite;display:inline-block}
 .sum{display:flex;justify-content:space-between;padding:3px 0;color:var(--muted);font-size:.95rem}
 .sum.total{color:var(--text);font-weight:800;font-size:1.1rem;padding:8px 0 10px}
 
@@ -224,7 +225,7 @@ body.grid-layout .grid .card .bd{padding:0 4px 4px}
 .pin.up{transform:translate(-50%,-122%)}
 .pin svg{filter:drop-shadow(0 8px 8px rgba(0,0,0,.28))}
 .pin-dot{position:absolute;left:50%;top:50%;width:10px;height:4px;margin:-2px 0 0 -5px;border-radius:50%;background:rgba(0,0,0,.35);z-index:499;pointer-events:none}
-.locate{position:absolute;right:10px;bottom:10px;z-index:600;border:0;background:var(--bg);border-radius:999px;padding:9px 13px;font-weight:700;font-size:.85rem;box-shadow:var(--shadow-sm);transition:transform .2s var(--ease)}
+.locate{display:inline-flex;align-items:center;gap:6px;position:absolute;right:10px;top:10px;z-index:600;border:0;background:var(--bg);border-radius:999px;padding:9px 13px;font-weight:700;font-size:.85rem;box-shadow:var(--shadow-sm);transition:transform .2s var(--ease)}
 .locate:active{transform:scale(.95)}
 .quote{margin-top:10px;padding:12px 14px;border-radius:calc(var(--radius)*.7);background:var(--soft);font-size:.92rem;display:flex;gap:10px;align-items:center;transition:background .3s}
 .quote.ok{background:color-mix(in srgb,#2E7D32 11%,var(--bg))}
@@ -248,6 +249,8 @@ body.grid-layout .grid .card .bd{padding:0 4px 4px}
 .pay input{accent-color:var(--text)}
 .pay label:has(input:checked){border-color:var(--text);background:var(--soft)}
 .note{font-size:.8rem;color:var(--muted);margin-top:8px}
+.note .ln{display:flex;align-items:center;gap:6px;justify-content:center;margin-top:4px}
+.grp-h span .ic{margin-right:3px}
 
 /* barra flotante del carrito (celular) */
 .float-cart{position:fixed;left:16px;right:16px;bottom:calc(14px + env(safe-area-inset-bottom));z-index:25;transform:translateY(160%);transition:transform .5s var(--out)}
@@ -262,7 +265,7 @@ body.grid-layout .grid .card .bd{padding:0 4px 4px}
 /* estado del pedido */
 .status-card{background:var(--bg);border-radius:calc(var(--radius) + 8px);padding:28px 24px;margin:28px auto;max-width:620px;box-shadow:var(--shadow);border:1px solid var(--line);animation:card-in .8s var(--out) both}
 .status-card h1{font-size:1.7rem;animation:rise .8s var(--out) .1s both}
-.status-hero{width:84px;height:84px;border-radius:50%;background:var(--primary-soft);display:grid;place-items:center;font-size:40px;margin-bottom:14px;animation:pop-in .6s var(--spring) both}
+.status-hero{width:84px;height:84px;border-radius:50%;background:var(--primary-soft);display:grid;place-items:center;font-size:40px;margin-bottom:14px;color:var(--primary);animation:pop-in .6s var(--spring) both}
 .status-hero.ok{animation:pop-in .6s var(--spring) both,float 4s ease-in-out 1s infinite}
 .steps{list-style:none;padding:0;margin:20px 0}
 .steps li{display:flex;gap:12px;align-items:center;padding:9px 0;color:var(--muted);font-weight:600;transition:color .4s}

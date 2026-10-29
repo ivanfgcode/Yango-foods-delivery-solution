@@ -18,9 +18,9 @@
       <b>{{ p.name }}</b>
     </a>
     <div class="spacer"></div>
-    <button class="addr-pill" type="button" id="addrPill"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg><span id="addrPillText">Elige tu dirección</span></button>
+    <button class="addr-pill" type="button" id="addrPill"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#map-pin"></use></svg><span id="addrPillText">Elige tu dirección</span></button>
     <button class="cart-btn" id="openCart" type="button" aria-label="Ver carrito">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M6 6h15l-1.5 9h-12z"/><path d="M6 6 5 3H2"/><circle cx="9" cy="20" r="1.5"/><circle cx="18" cy="20" r="1.5"/></svg>
+      <svg class="ic" aria-hidden="true"><use href="/static/icons.svg#shopping-cart"></use></svg>
       <span class="lbl">Carrito</span><span class="count" id="cartCount">0</span>
     </button>
   </div>
@@ -36,15 +36,15 @@
       <h1>{{ p.name }}</h1>
       {% if profile.tagline %}<p class="tag">{{ profile.tagline }}</p>{% endif %}
       <div class="meta">
-        <span id="metaEta">🛵 <b>Delivery</b></span>
-        {% if profile.hours_text %}<span>🕒 {{ profile.hours_text }}</span>{% endif %}
-        <span>💵 Efectivo o QR</span>
+        <span id="metaEta"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#bike"></use></svg><b>Delivery</b></span>
+        {% if profile.hours_text %}<span><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#clock"></use></svg>{{ profile.hours_text }}</span>{% endif %}
+        <span><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#banknote"></use></svg>Efectivo o QR</span>
       </div>
     </div>
   </div>
   {% if not p.accepting_orders %}<div class="closed">Ahora no estamos recibiendo pedidos. Puedes ver el menú.</div>
   {% elif profile.announcement %}<div class="announce"><span class="tag">Hoy</span><span>{{ profile.announcement }}</span></div>{% endif %}
-  <label class="search"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg>
+  <label class="search"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#search"></use></svg>
     <span class="sr">Buscar</span><input id="search" type="search" placeholder="¿Qué se te antoja?" autocomplete="off"></label>
 </div>
 
@@ -65,18 +65,18 @@
 
 <!-- Producto -->
 <div class="sheet modal" id="itemSheet" role="dialog" aria-modal="true" aria-label="Producto">
-  <div class="hd"><button class="x" type="button" data-close aria-label="Cerrar">×</button></div>
+  <div class="hd"><button class="x" type="button" data-close aria-label="Cerrar"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#x"></use></svg></button></div>
   <div class="sc" id="itemBody"></div>
   <div class="fo">
     <div class="err" id="itemErr"></div>
-    <div class="row"><div class="qty"><button type="button" id="qMinus" aria-label="Menos">−</button><span id="qVal">1</span><button type="button" id="qPlus" aria-label="Más">+</button></div>
+    <div class="row"><div class="qty"><button type="button" id="qMinus" aria-label="Menos"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#minus"></use></svg></button><span id="qVal">1</span><button type="button" id="qPlus" aria-label="Más"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#plus"></use></svg></button></div>
     <button class="btn" type="button" id="addBtn">Agregar</button></div>
   </div>
 </div>
 
 <!-- Carrito y checkout -->
 <aside class="sheet drawer" id="cartSheet" role="dialog" aria-modal="true" aria-labelledby="cartTitle">
-  <div class="hd"><button class="x" type="button" id="backBtn" aria-label="Volver" hidden>‹</button><h3 id="cartTitle">Tu pedido</h3><button class="x" type="button" data-close aria-label="Cerrar">×</button></div>
+  <div class="hd"><button class="x" type="button" id="backBtn" aria-label="Volver" hidden><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#chevron-left"></use></svg></button><h3 id="cartTitle">Tu pedido</h3><button class="x" type="button" data-close aria-label="Cerrar"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#x"></use></svg></button></div>
   <div class="sc">
     <div id="cartView"></div>
     <form id="checkoutView" hidden autocomplete="on" novalidate>
@@ -85,7 +85,7 @@
         <div id="map"></div>
         <div class="pin" id="pin"><svg width="38" height="50" viewBox="0 0 38 50"><path d="M19 0C8.5 0 0 8.3 0 18.6 0 32.5 19 50 19 50s19-17.5 19-31.4C38 8.3 29.5 0 19 0z" fill="{{ theme.text }}"/><circle cx="19" cy="18.5" r="7" fill="{{ theme.background }}"/></svg></div>
         <div class="pin-dot"></div>
-        <button class="locate" type="button" id="locateBtn">◎ Mi ubicación</button>
+        <button class="locate" type="button" id="locateBtn"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#locate-fixed"></use></svg>Mi ubicación</button>
       </div>
       <div class="quote loading" id="quoteBox"><span class="dot"></span><span id="quoteText">Mueve el mapa hasta tu puerta</span></div>
       <label class="field"><span>Dirección</span><input id="fAddr" name="street-address" autocomplete="street-address" placeholder="Calle o avenida" required></label>
@@ -101,8 +101,8 @@
 
       <div class="step-h"><i>3</i>Pago al mensajero</div>
       <div class="pay">
-        <label><input type="radio" name="pay" value="cash" checked> 💵 Efectivo</label>
-        <label><input type="radio" name="pay" value="qr"> 📱 QR</label>
+        <label><input type="radio" name="pay" value="cash" checked><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#banknote"></use></svg>Efectivo</label>
+        <label><input type="radio" name="pay" value="qr"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#qr-code"></use></svg>QR</label>
       </div>
       <label class="field" id="changeField"><span>¿Con cuánto pagas? (opcional, para el cambio)</span><input id="fChange" inputmode="decimal" placeholder="100"></label>
       <p class="note">Pagas al recibir: el mensajero de Yango cobra el pedido y el envío.</p>

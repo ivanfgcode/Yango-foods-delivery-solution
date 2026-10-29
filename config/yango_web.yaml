@@ -19,6 +19,17 @@ session:
   logged_out_texts: ["Log in", "Iniciar sesión", "Войти"]
   captcha_texts: ["Please enter the characters", "Introduce los caracteres", "captcha"]
 
+login:
+  # Inicio de sesión asistido (Admin → Cuentas → Iniciar sesión con teléfono). VERIFICADO (2026-10-29) hasta la
+  # pantalla del teléfono: al borrar el +1 y escribir +591... Yango cambia solo a Bolivia. El resto (captcha, código,
+  # pantallas extra) lo completa el operador sobre la captura; el código se escribe en el primer campo visible.
+  url: "https://passport.yango.com/pwl/auth/phone?origin=food.yango.com&retpath={retpath}"
+  phone_input: "[data-testid=text-field-input]"
+  phone_next: "[data-testid=phone-next]"
+  code_input: "input[autocomplete=one-time-code], input[inputmode=numeric], input[type=tel], input[type=number], input[type=text]"
+  cookie_accept: ["Aceptar", "Accept", "Aceptar todo"]
+  session_cookies: ["Session_id", "sessionid2"]   # cookies de Yango ID tras entrar (por confirmar con una cuenta)
+
 order:
   verified: false                  # true cuando se grabe un pedido real y se ajusten los pasos
   # 1) Vaciar el carrito de la cuenta (cada cuenta = un restaurante, un pedido a la vez).
