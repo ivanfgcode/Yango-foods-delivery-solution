@@ -1,14 +1,18 @@
-/* Tienda: menú, carrito, checkout con mapa (pin fijo al centro) y cotización en vivo con Yango. */
+/* Tienda: menú, carrito, checkout con mapa (pin fijo al centro) y cotización en vivo con Yango.
+   Movimiento: aparición al hacer scroll, onda al pulsar, foco que sigue al ratón y vuelo al carrito. */
 (() => {
   const S = window.STORE;
   const $ = (s, el = document) => el.querySelector(s);
+  const $$ = (s, el = document) => [...el.querySelectorAll(s)];
   const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
   const money = (n) => `${S.currency}${Number(n).toLocaleString("es-BO", {maximumFractionDigits: 2})}`;
+  const round2 = (n) => Math.round(n * 100) / 100;
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const store = {
     get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
     set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
   };
-  const CART_KEY = `cart:${S.slug}`, PROFILE_KEY = "customer";
+  const CART_KEY = `cart:${S.slug}`, PROFILE_KEY = "customer", POINT_KEY = `point:${S.slug}`;
 
   let menu = null;
   let cart = store.get(CART_KEY, []);
@@ -25,13 +29,41 @@
   }
   function debounce(fn, ms) { let h; return (...a) => { clearTimeout(h); h = setTimeout(() => fn(...a), ms); }; }
   function open(el) { $("#scrim").classList.add("on"); el.classList.add("on"); document.body.style.overflow = "hidden"; }
-  function closeAll() { document.querySelectorAll(".sheet.on").forEach((e) => e.classList.remove("on")); $("#scrim").classList.remove("on"); document.body.style.overflow = ""; }
+  function closeAll() { $$(".sheet.on").forEach((e) => e.classList.remove("on")); $("#scrim").classList.remove("on"); document.body.style.overflow = ""; }
+  function showErr(el, msg) { el.textContent = msg; el.classList.remove("shake"); void el.offsetWidth; if (msg) el.classList.add("shake"); }
   $("#scrim").onclick = closeAll;
-  document.querySelectorAll("[data-close]").forEach((b) => (b.onclick = closeAll));
+  $$("[data-close]").forEach((b) => (b.onclick = closeAll));
   document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeAll(); });
 
+  // Cabecera: sombra y nombre al bajar.
+  const top = $("#top");
+  const onScroll = () => top.classList.toggle("scrolled", window.scrollY > 140);
+  window.addEventListener("scroll", onScroll, {passive: true}); onScroll();
+
+  // Onda al pulsar botones.
+  document.addEventListener("pointerdown", (e) => {
+    const b = e.target.closest(".btn, .cart-btn, .add");
+    if (!b || reduced) return;
+    const r = b.getBoundingClientRect(), s = document.createElement("span");
+    s.className = "ripple"; s.style.left = `${e.clientX - r.left}px`; s.style.top = `${e.clientY - r.top}px`;
+    b.appendChild(s); setTimeout(() => s.remove(), 650);
+  });
+  // Foco que sigue al ratón en las tarjetas.
+  document.addEventListener("pointermove", (e) => {
+    const c = e.target.closest && e.target.closest(".card"); if (!c) return;
+    const r = c.getBoundingClientRect();
+    c.style.setProperty("--mx", `${e.clientX - r.left}px`); c.style.setProperty("--my", `${e.clientY - r.top}px`);
+  }, {passive: true});
+  // Aparición al hacer scroll (con escalonado por fila).
+  const io = !reduced && "IntersectionObserver" in window ? new IntersectionObserver((entries) => {
+    entries.forEach((en) => { if (en.isIntersecting) { en.target.classList.add("in"); io.unobserve(en.target); } });
+  }, {rootMargin: "0px 0px -8% 0px", threshold: 0.05}) : null;
+  function reveal(root) {
+    $$(".reveal", root).forEach((el, i) => { el.style.setProperty("--i", i % 8); io ? io.observe(el) : el.classList.add("in"); });
+  }
+
   // ------------------------------------------------------------------ menú
-  function itemPrice(it) { return it.promo_price != null ? it.promo_price : it.price; }
+  const itemPrice = (it) => (it.promo_price != null ? it.promo_price : it.price);
   function lineAmount(l) {
     const it = menu.items[l.item_id]; if (!it) return 0;
     let unit = itemPrice(it);
@@ -39,69 +71,97 @@
     return unit * l.quantity;
   }
   const subtotal = () => cart.reduce((s, l) => s + lineAmount(l), 0);
+  const qtyOf = (id) => cart.filter((l) => l.item_id === id).reduce((s, l) => s + l.quantity, 0);
 
   function renderMenu() {
-    const cats = menu.categories.filter((c) => c.items.some((id) => menu.items[id]));
-    $("#cats").innerHTML = cats.map((c, i) => `<a href="#c${i}" data-i="${i}">${esc(c.name)}</a>`).join("");
+    const cats = menu.categories.map((c) => ({...c, items: c.items.map((id) => menu.items[id]).filter(Boolean)})).filter((c) => c.items.length);
+    $("#cats").innerHTML = cats.map((c, i) => `<a href="#c${i}">${esc(c.name)}</a>`).join("");
+    // La primera categoría con fotos va como carrusel de destacados.
+    const railIdx = cats.findIndex((c) => c.items.filter((it) => it.image).length >= 3);
     $("#menu").innerHTML = cats.map((c, i) => `
-      <section class="section" id="c${i}"><h2>${esc(c.name)}</h2><div class="grid">
-        ${c.items.map((id) => menu.items[id]).filter(Boolean).map(card).join("")}
-      </div></section>`).join("") || `<p class="note" style="padding:40px 0">El menú está vacío por ahora.</p>`;
-    document.querySelectorAll(".card[data-id]").forEach((el) => (el.onclick = () => openItem(el.dataset.id)));
-    spyCategories();
+      <section class="section" id="c${i}"><h2 class="reveal">${esc(c.name)}<small>${c.items.length}</small></h2>
+        <div class="${i === railIdx ? "rail" : "grid"}">${c.items.map(card).join("")}</div></section>`).join("")
+      || `<p class="note" style="padding:40px 0">El menú está vacío por ahora.</p>`;
+    $$(".card[data-id]").forEach((el) => (el.onclick = () => openItem(el.dataset.id)));
+    reveal($("#menu")); spyCategories();
+    if ($("#cover") && !$("#cover > img")) coverFromMenu();
   }
-  const norm = (t) => String(t || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  function card(it) {
+    const promo = it.promo_price != null && it.promo_price < it.price;
+    const q = qtyOf(it.id);
+    return `<button type="button" class="card reveal${it.available ? "" : " off"}" data-id="${esc(it.id)}" ${it.available ? "" : "disabled"}>
+      <div class="bd"><h3>${esc(it.name)}</h3>${it.description ? `<div class="ds">${esc(it.description)}</div>` : ""}
+        <div class="ft"><span class="price${promo ? " promo" : ""}">${money(itemPrice(it))}${promo ? `<s>${money(it.price)}</s>` : ""}</span>
+        ${promo ? `<span class="badge">-${Math.round((1 - it.promo_price / it.price) * 100)}%</span>` : ""}${it.available ? "" : `<span class="badge">Agotado</span>`}</div></div>
+      <div class="ph${it.image ? "" : " empty"}">${it.image ? `<img loading="lazy" src="${esc(it.image)}" alt="">` : esc(it.name[0] || "")}
+        ${q ? `<span class="qbadge">${q}</span>` : ""}${it.available ? `<span class="add" aria-hidden="true">+</span>` : ""}</div></button>`;
+  }
+  function refreshBadges() {
+    $$(".card[data-id]").forEach((c) => {
+      const q = qtyOf(c.dataset.id), b = $(".qbadge", c);
+      if (q && b) b.textContent = q;
+      else if (q) $(".ph", c).insertAdjacentHTML("afterbegin", `<span class="qbadge">${q}</span>`);
+      else if (b) b.remove();
+    });
+  }
+  function coverFromMenu() {
+    // Sin portada propia: collage con fotos del menú.
+    const imgs = Object.values(menu.items).filter((x) => x.image && x.available).slice(0, 5);
+    if (!imgs.length) return;
+    $("#cover").insertAdjacentHTML("afterbegin", `<div class="collage">${imgs.map((x, i) => `<img src="${esc(x.image)}" alt="" style="animation-delay:${i * 90}ms">`).join("")}</div>`);
+  }
+  function spyCategories() {
+    const links = $$("#cats a");
+    const obs = new IntersectionObserver((entries) => {
+      entries.forEach((e) => {
+        if (!e.isIntersecting) return;
+        links.forEach((a) => a.classList.toggle("on", a.getAttribute("href") === `#${e.target.id}`));
+        const on = links.find((a) => a.classList.contains("on"));
+        if (on) on.parentElement.scrollTo({left: on.offsetLeft - 16, behavior: reduced ? "auto" : "smooth"});
+      });
+    }, {rootMargin: "-130px 0px -65% 0px"});
+    $$(".section").forEach((s) => obs.observe(s));
+  }
+  const norm = (t) => String(t || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
   $("#search").addEventListener("input", debounce(() => {
+    if (!menu) return;
     const q = norm($("#search").value.trim());
-    document.querySelectorAll(".section").forEach((sec) => {
+    $$(".section").forEach((sec) => {
       let any = false;
-      sec.querySelectorAll(".card[data-id]").forEach((c) => {
-        const it = menu.items[c.dataset.id]; const hit = !q || norm(it.name + " " + it.description).includes(q);
-        c.classList.toggle("hidden-by-search", !hit); any = any || hit;
+      $$(".card[data-id]", sec).forEach((c) => {
+        const it = menu.items[c.dataset.id], hit = !q || norm(`${it.name} ${it.description}`).includes(q);
+        c.classList.toggle("hidden-by-search", !hit); if (hit) c.classList.add("in"); any = any || hit;
       });
       sec.classList.toggle("hidden-by-search", !any);
     });
   }, 120));
-  function card(it) {
-    const promo = it.promo_price != null && it.promo_price < it.price;
-    return `<button type="button" class="card${it.available ? "" : " off"}" data-id="${esc(it.id)}" ${it.available ? "" : "disabled"}>
-      <div class="ph${it.image ? "" : " empty"}">${it.image ? `<img loading="lazy" src="${esc(it.image)}" alt="">` : esc(it.name[0] || "")}</div>
-      <div class="bd"><h3>${esc(it.name)}</h3>${it.description ? `<div class="ds">${esc(it.description)}</div>` : ""}
-        <div class="ft"><span class="price${promo ? " promo" : ""}">${money(itemPrice(it))}${promo ? `<s>${money(it.price)}</s>` : ""}</span>
-        ${it.available ? `<span class="add" aria-hidden="true">+</span>` : `<small class="note">Agotado</small>`}</div></div></button>`;
-  }
-  function spyCategories() {
-    const links = [...document.querySelectorAll("#cats a")];
-    const obs = new IntersectionObserver((entries) => {
-      entries.forEach((e) => { if (e.isIntersecting) { links.forEach((a) => a.classList.toggle("on", a.getAttribute("href") === `#${e.target.id}`)); const on = links.find((a) => a.classList.contains("on")); on && on.scrollIntoView({block: "nearest", inline: "center"}); } });
-    }, {rootMargin: "-130px 0px -65% 0px"});
-    document.querySelectorAll(".section").forEach((s) => obs.observe(s));
-  }
 
   // ------------------------------------------------------------------ producto
   let cur = null;
   function openItem(id) {
     const it = menu.items[id]; if (!it || !it.available) return;
     cur = {it, qty: 1, sel: {}};
-    $("#itemName").textContent = "";
-    $("#itemBody").innerHTML = `${it.image ? `<div class="item-img"><img src="${esc(it.image)}" alt=""></div>` : ""}
+    $("#itemBody").innerHTML = `${it.image ? `<div class="item-img"><img src="${esc(it.image)}" alt=""></div>` : `<div style="height:56px"></div>`}
       <div class="item-top"><h2>${esc(it.name)}</h2><span class="price">${money(itemPrice(it))}</span></div>
       ${it.description ? `<p class="item-ds">${esc(it.description)}</p>` : ""}
       ${it.groups.map((g) => {
         const need = Math.max(g.min, g.required ? 1 : 0), single = g.max === 1;
         const rule = single ? (need ? "Elige 1" : "Opcional") : g.max ? `${need ? `Mín. ${need} · ` : ""}Máx. ${g.max}` : need ? `Mín. ${need}` : "Opcional";
-        return `<div class="grp" data-g="${esc(g.id)}"><div class="grp-h"><b>${esc(g.name)}</b><span class="${need ? "req" : ""}">${rule}</span></div>
+        return `<div class="grp" data-g="${esc(g.id)}"><div class="grp-h"><b>${esc(g.name)}</b><span class="${need ? "req" : ""}" data-rule="${esc(rule)}">${rule}</span></div>
           <div class="chips-opts">${g.options.map((o) => `<label class="optc"><input type="${single && need ? "radio" : "checkbox"}" name="g${esc(g.id)}" value="${esc(o.id)}">
             <span>${esc(o.name)}</span>${o.price ? `<span class="pr">+${money(o.price)}</span>` : ""}</label>`).join("")}</div></div>`;
       }).join("")}`;
-    $("#itemBody").querySelectorAll(".grp").forEach((gEl) => gEl.addEventListener("change", (e) => {
+    $$(".grp", $("#itemBody")).forEach((gEl) => gEl.addEventListener("change", (e) => {
       const g = it.groups.find((x) => x.id === gEl.dataset.g);
-      let checked = [...gEl.querySelectorAll("input:checked")];
+      let checked = $$("input:checked", gEl);
       if (g.max === 1 && e.target.type === "checkbox" && e.target.checked) { checked.forEach((c) => c !== e.target && (c.checked = false)); checked = [e.target]; }
       if (g.max > 1 && checked.length > g.max) { e.target.checked = false; toast(`Máximo ${g.max}`); checked = checked.filter((c) => c !== e.target); }
-      cur.sel[g.id] = checked.map((c) => c.value); refreshItem();
+      cur.sel[g.id] = checked.map((c) => c.value);
+      const need = Math.max(g.min, g.required ? 1 : 0), tag = $(".grp-h span", gEl);
+      if (need) { const ok = cur.sel[g.id].length >= need; tag.classList.toggle("done", ok); tag.classList.toggle("req", !ok); tag.textContent = ok ? "✓ Listo" : tag.dataset.rule; }
+      refreshItem();
     }));
-    $("#itemErr").textContent = "";
+    showErr($("#itemErr"), "");
     refreshItem(); open($("#itemSheet")); $("#itemBody").scrollTop = 0;
   }
   function missingGroup() {
@@ -109,35 +169,50 @@
     return null;
   }
   function refreshItem() {
-    $("#qVal").textContent = cur.qty;
-    const amt = lineAmount({item_id: cur.it.id, quantity: cur.qty, options: cur.sel});
-    $("#addBtn").innerHTML = `Agregar · ${money(amt)}`;
+    const q = $("#qVal"); q.textContent = cur.qty; q.classList.remove("tick"); void q.offsetWidth; q.classList.add("tick");
+    $("#addBtn").innerHTML = `Agregar · ${money(lineAmount({item_id: cur.it.id, quantity: cur.qty, options: cur.sel}))}`;
   }
   $("#qMinus").onclick = () => { if (cur && cur.qty > 1) { cur.qty--; refreshItem(); } };
   $("#qPlus").onclick = () => { if (cur && cur.qty < 50) { cur.qty++; refreshItem(); } };
   $("#addBtn").onclick = () => {
     const miss = missingGroup();
-    if (miss) { $("#itemErr").textContent = `Elige una opción en «${miss.name}»`; $(`.grp[data-g="${CSS.escape(miss.id)}"]`).scrollIntoView({behavior: "smooth", block: "center"}); return; }
+    if (miss) { showErr($("#itemErr"), `Elige una opción en «${miss.name}»`); $(`.grp[data-g="${CSS.escape(miss.id)}"]`).scrollIntoView({behavior: "smooth", block: "center"}); return; }
     const options = {}; for (const [k, v] of Object.entries(cur.sel)) if (v.length) options[k] = v;
     const key = cur.it.id + "|" + JSON.stringify(Object.keys(options).sort().map((k) => [k, [...options[k]].sort()]));
     const same = cart.find((l) => l.key === key);
     if (same) same.quantity = Math.min(50, same.quantity + cur.qty); else cart.push({key, item_id: cur.it.id, quantity: cur.qty, options});
-    saveCart(); closeAll(); toast("Agregado al carrito");
+    flyToCart($(".item-img img") || $("#addBtn"), cur.it.image);
+    saveCart(); closeAll(); toast(`${cur.it.name} agregado`);
   };
+  function flyToCart(fromEl, img) {
+    const target = window.innerWidth <= 640 && $("#floatCart").classList.contains("on") ? $("#floatCartBtn") : $("#openCart");
+    const a = fromEl.getBoundingClientRect(), b = target.getBoundingClientRect();
+    const bump = () => { target.classList.remove("bump"); void target.offsetWidth; target.classList.add("bump"); };
+    if (reduced) return bump();
+    const f = document.createElement(img ? "img" : "div"); f.className = "fly"; if (img) f.src = img;
+    f.style.left = `${a.left + a.width / 2 - 23}px`; f.style.top = `${a.top + a.height / 2 - 23}px`;
+    document.body.appendChild(f);
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      f.style.transform = `translate(${b.left + b.width / 2 - (a.left + a.width / 2)}px, ${b.top + b.height / 2 - (a.top + a.height / 2)}px) scale(.35)`;
+      f.style.opacity = ".6";
+    }));
+    setTimeout(() => { f.remove(); bump(); }, 720);
+  }
 
   // ------------------------------------------------------------------ carrito
   function saveCart() {
     cart = cart.filter((l) => menu.items[l.item_id] && menu.items[l.item_id].available);
-    store.set(CART_KEY, cart); renderCartBadge(); if ($("#cartSheet").classList.contains("on")) renderCart();
+    store.set(CART_KEY, cart); renderCartBadge(); refreshBadges();
+    if ($("#cartSheet").classList.contains("on")) renderCart();
   }
   function renderCartBadge() {
     const n = cart.reduce((s, l) => s + l.quantity, 0);
     $("#cartCount").textContent = n;
     $("#floatCart").classList.toggle("on", n > 0);
-    $("#floatCartBtn").innerHTML = `<span>🛒 Ver carrito · ${n}</span><span class="pill">${money(subtotal())}</span>`;
+    $("#floatCartBtn").innerHTML = `<span>Ver carrito · ${n}</span><span class="pill">${money(subtotal())}</span>`;
   }
   function optionNames(l) {
-    const it = menu.items[l.item_id]; const out = [];
+    const it = menu.items[l.item_id], out = [];
     for (const g of it.groups) for (const oid of l.options[g.id] || []) { const o = g.options.find((x) => x.id === oid); if (o) out.push(o.name); }
     return out.join(", ");
   }
@@ -146,11 +221,12 @@
     $("#cartView").hidden = checkout; $("#checkoutView").hidden = !checkout; $("#backBtn").hidden = !checkout;
     $("#cartTitle").textContent = checkout ? "Entrega y pago" : "Tu pedido";
     if (!checkout) {
-      $("#cartView").innerHTML = cart.length ? cart.map((l, i) => `<div class="line"><div class="nm"><b>${esc(menu.items[l.item_id].name)}</b>
-        ${optionNames(l) ? `<small>${esc(optionNames(l))}</small>` : ""}<small>${money(lineAmount(l))}</small></div>
-        <div class="qty"><button type="button" data-d="-1" data-i="${i}">−</button><span>${l.quantity}</span><button type="button" data-d="1" data-i="${i}">+</button></div></div>`).join("")
-        : `<div class="empty-cart"><div style="font-size:42px">🛍️</div><p>Tu carrito está vacío</p></div>`;
-      $("#cartView").querySelectorAll("[data-d]").forEach((b) => (b.onclick = () => {
+      $("#cartView").innerHTML = cart.length ? cart.map((l, i) => { const it = menu.items[l.item_id]; return `<div class="line" style="animation-delay:${i * 40}ms">
+        ${it.image ? `<img src="${esc(it.image)}" alt="">` : `<span class="noimg"></span>`}
+        <div class="nm"><b>${esc(it.name)}</b>${optionNames(l) ? `<small>${esc(optionNames(l))}</small>` : ""}<small>${money(lineAmount(l))}</small></div>
+        <div class="qty"><button type="button" data-d="-1" data-i="${i}" aria-label="Menos">${l.quantity === 1 ? "🗑" : "−"}</button><span>${l.quantity}</span><button type="button" data-d="1" data-i="${i}" aria-label="Más">+</button></div></div>`; }).join("")
+        : `<div class="empty-cart"><div class="ico">🛍️</div><p>Tu carrito está vacío</p><p class="note">Agrega algo rico del menú</p></div>`;
+      $$("[data-d]", $("#cartView")).forEach((b) => (b.onclick = () => {
         const l = cart[+b.dataset.i]; l.quantity += +b.dataset.d; if (l.quantity <= 0) cart.splice(+b.dataset.i, 1); saveCart();
       }));
     }
@@ -160,27 +236,27 @@
     const sub = subtotal();
     if (view === "cart") {
       $("#cartFoot").innerHTML = `<div class="sum total"><span>Subtotal</span><span>${money(sub)}</span></div>
-        <button class="btn" type="button" id="goCheckout" ${cart.length && S.accepting ? "" : "disabled"}>${S.accepting ? "Continuar" : "No recibimos pedidos ahora"}</button>`;
+        <button class="btn" type="button" id="goCheckout" ${cart.length && S.accepting ? "" : "disabled"}>${S.accepting ? "Continuar al pago" : "No recibimos pedidos ahora"}</button>`;
       $("#goCheckout").onclick = () => { view = "checkout"; renderCart(); initMap(); };
       return;
     }
     const q = quote && quote.subtotal === round2(sub) ? quote : null;
-    const fee = q && q.delivery_fee != null ? money(q.delivery_fee) : "—";
     $("#cartFoot").innerHTML = `
       <div class="sum"><span>Productos</span><span>${money(sub)}</span></div>
-      <div class="sum"><span>Envío</span><span>${fee}</span></div>
+      <div class="sum"><span>Envío</span><span>${q && q.delivery_fee != null ? (q.delivery_fee ? money(q.delivery_fee) : "Gratis") : "—"}</span></div>
       ${q && q.service_fee ? `<div class="sum"><span>Tarifa de servicio</span><span>${money(q.service_fee)}</span></div>` : ""}
       <div class="sum total"><span>Total a pagar</span><span>${q && q.total != null ? money(q.total) : "—"}</span></div>
       <div class="err" id="orderErr"></div>
       <button class="btn" type="button" id="placeBtn" ${q && q.can_order ? "" : "disabled"}>${q && q.can_order ? `Confirmar pedido · ${money(q.total)}` : "Confirmar pedido"}</button>`;
     $("#placeBtn").onclick = placeOrder;
   }
-  const round2 = (n) => Math.round(n * 100) / 100;
-  $("#openCart").onclick = $("#floatCartBtn").onclick = () => { view = "cart"; renderCart(); open($("#cartSheet")); };
+  const openCart = () => { view = "cart"; renderCart(); open($("#cartSheet")); };
+  $("#openCart").onclick = openCart; $("#floatCartBtn").onclick = openCart;
   $("#backBtn").onclick = () => { view = "cart"; renderCart(); };
+  $("#addrPill").onclick = () => { if (!cart.length) return toast("Agrega productos para elegir la entrega"); view = "checkout"; renderCart(); open($("#cartSheet")); initMap(); };
 
   // ------------------------------------------------------------------ mapa y cotización
-  function setQuoteBox(cls, text) { const b = $("#quoteBox"); b.className = `quote ${cls}`; $("#quoteText").innerHTML = text; }
+  function setQuoteBox(cls, text) { $("#quoteBox").className = `quote ${cls}`; $("#quoteText").innerHTML = text; }
   const onPointChange = debounce(async (lat, lon) => {
     point = {lat, lon};
     const seq = ++quoteSeq;
@@ -188,7 +264,10 @@
     api("/geocode", {lat, lon}).then((g) => {
       if (seq !== quoteSeq || !g.ok || !g.address) return;
       point.geocoded = g.address;
-      if (!addrDirty) $("#fAddr").value = g.address.short_text || g.address.text || "";
+      const txt = g.address.short_text || g.address.text || "";
+      if (!addrDirty) $("#fAddr").value = txt;
+      $("#addrPillText").textContent = txt || "Mi dirección";
+      store.set(POINT_KEY, {lat, lon, label: txt});
     }).catch(() => {});
     await refreshQuote(seq);
   }, 380);
@@ -202,6 +281,7 @@
       else if (q.below_min_order) setQuoteBox("bad", `El pedido mínimo es <b>${money(q.min_order)}</b>`);
       else if (q.delivery_fee == null) setQuoteBox("bad", "No pudimos calcular el envío para este pedido");
       else setQuoteBox("ok", `Envío <b>${q.delivery_fee ? money(q.delivery_fee) : "gratis"}</b>${q.eta_min ? ` · llega en ${q.eta_min}–${q.eta_max} min` : ""}${q.surge ? " · alta demanda" : ""}`);
+      if (q.available && q.eta_min) $("#metaEta").innerHTML = `🛵 <b>${q.eta_min}–${q.eta_max} min</b>`;
     } catch (e) {
       if (seq !== quoteSeq) return;
       quote = null; setQuoteBox("bad", esc(e.message));
@@ -211,33 +291,34 @@
   function loadScript(src) { return new Promise((ok, ko) => { const s = document.createElement("script"); s.src = src; s.onload = ok; s.onerror = ko; document.head.appendChild(s); }); }
   function loadCss(href) { const l = document.createElement("link"); l.rel = "stylesheet"; l.href = href; document.head.appendChild(l); }
   async function initMap() {
-    if (map) { setTimeout(() => map.resize && map.resize(), 50); if (point) refreshQuote(); return; }
-    const saved = store.get(`point:${S.slug}`, null);
+    if (map) { setTimeout(() => map.resize(), 60); if (point) refreshQuote(); return; }
+    const saved = store.get(POINT_KEY, null);
     const center = saved ? [saved.lat, saved.lon] : S.center;
-    const pin = $("#pin");
+    const pin = $("#pin"), dot = $(".pin-dot");
+    const lift = (up) => { pin.classList.toggle("up", up); dot.classList.toggle("up", up); };
     try {
       if (S.yandexKey) {
         await loadScript(`https://api-maps.yandex.ru/2.1/?apikey=${encodeURIComponent(S.yandexKey)}&lang=es_ES`);
         await new Promise((r) => ymaps.ready(r));
         const m = new ymaps.Map("map", {center, zoom: 16, controls: ["zoomControl"]}, {suppressMapOpenBlock: true});
-        m.events.add("actionbegin", () => pin.classList.add("up"));
-        m.events.add("actionend", () => { pin.classList.remove("up"); const [la, lo] = m.getCenter(); moved(la, lo); });
-        map = {setCenter: (la, lo) => { m.setCenter([la, lo], 17); moved(la, lo); }, resize: () => m.container.fitToViewport()};
+        m.events.add("actionbegin", () => lift(true));
+        m.events.add("actionend", () => { lift(false); const [la, lo] = m.getCenter(); moved(la, lo); });
+        map = {setCenter: (la, lo) => { m.setCenter([la, lo], 17, {duration: 300}); }, resize: () => m.container.fitToViewport()};
       } else {
         loadCss("https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css");
         await loadScript("https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js");
-        const m = L.map("map", {zoomControl: true, attributionControl: true}).setView(center, 16);
-        L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {maxZoom: 19, attribution: "© OpenStreetMap"}).addTo(m);
-        m.on("movestart", () => pin.classList.add("up"));
-        m.on("moveend", () => { pin.classList.remove("up"); const c = m.getCenter(); moved(c.lat, c.lng); });
-        map = {setCenter: (la, lo) => m.setView([la, lo], 17), resize: () => m.invalidateSize()};
-        setTimeout(() => m.invalidateSize(), 300);
+        const m = L.map("map", {zoomControl: true}).setView(center, 16);
+        L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {maxZoom: 19, subdomains: "abcd", attribution: "© OpenStreetMap © CARTO"}).addTo(m);
+        m.on("movestart", () => lift(true));
+        m.on("moveend", () => { lift(false); const c = m.getCenter(); moved(c.lat, c.lng); });
+        map = {setCenter: (la, lo) => m.flyTo([la, lo], 17, {duration: 0.6}), resize: () => m.invalidateSize()};
+        setTimeout(() => m.invalidateSize(), 350);
       }
       moved(center[0], center[1]);
       if (!saved) locate(true);
     } catch (e) { setQuoteBox("bad", "No se pudo cargar el mapa. Revisa tu conexión."); }
   }
-  function moved(la, lo) { addrDirty = false; store.set(`point:${S.slug}`, {lat: la, lon: lo}); onPointChange(la, lo); }
+  function moved(la, lo) { addrDirty = false; onPointChange(la, lo); }
   function locate(silent) {
     if (!navigator.geolocation) return silent || toast("Tu navegador no permite ubicarte");
     navigator.geolocation.getCurrentPosition((p) => map && map.setCenter(p.coords.latitude, p.coords.longitude),
@@ -245,18 +326,22 @@
   }
   $("#locateBtn").onclick = () => locate(false);
   $("#fAddr").addEventListener("input", () => (addrDirty = true));
-  document.querySelectorAll('input[name="pay"]').forEach((r) => r.addEventListener("change", () => { $("#changeField").hidden = $('input[name="pay"]:checked').value !== "cash"; }));
+  $$('input[name="pay"]').forEach((r) => r.addEventListener("change", () => { $("#changeField").hidden = $('input[name="pay"]:checked').value !== "cash"; }));
 
   // ------------------------------------------------------------------ pedido
   const prof = store.get(PROFILE_KEY, {});
   $("#fFirst").value = prof.first_name || ""; $("#fLast").value = prof.last_name || ""; $("#fPhone").value = prof.phone || "";
+  const savedPoint = store.get(POINT_KEY, null);
+  if (savedPoint && savedPoint.label) $("#addrPillText").textContent = savedPoint.label;
   async function placeOrder() {
-    const err = $("#orderErr"); err.textContent = "";
+    const err = $("#orderErr");
     const phone = $("#fPhone").value.replace(/\D/g, "");
-    const checks = [[!point, "Marca tu ubicación en el mapa"], [$("#fAddr").value.trim().length < 3, "Escribe la dirección"],
-      [$("#fRef").value.trim().length < 3, "Agrega número de casa o una referencia"], [$("#fFirst").value.trim().length < 2, "Escribe tu nombre"],
-      [$("#fLast").value.trim().length < 2, "Escribe tu apellido"], [!/^[67]\d{7}$/.test(phone.replace(/^591/, "")), "Escribe un celular válido (8 dígitos)"]];
-    const bad = checks.find((c) => c[0]); if (bad) { err.textContent = bad[1]; return; }
+    const checks = [[!point, "Marca tu ubicación en el mapa", null], [$("#fAddr").value.trim().length < 3, "Escribe la dirección", "#fAddr"],
+      [$("#fRef").value.trim().length < 3, "Agrega número de casa o una referencia", "#fRef"], [$("#fFirst").value.trim().length < 2, "Escribe tu nombre", "#fFirst"],
+      [$("#fLast").value.trim().length < 2, "Escribe tu apellido", "#fLast"], [!/^[67]\d{7}$/.test(phone.replace(/^591/, "")), "Escribe un celular válido (8 dígitos)", "#fPhone"]];
+    const bad = checks.find((c) => c[0]);
+    if (bad) { showErr(err, bad[1]); if (bad[2]) { $(bad[2]).focus({preventScroll: true}); $(bad[2]).scrollIntoView({behavior: "smooth", block: "center"}); } return; }
+    showErr(err, "");
     const method = $('input[name="pay"]:checked').value;
     const body = {
       customer: {first_name: $("#fFirst").value.trim(), last_name: $("#fLast").value.trim(), phone},
@@ -270,7 +355,7 @@
       const res = await api("/orders", body);
       store.set(PROFILE_KEY, body.customer); cart = []; store.set(CART_KEY, []);
       location.href = res.url;
-    } catch (e) { err.textContent = e.message; btn.disabled = false; refreshQuote(); }
+    } catch (e) { showErr(err, e.message); btn.disabled = false; refreshQuote(); }
   }
 
   // ------------------------------------------------------------------ inicio
@@ -278,6 +363,9 @@
     if (e.origin !== location.origin || !e.data || e.data.type !== "theme") return;
     for (const [k, v] of Object.entries(e.data.vars || {})) document.body.style.setProperty(k, v);
   });
-  api("/menu").then((m) => { menu = m; saveCart(); renderMenu(); renderCartBadge(); })
+  if (savedPoint) api("/quote", {lat: savedPoint.lat, lon: savedPoint.lon, subtotal: 0}).then((q) => {
+    if (q.available && q.eta_min) $("#metaEta").innerHTML = `🛵 <b>${q.eta_min}–${q.eta_max} min</b>`;
+  }).catch(() => {});
+  api("/menu").then((m) => { menu = m; renderMenu(); saveCart(); })
     .catch((e) => { $("#menu").innerHTML = `<p class="note" style="padding:40px 0">${esc(e.message)}</p>`; });
 })();

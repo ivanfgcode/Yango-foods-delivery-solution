@@ -138,7 +138,9 @@ def test_portal_theme_and_auth(client):
     assert client.put("/api/wrap-roll/portal/theme", json={"primary": "red;}body{display:none"}).status_code == 422
     assert client.put("/api/wrap-roll/portal/theme", json={"logo_url": "javascript:alert(1)"}).status_code == 422
     page = client.get("/wrap-roll").text
-    assert "--primary:#112233" in page and 'class="list"' in page
+    assert "--primary:#112233" in page and "grid-layout" not in page
+    client.put("/api/wrap-roll/portal/theme", json={"card_layout": "grid"})
+    assert "grid-layout" in client.get("/wrap-roll").text
     client.put("/api/wrap-roll/portal/accepting", json={"accepting": False})
     r = client.post("/api/wrap-roll/orders", json=order_body(client))
     assert r.status_code == 422 and "no está recibiendo" in r.json()["detail"]

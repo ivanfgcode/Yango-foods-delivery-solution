@@ -29,7 +29,7 @@ DEFAULTS: Dict[str, Any] = {
     "heading_font": "Plus Jakarta Sans",  # geométrica, estilo apps de delivery (Uber Move no es libre)
     "body_font": "Plus Jakarta Sans",
     "radius": 18,                # px, esquinas de tarjetas y botones
-    "card_layout": "grid",       # grid | list
+    "card_layout": "list",       # list (filas, estilo apps de delivery) | grid
     "card_size": "m",            # s | m | l
     "image_ratio": "4/3",        # 1/1 | 4/3 | 16/9
     "hero_style": "cover",       # cover (foto grande) | compact | minimal

@@ -9,11 +9,12 @@
 <link rel="stylesheet" href="/static/store.css">
 </head>
 <body style="{{ css_vars }}">
-<header class="top{{ ' dark' if theme.dark_header else '' }}"><div class="wrap">
+<header class="top always{{ ' dark' if theme.dark_header else '' }}"><div class="wrap">
   <a class="brand" href="/{{ p.slug }}">{% if theme.logo_url %}<img src="{{ theme.logo_url }}" alt="">{% else %}<span class="mono">{{ p.name[:1] }}</span>{% endif %}<b>{{ p.name }}</b></a>
 </div></header>
 <main class="wrap">
   <div class="status-card">
+    <div class="status-hero" id="hero">🧾</div>
     <p class="note" id="num"></p>
     <h1 id="title"></h1>
     <ul class="steps" id="steps"></ul>
@@ -33,6 +34,9 @@
   function render() {
     document.getElementById("num").textContent = `Pedido #${o.number}`;
     document.getElementById("title").textContent = o.status_text;
+    const hero = document.getElementById("hero");
+    hero.textContent = o.status === "colocado" ? "🛵" : o.status === "cancelado" ? "✖️" : "🧾";
+    hero.classList.toggle("ok", o.status === "colocado");
     const st = o.status === "cancelado" ? -1 : stage(o.status);
     const labels = ["Pedido recibido", "Confirmando con el restaurante", "Confirmado · en preparación y entrega"];
     document.getElementById("steps").innerHTML = labels.map((l, i) => `<li class="${i <= st ? "done" : ""}${i === st ? " now" : ""}"><i></i>${esc(l)}</li>`).join("");
