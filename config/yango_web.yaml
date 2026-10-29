@@ -27,6 +27,7 @@ login:
   phone_input: "[data-testid=text-field-input]"
   phone_next: "[data-testid=phone-next]"
   code_input: "input[autocomplete=one-time-code], input[inputmode=numeric], input[type=tel], input[type=number], input[type=text]"
+  cookie_accept_selectors: ["[data-id=button-all]"]
   cookie_accept: ["Aceptar", "Accept", "Aceptar todo"]
   session_cookies: ["Session_id", "sessionid2"]   # cookies de Yango ID tras entrar (por confirmar con una cuenta)
 

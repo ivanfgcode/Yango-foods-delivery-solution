@@ -100,16 +100,32 @@ class LoginManager:
                 await page.goto(self.login_url(), wait_until="domcontentloaded", timeout=60000)
                 field = page.locator(self.cfg["phone_input"]).first
                 await field.wait_for(timeout=30000)
+                # Yango pone el prefijo del país por IP (+1 en EE. UU.) un momento después de cargar: se espera,
+                # se borra y se escribe con +591 (Yango cambia la bandera solo). Se verifica antes de continuar.
+                try:
+                    await page.wait_for_function("(s) => document.querySelector(s)?.value !== ''",
+                                                 arg=self.cfg["phone_input"], timeout=8000)
+                except Exception:
+                    pass
                 await self._accept_cookies(page)
-                # El país viene por IP (+1 en EE. UU.): se borra y se escribe con prefijo, Yango cambia la bandera.
-                await field.click()
-                await page.keyboard.press("Control+A")
-                for _ in range(6):
-                    await page.keyboard.press("Backspace")
-                await field.press_sequentially(phone, delay=60)
-                await page.wait_for_timeout(500)
-                await page.locator(self.cfg["phone_next"]).first.click(timeout=10000)
-                await page.wait_for_timeout(2500)
+                want = re.sub(r"\D", "", phone)
+                for _ in range(3):
+                    await field.click()
+                    await page.keyboard.press("Control+A")
+                    for _ in range(20):
+                        await page.keyboard.press("Backspace")
+                    await field.press_sequentially(phone, delay=60)
+                    await page.wait_for_timeout(500)
+                    if re.sub(r"\D", "", await field.input_value()) == want:
+                        break
+                else:
+                    raise LoginError(f"Yango no aceptó el número (quedó «{await field.input_value()}»)")
+                await self._accept_cookies(page)
+                try:
+                    await page.locator(self.cfg["phone_next"]).first.click(timeout=8000)
+                except Exception:
+                    await field.press("Enter")  # el formulario también se envía con Enter
+                await page.wait_for_timeout(3000)
                 flow.state, flow.detail = "esperando", "Escribe el código del SMS (o resuelve el captcha si aparece)"
             except Exception as e:
                 flow.state, flow.detail = "error", f"No se pudo enviar el teléfono: {e}"
@@ -165,14 +181,24 @@ class LoginManager:
         return flow
 
     async def _accept_cookies(self, page: Any) -> None:
-        for name in self.cfg.get("cookie_accept") or []:
-            btn = page.get_by_role("button", name=name, exact=True)
+        # El aviso de cookies tapa el botón «Continue»; sus botones no siempre tienen rol de botón.
+        for sel in self.cfg.get("cookie_accept_selectors") or []:
             try:
-                if await btn.count():
-                    await btn.first.click(timeout=3000)
+                if await page.locator(sel).count() and await page.locator(sel).first.is_visible():
+                    await page.locator(sel).first.click(timeout=3000)
+                    await page.wait_for_timeout(400)
                     return
             except Exception:
                 pass
+        for name in self.cfg.get("cookie_accept") or []:
+            for btn in (page.get_by_role("button", name=name, exact=True), page.get_by_text(name, exact=True)):
+                try:
+                    if await btn.count() and await btn.first.is_visible():
+                        await btn.first.click(timeout=3000)
+                        await page.wait_for_timeout(400)
+                        return
+                except Exception:
+                    pass
 
     async def _type_code(self, page: Any, code: str) -> None:
         # Un campo único o una casilla por dígito: se enfoca el primero visible y se teclea, como una persona.
