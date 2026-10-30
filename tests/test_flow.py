@@ -232,3 +232,12 @@ def test_quote_cache_and_dedupe():
     qs = asyncio.run(main())
     assert len(calls) == 50  # el primer punto se repite en el segundo lote (i=0)
     assert qs.stats["misses"] == 50
+
+
+def test_glass_theme_and_versioned_assets(client):
+    page = client.get("/wrap-roll").text
+    assert 'class="motion glass' in page  # vidrio activado por defecto
+    assert "/static/store.js?v=" in page and "/static/icons.svg?v=" in page
+    r = client.put("/api/wrap-roll/portal/theme", headers=ADMIN, json={"glass": False})
+    assert r.status_code == 200 and r.json()["glass"] is False
+    assert 'class="motion glass' not in client.get("/wrap-roll").text

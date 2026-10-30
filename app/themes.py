@@ -35,6 +35,7 @@ DEFAULTS: Dict[str, Any] = {
     "hero_style": "cover",       # cover (foto grande) | compact | minimal
     "base_font_size": 16,        # px
     "dark_header": False,
+    "glass": True,               # botones flotantes y barras en vidrio translúcido («liquid glass»)
     "logo_url": "",
     "cover_url": "",
 }
@@ -78,7 +79,7 @@ def validate(patch: Dict[str, Any]) -> Dict[str, Any]:
             if v not in CHOICES[k]:
                 raise ValueError(f"Valor inválido en {k}")
             clean[k] = v
-        elif k == "dark_header":
+        elif k in ("dark_header", "glass"):
             clean[k] = bool(v)
         elif k in ("logo_url", "cover_url"):
             v = (v or "").strip()

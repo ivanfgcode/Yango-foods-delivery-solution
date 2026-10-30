@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Portal · {{ p.name }}</title>
-<link rel="stylesheet" href="/static/panel.css">
+<link rel="stylesheet" href="/static/panel.css?v={{ v }}">
 </head>
 <body>
 {% if not logged %}
@@ -29,7 +29,7 @@ document.getElementById("loginForm").onsubmit = async (e) => {
   <div class="tabs" id="tabs"><button class="on" data-t="design">Diseño</button><button data-t="info">Textos</button><button data-t="tiktok">TikTok</button><button data-t="orders">Pedidos</button></div>
   <div class="sp"></div>
   <label class="switch" title="Pausar o reanudar pedidos en tu web"><input type="checkbox" id="accepting"> <span id="acceptLbl">Recibiendo pedidos</span></label>
-  <a class="btn ghost sm" id="openStore" target="_blank" rel="noopener">Ver mi web<svg class="ic" aria-hidden="true"><use href="/static/icons.svg#external-link"></use></svg></a>
+  <a class="btn ghost sm" id="openStore" target="_blank" rel="noopener">Ver mi web<svg class="ic" aria-hidden="true"><use href="/static/icons.svg?v={{ v }}#external-link"></use></svg></a>
   <button class="btn ghost sm" id="logout">Salir</button>
 </div>
 
@@ -41,6 +41,7 @@ document.getElementById("loginForm").onsubmit = async (e) => {
         <label class="f"><span>Foto de portada</span><div class="upl"><img id="coverPrev" alt=""><input type="file" accept="image/png,image/jpeg,image/webp" data-up="cover_url"></div></label>
         <label class="f"><span>Estilo de portada</span><div class="seg" data-k="hero_style"><button data-v="cover">Foto grande</button><button data-v="compact">Compacta</button><button data-v="minimal">Mínima</button></div></label>
         <label class="switch"><input type="checkbox" data-k="dark_header"> Cabecera oscura</label>
+        <label class="switch"><input type="checkbox" data-k="glass"> Botones de vidrio (estilo iPhone)</label>
       </div>
       <div class="card"><h2>Colores</h2>
         <div class="colors">
@@ -106,7 +107,7 @@ document.getElementById("loginForm").onsubmit = async (e) => {
   const API = (p, opt) => fetch(`/api/${SLUG}/portal${p}`, opt).then(async (r) => { const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.detail || "Error"); return d; });
   const json = (method, body) => ({method, headers: {"content-type": "application/json"}, body: JSON.stringify(body)});
   let theme = {}, me = null;
-  const RELOAD_KEYS = ["heading_font", "body_font", "card_layout", "hero_style", "logo_url", "cover_url", "dark_header"];
+  const RELOAD_KEYS = ["heading_font", "body_font", "card_layout", "hero_style", "logo_url", "cover_url", "dark_header", "glass"];
   const PRESETS = [
     {name: "Tomate", primary: "#E8402F", on_primary: "#FFFFFF", background: "#FAF7F2", surface: "#FFFFFF", text: "#1D1B19", muted: "#6F6A64"},
     {name: "Bosque", primary: "#2F7D4A", on_primary: "#FFFFFF", background: "#F3F6F1", surface: "#FFFFFF", text: "#16241B", muted: "#5D6B61"},
@@ -186,7 +187,7 @@ document.getElementById("loginForm").onsubmit = async (e) => {
   }
   function renderTikTok() {
     $("#ttList").innerHTML = ttVideos.map((v, i) => `<div class="tt-row">
-      ${v.poster ? `<img src="${esc(v.poster)}" alt="">` : `<span class="tt-ph"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#play"></use></svg></span>`}
+      ${v.poster ? `<img src="${esc(v.poster)}" alt="">` : `<span class="tt-ph"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg?v={{ v }}#play"></use></svg></span>`}
       <div class="tt-info"><a href="${esc(v.url)}" target="_blank" rel="noopener">${esc(v.title || "Video " + v.id)}</a><span class="muted">${v.author ? "@" + esc(v.author) : ""}</span>
         <div class="tt-items">${v.item_ids.map((id) => ttMenu.items[id] ? `<span class="pill">${esc(ttMenu.items[id].name)} <button type="button" data-tt-rm="${i}:${esc(id)}" aria-label="Quitar">x</button></span>` : "").join("")}</div>
         <select data-tt-item="${i}">${itemOptions("Agregar producto…")}</select></div>

@@ -1,4 +1,5 @@
 /* Tienda pública. Colores, tipografías, tamaños y esquinas vienen del tema del partner (variables en <body>).
+[hidden]{display:none!important}
    Movimiento (mismo lenguaje que aportea): aparición al hacer scroll, entrada del hero, Ken Burns en la portada,
    brillo en botones, onda al pulsar, foco que sigue al ratón y «vuelo» al carrito. Se apaga con «reducir movimiento». */
 *{box-sizing:border-box}
@@ -73,7 +74,7 @@ img{display:block;max-width:100%}
 .search:focus-within{border-color:var(--text);background:var(--bg);box-shadow:var(--shadow-sm)}
 .search input{border:0;background:none;outline:none;flex:1;font-size:1rem;min-width:0}
 .search svg{flex:none;color:var(--muted)}
-.cats{position:sticky;top:64px;z-index:20;background:color-mix(in srgb,var(--bg) 90%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);margin-top:10px}
+.cats{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 90%,transparent);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);margin-top:10px}
 .cats .wrap{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;padding-top:10px;padding-bottom:10px}
 .cats .wrap::-webkit-scrollbar{display:none}
 .cats a{position:relative;flex:none;text-decoration:none;color:var(--muted);font-weight:700;padding:8px 14px;border-radius:999px;white-space:nowrap;font-size:.92rem;transition:color .25s,background .25s,transform .2s var(--ease)}
@@ -257,7 +258,7 @@ body.grid-layout .grid .card .bd{padding:0 4px 4px}
 .float-cart.on{transform:none}
 .float-cart .btn{background:var(--text);color:var(--bg);justify-content:space-between;padding:14px 20px;box-shadow:0 18px 40px -14px rgba(0,0,0,.55)}
 .float-cart .btn .pill{background:var(--primary);color:var(--on-primary);border-radius:999px;padding:6px 14px}
-@media (min-width:641px){.float-cart{display:none}}
+@media (min-width:641px){.float-cart{left:50%;right:auto;width:440px;margin-left:-220px}}
 
 /* vuelo al carrito */
 .fly{position:fixed;z-index:90;width:46px;height:46px;border-radius:50%;object-fit:cover;pointer-events:none;box-shadow:var(--shadow);transition:transform .7s cubic-bezier(.5,-.3,.7,1),opacity .7s;background:var(--primary)}
@@ -401,3 +402,25 @@ footer.foot{color:var(--muted);font-size:.82rem;text-align:center;padding:36px 1
   .sheet.modal.loc-sheet{top:0;left:0;width:100%;height:100dvh;max-height:100dvh;border-radius:0}
   .loc-top{padding-top:calc(18px + env(safe-area-inset-top))}
 }
+
+/* cabecera de la tienda: sin barra ni logo (el logo ya está en la ficha del local); solo los botones flotando
+   sobre la portada, que se esconden al bajar (el carrito sigue en la barra flotante de abajo) */
+#top{position:fixed;left:0;right:0;background:transparent;backdrop-filter:none;-webkit-backdrop-filter:none;border-bottom:0;box-shadow:none;
+  pointer-events:none;transition:transform .35s var(--ease),opacity .25s}
+#top .wrap>*{pointer-events:auto}
+#top .brand{visibility:hidden}
+#top.scrolled{transform:translateY(-110%);opacity:0;box-shadow:none}
+
+/* vidrio («liquid glass»): se activa por restaurante (tema: glass) */
+.glass #top .cart-btn,.glass #top .addr-pill,.glass .float-cart .btn{
+  border:1px solid rgba(255,255,255,.3);backdrop-filter:blur(22px) saturate(180%);-webkit-backdrop-filter:blur(22px) saturate(180%)}
+.glass #top .cart-btn,.glass .float-cart .btn{background:linear-gradient(135deg,rgba(28,28,30,.62),rgba(28,28,30,.42));color:#fff;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.28),inset 0 -1px 0 rgba(255,255,255,.06),0 14px 34px -12px rgba(0,0,0,.45)}
+.glass #top .addr-pill{background:linear-gradient(135deg,rgba(255,255,255,.7),rgba(255,255,255,.45));color:#111;
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.8),0 10px 26px -14px rgba(0,0,0,.35)}
+.glass .float-cart .btn .pill{box-shadow:inset 0 1px 0 rgba(255,255,255,.35)}
+.glass .sheet .fo{background:color-mix(in srgb,var(--bg) 72%,transparent);backdrop-filter:blur(20px) saturate(180%);-webkit-backdrop-filter:blur(20px) saturate(180%);
+  border-top-color:color-mix(in srgb,var(--line) 70%,transparent);box-shadow:inset 0 1px 0 rgba(255,255,255,.35)}
+.glass .sheet .fo .btn,.glass .float-cart .btn .pill{background-image:linear-gradient(180deg,rgba(255,255,255,.24),rgba(255,255,255,0) 58%)}
+.glass .sheet .fo .btn{box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 12px 28px -14px color-mix(in srgb,var(--primary) 80%,transparent)}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.glass .float-cart .btn,.glass #top .cart-btn{background:rgba(28,28,30,.9)}}

@@ -8,9 +8,9 @@
 <meta name="theme-color" content="{{ theme.background }}">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="{{ fonts_href }}">
-<link rel="stylesheet" href="/static/store.css">
+<link rel="stylesheet" href="/static/store.css?v={{ v }}">
 </head>
-<body style="{{ css_vars }}" class="motion{{ ' grid-layout' if theme.card_layout == 'grid' else '' }}">
+<body style="{{ css_vars }}" class="motion{{ ' glass' if theme.glass else '' }}{{ ' grid-layout' if theme.card_layout == 'grid' else '' }}">
 <header class="top{{ ' dark' if theme.dark_header else '' }}" id="top">
   <div class="wrap">
     <a class="brand" href="/{{ p.slug }}">
@@ -18,9 +18,9 @@
       <b>{{ p.name }}</b>
     </a>
     <div class="spacer"></div>
-    <button class="addr-pill" type="button" id="addrPill"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#map-pin"></use></svg><span id="addrPillText">Elige tu dirección</span></button>
+    <button class="addr-pill" type="button" id="addrPill"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg?v={{ v }}#map-pin"></use></svg><span id="addrPillText">Elige tu dirección</span></button>
     <button class="cart-btn" id="openCart" type="button" aria-label="Ver carrito">
-      <svg class="ic" aria-hidden="true"><use href="/static/icons.svg#shopping-cart"></use></svg>
+      <svg class="ic" aria-hidden="true"><use href="/static/icons.svg?v={{ v }}#shopping-cart"></use></svg>
       <span class="lbl">Carrito</span><span class="count" id="cartCount">0</span>
     </button>
   </div>
@@ -29,23 +29,23 @@
 {% if theme.hero_style != 'minimal' %}
 <div class="cover" id="cover" {% if theme.hero_style == 'compact' %}style="height:150px"{% endif %}>{% if theme.cover_url %}<img src="{{ theme.cover_url }}" alt="">{% endif %}</div>
 {% endif %}
-<div class="wrap info"{% if theme.hero_style == 'minimal' %} style="margin-top:20px"{% endif %}>
+<div class="wrap info"{% if theme.hero_style == 'minimal' %} style="margin-top:76px"{% endif %}>
   <div class="info-card">
     {% if theme.logo_url %}<img class="info-logo" src="{{ theme.logo_url }}" alt="">{% else %}<span class="info-logo">{{ p.name[:1] }}</span>{% endif %}
     <div class="info-main">
       <h1>{{ p.name }}</h1>
       {% if profile.tagline %}<p class="tag">{{ profile.tagline }}</p>{% endif %}
       <div class="meta">
-        <span id="metaBranch" hidden><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#map-pin"></use></svg><b id="metaBranchName"></b></span>
-        <span id="metaEta"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#bike"></use></svg><b>Delivery</b></span>
-        {% if profile.hours_text %}<span><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#clock"></use></svg>{{ profile.hours_text }}</span>{% endif %}
-        <span><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#banknote"></use></svg>Efectivo o QR</span>
+        <span id="metaBranch" hidden><svg class="ic" aria-hidden="true"><use href="/static/icons.svg?v={{ v }}#map-pin"></use></svg><b id="metaBranchName"></b></span>
+        <span id="metaEta"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg?v={{ v }}#bike"></use></svg><b>Delivery</b></span>
+        {% if profile.hours_text %}<span><svg class="ic" aria-hidden="true"><use href="/static/icons.svg?v={{ v }}#clock"></use></svg>{{ profile.hours_text }}</span>{% endif %}
+        <span><svg class="ic" aria-hidden="true"><use href="/static/icons.svg?v={{ v }}#banknote"></use></svg>Efectivo o QR</span>
       </div>
     </div>
   </div>
   {% if not p.accepting_orders %}<div class="closed">Ahora no estamos recibiendo pedidos. Puedes ver el menú.</div>
   {% elif profile.announcement %}<div class="announce"><span class="tag">Hoy</span><span>{{ profile.announcement }}</span></div>{% endif %}
-  <label class="search"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#search"></use></svg>
+  <label class="search"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg?v={{ v }}#search"></use></svg>
     <span class="sr">Buscar</span><input id="search" type="search" placeholder="¿Qué se te antoja?" autocomplete="off"></label>
 </div>
 
@@ -55,7 +55,7 @@
 </section>
 
 <section class="wrap tt" id="tt" hidden aria-labelledby="ttTitle">
-  <h2 class="tt-h" id="ttTitle"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#play"></use></svg>En TikTok</h2>
+  <h2 class="tt-h" id="ttTitle"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg?v={{ v }}#play"></use></svg>En TikTok</h2>
   <div class="tt-rail" id="ttRail"></div>
 </section>
 
@@ -76,18 +76,18 @@
 
 <!-- Producto -->
 <div class="sheet modal" id="itemSheet" role="dialog" aria-modal="true" aria-label="Producto">
-  <div class="hd"><button class="x" type="button" data-close aria-label="Cerrar"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#x"></use></svg></button></div>
+  <div class="hd"><button class="x" type="button" data-close aria-label="Cerrar"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg?v={{ v }}#x"></use></svg></button></div>
   <div class="sc" id="itemBody"></div>
   <div class="fo">
     <div class="err" id="itemErr"></div>
-    <div class="row"><div class="qty"><button type="button" id="qMinus" aria-label="Menos"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#minus"></use></svg></button><span id="qVal">1</span><button type="button" id="qPlus" aria-label="Más"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#plus"></use></svg></button></div>
+    <div class="row"><div class="qty"><button type="button" id="qMinus" aria-label="Menos"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg?v={{ v }}#minus"></use></svg></button><span id="qVal">1</span><button type="button" id="qPlus" aria-label="Más"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg?v={{ v }}#plus"></use></svg></button></div>
     <button class="btn" type="button" id="addBtn">Agregar</button></div>
   </div>
 </div>
 
 <!-- Ubicación primero: con la dirección se busca la sucursal que atiende (menú, precios y envío de esa sucursal) -->
 <div class="sheet modal loc-sheet" id="locSheet" role="dialog" aria-modal="true" aria-labelledby="locTitle">
-  <div class="hd"><button class="x" type="button" data-close aria-label="Cerrar"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#x"></use></svg></button></div>
+  <div class="hd"><button class="x" type="button" data-close aria-label="Cerrar"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg?v={{ v }}#x"></use></svg></button></div>
   <div class="loc-top">
     <h3 id="locTitle">¿Dónde te lo llevamos?</h3>
     <p class="note">Así te mostramos la sucursal que te atiende, sus precios y el envío.</p>
@@ -98,7 +98,7 @@
     <div id="locMap"></div>
     <div class="pin"><svg width="38" height="50" viewBox="0 0 38 50"><path d="M19 0C8.5 0 0 8.3 0 18.6 0 32.5 19 50 19 50s19-17.5 19-31.4C38 8.3 29.5 0 19 0z" fill="{{ theme.text }}"/><circle cx="19" cy="18.5" r="7" fill="{{ theme.background }}"/></svg></div>
     <div class="pin-dot"></div>
-    <button class="locate" type="button" id="locLocate"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#locate-fixed"></use></svg>Mi ubicación</button>
+    <button class="locate" type="button" id="locLocate"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg?v={{ v }}#locate-fixed"></use></svg>Mi ubicación</button>
   </div>
   <div class="fo loc-fo">
     <div class="quote loading" id="locStatus"><span class="dot"></span><span id="locText">Mueve el mapa hasta tu puerta</span></div>
@@ -109,24 +109,24 @@
 
 <!-- Video de TikTok -->
 <div class="sheet modal tt-sheet" id="ttSheet" role="dialog" aria-modal="true" aria-label="Video de TikTok">
-  <div class="hd"><button class="x" type="button" data-close aria-label="Cerrar"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#x"></use></svg></button></div>
+  <div class="hd"><button class="x" type="button" data-close aria-label="Cerrar"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg?v={{ v }}#x"></use></svg></button></div>
   <div class="tt-player"><iframe id="ttFrame" title="Video de TikTok" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen></iframe>
     <div class="tt-glass" id="ttFoot"></div></div>
 </div>
 
 <!-- Carrito y checkout -->
 <aside class="sheet drawer" id="cartSheet" role="dialog" aria-modal="true" aria-labelledby="cartTitle">
-  <div class="hd"><button class="x" type="button" id="backBtn" aria-label="Volver" hidden><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#chevron-left"></use></svg></button><h3 id="cartTitle">Tu pedido</h3><button class="x" type="button" data-close aria-label="Cerrar"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#x"></use></svg></button></div>
+  <div class="hd"><button class="x" type="button" id="backBtn" aria-label="Volver" hidden><svg class="ic" aria-hidden="true"><use href="/static/icons.svg?v={{ v }}#chevron-left"></use></svg></button><h3 id="cartTitle">Tu pedido</h3><button class="x" type="button" data-close aria-label="Cerrar"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg?v={{ v }}#x"></use></svg></button></div>
   <div class="sc">
     <div id="cartView"></div>
     <form id="checkoutView" hidden autocomplete="on" novalidate>
       <div class="step-h"><i>1</i>¿Dónde entregamos?</div>
-      <p class="branch" id="branchLine" hidden><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#map-pin"></use></svg><span>Pides a <b id="branchName"></b></span></p>
+      <p class="branch" id="branchLine" hidden><svg class="ic" aria-hidden="true"><use href="/static/icons.svg?v={{ v }}#map-pin"></use></svg><span>Pides a <b id="branchName"></b></span></p>
       <div class="mapbox">
         <div id="map"></div>
         <div class="pin" id="pin"><svg width="38" height="50" viewBox="0 0 38 50"><path d="M19 0C8.5 0 0 8.3 0 18.6 0 32.5 19 50 19 50s19-17.5 19-31.4C38 8.3 29.5 0 19 0z" fill="{{ theme.text }}"/><circle cx="19" cy="18.5" r="7" fill="{{ theme.background }}"/></svg></div>
         <div class="pin-dot"></div>
-        <button class="locate" type="button" id="locateBtn"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#locate-fixed"></use></svg>Mi ubicación</button>
+        <button class="locate" type="button" id="locateBtn"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg?v={{ v }}#locate-fixed"></use></svg>Mi ubicación</button>
       </div>
       <div class="quote loading" id="quoteBox"><span class="dot"></span><span id="quoteText">Mueve el mapa hasta tu puerta</span></div>
       <div class="field addr-search"><label for="fAddr">Dirección</label><input id="fAddr" name="street-address" autocomplete="off" placeholder="Escribe tu calle o mueve el mapa" required role="combobox" aria-autocomplete="list" aria-controls="addrSugg" aria-expanded="false">
@@ -143,8 +143,8 @@
 
       <div class="step-h"><i>3</i>Pago al mensajero</div>
       <div class="pay">
-        <label><input type="radio" name="pay" value="cash" checked><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#banknote"></use></svg>Efectivo</label>
-        <label><input type="radio" name="pay" value="qr"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#qr-code"></use></svg>QR</label>
+        <label><input type="radio" name="pay" value="cash" checked><svg class="ic" aria-hidden="true"><use href="/static/icons.svg?v={{ v }}#banknote"></use></svg>Efectivo</label>
+        <label><input type="radio" name="pay" value="qr"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg?v={{ v }}#qr-code"></use></svg>QR</label>
       </div>
       <label class="field" id="changeField"><span>¿Con cuánto pagas? (opcional, para el cambio)</span><input id="fChange" inputmode="decimal" placeholder="100"></label>
       <p class="note">Pagas al recibir: el mensajero de Yango cobra el pedido y el envío.</p>
@@ -155,6 +155,6 @@
 <div class="toast" id="toast" role="status"></div>
 
 <script>window.STORE = {{ store_json | safe }};</script>
-<script src="/static/store.js"></script>
+<script src="/static/store.js?v={{ v }}"></script>
 </body>
 </html>

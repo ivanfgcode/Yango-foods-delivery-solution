@@ -5,7 +5,7 @@
   const $ = (s, el = document) => el.querySelector(s);
   const $$ = (s, el = document) => [...el.querySelectorAll(s)];
   const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
-  const icon = (n) => `<svg class="ic" aria-hidden="true"><use href="/static/icons.svg#${n}"></use></svg>`;
+  const icon = (n) => `<svg class="ic" aria-hidden="true"><use href="/static/icons.svg?v=${S.v}#${n}"></use></svg>`;
   const money = (n) => `${S.currency}${Number(n).toLocaleString("es-BO", {maximumFractionDigits: 2})}`;
   const round2 = (n) => Math.round(n * 100) / 100;
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;

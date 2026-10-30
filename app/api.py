@@ -1,5 +1,6 @@
 """API y páginas: tienda pública (dominio.com/<slug>), portal del partner y panel de admin."""
 import asyncio
+import hashlib
 import hmac
 import json
 import logging
@@ -24,6 +25,17 @@ from bot.login import LoginError
 
 log = logging.getLogger("api")
 templates = Jinja2Templates(directory=str(ROOT / "app" / "templates"))
+
+
+def _asset_version() -> str:
+    """Huella de app/static: va en las URLs (?v=) para que el navegador no use una versión vieja tras publicar."""
+    h = hashlib.sha1()
+    for f in sorted((ROOT / "app" / "static").glob("*")):
+        h.update(f.name.encode()); h.update(f.read_bytes())
+    return h.hexdigest()[:10]
+
+
+templates.env.globals["v"] = _asset_version()
 
 
 def seed_demo() -> None:
@@ -123,7 +135,7 @@ def _store_ctx(p: Dict[str, Any]) -> Dict[str, Any]:
                                                  "lon": p.get("place_lon")} if p.get("place_lat") is not None else None,
                                       "yandexKey": settings.yandex_maps_api_key,
                                       "mapLang": settings.yandex_maps_lang,
-                                      "phonePrefix": settings.phone_prefix})}
+                                      "phonePrefix": settings.phone_prefix, "v": templates.env.globals["v"]})}
 
 
 @app.get("/{slug}/pedido/{token}", response_class=HTMLResponse)
