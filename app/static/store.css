@@ -324,11 +324,14 @@ footer.foot{color:var(--muted);font-size:.82rem;text-align:center;padding:36px 1
 .tt-play{position:absolute;top:50%;left:50%;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.22);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);transition:transform .3s var(--spring)}
 .tt-play .ic{fill:#fff;stroke:#fff;margin-left:3px}
 .tt-card:hover .tt-play{transform:scale(1.1)}
-.tt-au{position:absolute;top:10px;left:10px;right:10px;font-size:.75rem;font-weight:700;text-shadow:0 1px 4px rgba(0,0,0,.6);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.tt-chip{position:absolute;left:8px;right:8px;bottom:8px;display:flex;flex-direction:column;align-items:flex-start;gap:1px;padding:7px 10px;border:0;border-radius:calc(var(--radius)*.7);
-  background:var(--bg);color:var(--text);text-align:left;font-size:.78rem;font-weight:700;box-shadow:var(--shadow-sm);cursor:pointer}
+.tt-chip{position:absolute;left:8px;right:8px;bottom:8px;display:flex;flex-direction:column;align-items:flex-start;gap:1px;padding:8px 11px;border-radius:16px;
+  color:#fff;text-align:left;font-size:.8rem;font-weight:700;cursor:pointer;text-shadow:0 1px 4px rgba(0,0,0,.45);
+  border:1px solid rgba(255,255,255,.34);background:linear-gradient(135deg,rgba(255,255,255,.28),rgba(255,255,255,.08) 60%,rgba(255,255,255,.16));
+  backdrop-filter:blur(16px) saturate(180%);-webkit-backdrop-filter:blur(16px) saturate(180%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.55),0 8px 22px rgba(0,0,0,.3)}
+@supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.tt-chip{background:rgba(24,24,24,.65)}}
 .tt-chip span{max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.tt-chip b{color:var(--primary);font-weight:800}
+.tt-chip b{color:#fff;font-weight:800}
 /* video de TikTok: negro de borde a borde y el producto en una tarjeta de vidrio («liquid glass») encima */
 .sheet.modal.tt-sheet{width:min(440px,calc(100vw - 24px));height:min(88vh,820px);max-height:none;background:#000}
 .sheet.modal.tt-sheet .hd{justify-content:flex-start}
@@ -359,7 +362,7 @@ footer.foot{color:var(--muted);font-size:.82rem;text-align:center;padding:36px 1
 @media (prefers-reduced-motion:reduce){.tt-glass-it{animation:none}}
 .best{margin-top:22px;padding-top:0}
 .best h2{display:flex;align-items:center;gap:8px}
-.tt-chip small{font-weight:700;color:var(--muted);font-size:.72rem}
+.tt-chip small{font-weight:700;color:rgba(255,255,255,.8);font-size:.72rem}
 
 /* checkout: sucursal, buscador de dirección y mapa */
 .branch{display:flex;align-items:center;gap:8px;margin:-4px 0 10px;font-size:.9rem;color:var(--muted)}
@@ -367,7 +370,7 @@ footer.foot{color:var(--muted);font-size:.82rem;text-align:center;padding:36px 1
 .branch b{color:var(--text)}
 .branch-pin{color:var(--primary);filter:drop-shadow(0 2px 3px rgba(0,0,0,.35))}
 .branch-pin .ic{width:30px;height:30px;fill:var(--bg)}
-#map [class*="gotoymaps"],#map [class*="copyrights-promo"]{display:none!important}
+#map [class*="gotoymaps"],#map [class*="copyrights-promo"],#locMap [class*="gotoymaps"],#locMap [class*="copyrights-promo"]{display:none!important}
 .addr-search{position:relative}
 .addr-search>label{display:block;font-size:.8rem;font-weight:700;color:var(--muted);margin-bottom:6px}
 .sugg{position:absolute;left:0;right:0;top:100%;z-index:30;margin-top:4px;background:var(--bg);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;max-height:280px;overflow-y:auto}
@@ -379,3 +382,22 @@ footer.foot{color:var(--muted);font-size:.82rem;text-align:center;padding:36px 1
 .sugg small{display:block;color:var(--muted);font-size:.8rem;margin-top:2px}
 .sugg .note{padding:12px 14px;margin:0}
 .sugg button span{display:block;font-size:inherit;font-weight:inherit;color:inherit;margin:0;min-width:0}
+
+/* ubicación primero */
+.sheet.modal.loc-sheet{width:min(560px,calc(100vw - 32px));height:min(88vh,820px);max-height:none}
+.loc-top{padding:22px 20px 12px}
+.loc-top h3{font-size:1.45rem;margin:0 56px 4px 0}
+.loc-top .note{margin:0 0 12px}
+.loc-top input{width:100%;padding:13px 14px;border:1.5px solid var(--line);border-radius:var(--radius);background:var(--surface);color:var(--text);font:inherit}
+.loc-top input:focus{outline:none;border-color:var(--text)}
+.mapbox.loc-map{flex:1;min-height:240px;height:auto;border-radius:0}
+#locMap{position:absolute;inset:0}
+.loc-fo{display:grid;gap:10px}
+.loc-fo .quote{margin:0}
+.linkbtn{border:0;background:none;color:var(--muted);font:inherit;font-weight:700;text-decoration:underline;cursor:pointer;padding:4px;justify-self:center}
+.quote .linkbtn{color:inherit;padding:0 0 0 4px;justify-self:auto}
+#metaBranch b{font-weight:800}
+@media (max-width:640px){
+  .sheet.modal.loc-sheet{top:0;left:0;width:100%;height:100dvh;max-height:100dvh;border-radius:0}
+  .loc-top{padding-top:calc(18px + env(safe-area-inset-top))}
+}

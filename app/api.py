@@ -16,7 +16,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from app import (auth, dashboard, db, geo, menu as menu_mod, orders, partners, quotes, runtime as runtime_mod, themes,
+from app import (auth, branches, dashboard, db, geo, menu as menu_mod, orders, partners, quotes, runtime as runtime_mod, themes,
                  tiktok, upsell)
 from app.config import ROOT, settings
 from bot import sessions
@@ -138,17 +138,59 @@ async def order_page(request: Request, slug: str, token: str):
     return templates.TemplateResponse(request, "order.html", ctx)
 
 
+def _branch_or_404(p: Dict[str, Any], slug: Optional[str]) -> Dict[str, Any]:
+    b = branches.get(p, slug)
+    if not b:
+        raise HTTPException(404, "Sucursal desconocida")
+    return b
+
+
+async def _branch_menu(p: Dict[str, Any], b: Dict[str, Any]) -> Dict[str, Any]:
+    if b["primary"]:
+        return _menu_or_503(p)
+    try:
+        m = await branches.menu(rt().source, p, b)
+    except Exception as e:
+        log.warning("menú de la sucursal %s: %s", b["slug"], e)
+        m = None
+    if not m:
+        raise HTTPException(503, "El menú de esta sucursal no está disponible ahora")
+    return m
+
+
 @app.get("/api/{slug}/menu")
-async def api_menu(slug: str):
+async def api_menu(slug: str, branch: Optional[str] = None):
+    """Menú de la sucursal (por defecto la principal). `alias`: ids de la principal → ids de esta sucursal,
+    para traducir lo configurado una vez (más vendidos, videos de TikTok)."""
     p = _partner_or_404(slug)
-    return menu_mod.public_menu(_menu_or_503(p))
+    b = _branch_or_404(p, branch)
+    m = await _branch_menu(p, b)
+    out = menu_mod.public_menu(m)
+    out["branch"] = b
+    if not b["primary"]:
+        main = menu_mod.load(p["id"])
+        out["alias"] = branches.alias(main, m) if main else {}
+    return out
+
+
+@app.get("/api/{slug}/branch")
+async def api_branch(slug: str, lat: float, lon: float):
+    """Sucursal de la marca que atiende ese punto (la que Yango asigna). branch=None: ninguna llega."""
+    p = _partner_or_404(slug)
+    if not geo.in_bounds(lat, lon):
+        return {"branch": None}
+    try:
+        return {"branch": await branches.find(rt().source, p, lat, lon)}
+    except Exception as e:
+        log.warning("sucursal %s: %s", slug, e)
+        raise HTTPException(503, "No pudimos consultar la sucursal, intenta de nuevo")
 
 
 @app.get("/api/{slug}/upsell")
-async def api_upsell(slug: str, items: str = "", context: str = "item"):
+async def api_upsell(slug: str, items: str = "", context: str = "item", branch: Optional[str] = None):
     """Sugerencias para la ficha de un producto (context=item) o para cerrar el carrito (context=cart)."""
     p = _partner_or_404(slug)
-    m = _menu_or_503(p)
+    m = await _branch_menu(p, _branch_or_404(p, branch))
     ids = [i for i in items.split(",") if i][:30]
     return {"items": upsell.suggest(p["id"], m, ids, "cart" if context == "cart" else "item")}
 
@@ -198,17 +240,18 @@ async def api_quote(slug: str, body: Dict[str, Any] = Body(...)):
         raise HTTPException(422, "Coordenadas inválidas")
     if not geo.in_bounds(lat, lon):
         return {"available": False, "reason": "fuera_de_zona", "can_order": False}
+    b = _branch_or_404(p, body.get("branch"))
     try:
-        q = await rt().quotes.quote(p["account"], p["place_slug"], lat, lon)
+        q = await rt().quotes.quote(p["account"], b["slug"], lat, lon)
     except Exception as e:
         log.warning("quote %s: %s", slug, e)
         raise HTTPException(503, "No pudimos cotizar el envío, intenta de nuevo")
     out = quotes.price_for(q, subtotal)
-    if out["reason"] == "cerrado" and p.get("place_lat") is not None:
+    if out["reason"] == "cerrado" and b.get("lat") is not None:
         # Yango marca «no disponible por horario» tanto si el local cerró como si cerró la zona por demanda.
         # El estado real del local es el de su propia ubicación: si ahí atiende, lo que está cerrado es la zona.
         try:
-            own = await rt().quotes.quote(p["account"], p["place_slug"], p["place_lat"], p["place_lon"])
+            own = await rt().quotes.quote(p["account"], b["slug"], b["lat"], b["lon"])
             if own["available"]:
                 out["reason"] = "zona_cerrada"
             else:
@@ -219,6 +262,7 @@ async def api_quote(slug: str, body: Dict[str, Any] = Body(...)):
     out["below_min_order"] = subtotal < out["min_order"]
     out["can_order"] = out["can_order"] and not out["below_min_order"] and bool(p["accepting_orders"])
     out.pop("surge_info", None)
+    out["branch"] = b["slug"]
     return out
 
 
@@ -241,13 +285,26 @@ async def api_create_order(request: Request, slug: str, body: Dict[str, Any] = B
     if not p["accepting_orders"]:
         raise orders.OrderError("El restaurante no está recibiendo pedidos ahora")
     ip = request.headers.get("x-forwarded-for", "").split(",")[0].strip() or (request.client.host if request.client else "")
-    m = _menu_or_503(p)
+    # La sucursal la decide el servidor con la dirección (como Yango), no el navegador.
+    try:
+        lat, lon = float((body.get("address") or {})["lat"]), float((body.get("address") or {})["lon"])
+    except (KeyError, TypeError, ValueError):
+        raise orders.OrderError("Marca tu ubicación en el mapa")
+    try:
+        b = await branches.find(rt().source, p, lat, lon) if geo.in_bounds(lat, lon) else None
+    except Exception:
+        raise HTTPException(503, "No pudimos confirmar la sucursal, intenta de nuevo")
+    if not b:
+        raise orders.OrderError("Por ahora no llegamos a esa dirección")
+    if body.get("branch") and body["branch"] != b["slug"]:
+        raise orders.OrderError(f"Esa dirección la atiende {b['name']}. Vuelve a elegir tu ubicación para ver su menú.")
+    m = await _branch_menu(p, b)
     priced = orders.prepare(p, m, body)
     if _rate_limited(ip):
         raise HTTPException(429, "Demasiados pedidos seguidos, espera unos minutos")
     a = priced["address"]
     try:
-        q = await rt().quotes.quote(p["account"], p["place_slug"], a["lat"], a["lon"])
+        q = await rt().quotes.quote(p["account"], b["slug"], a["lat"], a["lon"])
     except Exception:
         raise HTTPException(503, "No pudimos cotizar el envío, intenta de nuevo")
     summary = orders.check_quote(priced, q, p)

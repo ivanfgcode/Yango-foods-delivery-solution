@@ -39,6 +39,24 @@ CREATE TABLE IF NOT EXISTS menus (
     error TEXT
 );
 
+-- Sucursales de la marca que Yango asignó a algún punto (eats-catalog/v2/brand/place) y su menú.
+CREATE TABLE IF NOT EXISTS branches (
+    place_slug TEXT PRIMARY KEY,
+    partner_id INTEGER NOT NULL REFERENCES partners(id),
+    place_id INTEGER,
+    name TEXT,
+    lat REAL,
+    lon REAL,
+    address TEXT,
+    updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS branch_menus (
+    place_slug TEXT PRIMARY KEY,
+    data TEXT NOT NULL,
+    synced_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS orders (
     token TEXT PRIMARY KEY,
     number TEXT UNIQUE NOT NULL,          -- número corto que ve el cliente

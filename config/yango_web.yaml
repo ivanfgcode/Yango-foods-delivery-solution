@@ -9,6 +9,9 @@ home_path: "/{locale}"                     # página que mantiene abierta cada p
 endpoints:
   # URL de marca → local concreto (slug, id, coordenadas). La web la pide al abrir /r/<brand_slug>.
   brand_place_regex: "eats-catalog/v2/brand/place"
+  # Sucursal de la marca que atiende un punto (verificado 2026-10-30: centro → Equipetrol, sur → Palmas...;
+  # 404 BRAND_NOT_FOUND si ninguna llega).
+  brand_place: "/eats/v1/eats-catalog/v2/brand/place?brand_slug={brand_slug}&latitude={lat}&longitude={lon}"
   catalog: "/api/v2/catalog/{place_slug}?latitude={lat}&longitude={lon}&shippingType=delivery"
   menu: "/api/v2/menu/retrieve/{place_slug}?latitude={lat}&longitude={lon}&autoTranslate=false"
   finalsuggest: "/eats/v1/persuggest/v1/finalsuggest"

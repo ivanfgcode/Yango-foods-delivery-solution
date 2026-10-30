@@ -36,6 +36,7 @@
       <h1>{{ p.name }}</h1>
       {% if profile.tagline %}<p class="tag">{{ profile.tagline }}</p>{% endif %}
       <div class="meta">
+        <span id="metaBranch" hidden><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#map-pin"></use></svg><b id="metaBranchName"></b></span>
         <span id="metaEta"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#bike"></use></svg><b>Delivery</b></span>
         {% if profile.hours_text %}<span><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#clock"></use></svg>{{ profile.hours_text }}</span>{% endif %}
         <span><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#banknote"></use></svg>Efectivo o QR</span>
@@ -81,6 +82,28 @@
     <div class="err" id="itemErr"></div>
     <div class="row"><div class="qty"><button type="button" id="qMinus" aria-label="Menos"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#minus"></use></svg></button><span id="qVal">1</span><button type="button" id="qPlus" aria-label="Más"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#plus"></use></svg></button></div>
     <button class="btn" type="button" id="addBtn">Agregar</button></div>
+  </div>
+</div>
+
+<!-- Ubicación primero: con la dirección se busca la sucursal que atiende (menú, precios y envío de esa sucursal) -->
+<div class="sheet modal loc-sheet" id="locSheet" role="dialog" aria-modal="true" aria-labelledby="locTitle">
+  <div class="hd"><button class="x" type="button" data-close aria-label="Cerrar"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#x"></use></svg></button></div>
+  <div class="loc-top">
+    <h3 id="locTitle">¿Dónde te lo llevamos?</h3>
+    <p class="note">Así te mostramos la sucursal que te atiende, sus precios y el envío.</p>
+    <div class="addr-search"><input id="locQ" autocomplete="off" placeholder="Escribe tu calle o zona" aria-label="Buscar dirección" role="combobox" aria-autocomplete="list" aria-controls="locSugg" aria-expanded="false">
+      <div class="sugg" id="locSugg" role="listbox" hidden></div></div>
+  </div>
+  <div class="mapbox loc-map">
+    <div id="locMap"></div>
+    <div class="pin"><svg width="38" height="50" viewBox="0 0 38 50"><path d="M19 0C8.5 0 0 8.3 0 18.6 0 32.5 19 50 19 50s19-17.5 19-31.4C38 8.3 29.5 0 19 0z" fill="{{ theme.text }}"/><circle cx="19" cy="18.5" r="7" fill="{{ theme.background }}"/></svg></div>
+    <div class="pin-dot"></div>
+    <button class="locate" type="button" id="locLocate"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#locate-fixed"></use></svg>Mi ubicación</button>
+  </div>
+  <div class="fo loc-fo">
+    <div class="quote loading" id="locStatus"><span class="dot"></span><span id="locText">Mueve el mapa hasta tu puerta</span></div>
+    <button class="btn" type="button" id="locOk" disabled>Ver el menú</button>
+    <button class="linkbtn" type="button" id="locSkip" hidden>Ver el menú sin dirección</button>
   </div>
 </div>
 

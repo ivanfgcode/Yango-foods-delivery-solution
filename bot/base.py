@@ -1,5 +1,5 @@
 """Interfaz de la fuente Yango (real con Playwright o simulada)."""
-from typing import Any, Dict
+from typing import Any, Dict, Optional
 
 
 class SessionDown(RuntimeError):
@@ -33,6 +33,10 @@ class YangoSource:
 
     async def reverse_geocode(self, account: str, lat: float, lon: float) -> Dict[str, Any]:
         """JSON crudo de /eats/v1/persuggest/v1/finalsuggest (pin_drop)."""
+        raise NotImplementedError
+
+    async def brand_place(self, account: str, brand_slug: str, lat: float, lon: float) -> Optional[Dict[str, Any]]:
+        """JSON crudo de eats-catalog/v2/brand/place para ese punto, o None si ninguna sucursal llega."""
         raise NotImplementedError
 
     async def search_address(self, account: str, text: str, lat: float, lon: float) -> Dict[str, Any]:

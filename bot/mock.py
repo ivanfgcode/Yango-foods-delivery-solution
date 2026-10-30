@@ -4,13 +4,15 @@ import copy
 import json
 import random
 from pathlib import Path
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Tuple
 
 from app.config import ROOT
 from app.geo import haversine_km
 from bot.base import PlacementMismatch, YangoSource
 
 FIX = ROOT / "tests" / "fixtures"
+SOUTH = "mock__sur"
+SOUTH_ID_OFFSET = 1000
 
 
 def _load(name: str) -> Dict[str, Any]:
@@ -35,6 +37,28 @@ class MockSource(YangoSource):
         place = self._catalog["payload"]["foundPlace"]["place"]
         self.lat = place["address"]["location"]["latitude"]
         self.lon = place["address"]["location"]["longitude"]
+        self._brand_place = _load("brand_place_centro.json")
+        # Dos sucursales simuladas: la del fixture y otra ~5 km al sur con otros ids y precios (+1 Bs).
+        self.branches = {place["slug"]: (self.lat, self.lon, place["name"]),
+                         SOUTH: (self.lat - 0.045, self.lon, "Wrap & Roll - Sur (simulada)")}
+
+    def _branch(self, slug: str) -> Tuple[float, float, str]:
+        return self.branches.get(slug) or next(iter(self.branches.values()))
+
+    async def brand_place(self, account: str, brand_slug: str, lat: float, lon: float) -> Optional[Dict[str, Any]]:
+        await asyncio.sleep(self.latency)
+        slug, (blat, blon, name) = min(self.branches.items(), key=lambda kv: haversine_km(lat, lon, kv[1][0], kv[1][1]))
+        km = haversine_km(lat, lon, blat, blon)
+        if km > self.radius_km:
+            return None
+        raw = copy.deepcopy(self._brand_place)
+        fp = raw["payload"]["foundPlace"]
+        fp["place"].update({"slug": slug, "name": name})
+        fp["place"].setdefault("address", {})["location"] = {"latitude": blat, "longitude": blon}
+        lp = fp.setdefault("locationParams", {})
+        lp.update({"available": not self.closed, "availableByLocation": True, "availableByTime": not self.closed,
+                   "distance": km, "deliveryTime": {"min": int(10 + km * 3), "max": int(20 + km * 3)}})
+        return raw
 
     async def resolve_place(self, account: str, yango_url: str) -> Dict[str, Any]:
         await asyncio.sleep(self.latency)
@@ -55,8 +79,10 @@ class MockSource(YangoSource):
         await asyncio.sleep(self.latency)
         raw = copy.deepcopy(self._catalog)
         fp = raw["payload"]["foundPlace"]
-        km = haversine_km(lat, lon, self.lat, self.lon)
+        blat, blon, name = self._branch(place_slug)
+        km = haversine_km(lat, lon, blat, blon)
         ok = km <= self.radius_km
+        fp["place"].update({"slug": place_slug if place_slug in self.branches else fp["place"]["slug"], "name": name})
         lp = fp["locationParams"]
         # Local cerrado (en todas partes) o zona cerrada por demanda (lejos del local, pero dentro del radio).
         by_time = not self.closed and not (self.zone_closed_beyond_km is not None and km > self.zone_closed_beyond_km)
@@ -67,7 +93,21 @@ class MockSource(YangoSource):
 
     async def menu(self, account: str, place_slug: str, lat: float, lon: float) -> Dict[str, Any]:
         await asyncio.sleep(self.latency)
-        return copy.deepcopy(self._menu)
+        raw = copy.deepcopy(self._menu)
+        if place_slug == SOUTH:  # otra sucursal: mismos platos, otros ids y +1 Bs
+            def walk(cats: List[Dict[str, Any]]) -> None:
+                for c in cats or []:
+                    for it in c.get("items") or []:
+                        it["id"] = int(it["id"]) + SOUTH_ID_OFFSET
+                        for k in ("price", "decimalPrice"):
+                            if it.get(k) is not None:
+                                it[k] = float(it[k]) + 1
+                        for k in ("promoPrice", "decimalPromoPrice"):
+                            if it.get(k) is not None:
+                                it[k] = float(it[k]) + 1
+                    walk(c.get("categories") or [])
+            walk(raw.get("payload", raw).get("categories"))
+        return raw
 
     async def reverse_geocode(self, account: str, lat: float, lon: float) -> Dict[str, Any]:
         await asyncio.sleep(self.latency)

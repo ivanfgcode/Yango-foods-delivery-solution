@@ -191,6 +191,15 @@ class YangoWebSource(YangoSource):
                 "sticky": False, "type": "a"}
         return await self.rt(account).fetch("POST", self.cfg["endpoints"]["finalsuggest"], body)
 
+    async def brand_place(self, account: str, brand_slug: str, lat: float, lon: float) -> Optional[Dict[str, Any]]:
+        path = self.cfg["endpoints"]["brand_place"].format(brand_slug=brand_slug, lat=lat, lon=lon)
+        try:
+            return await self.rt(account).fetch("GET", path)
+        except RuntimeError as e:
+            if "BRAND_NOT_FOUND" in str(e) or "HTTP 404" in str(e):
+                return None
+            raise
+
     async def search_address(self, account: str, text: str, lat: float, lon: float) -> Dict[str, Any]:
         body = {"part": text, "position": [lon, lat], "state": {"current_mode": "eats"}, "type": "a",
                 "action": "user_input"}
@@ -263,7 +272,8 @@ class YangoWebSource(YangoSource):
             await rt.fetch(ocfg["clear_cart"]["method"], ocfg["clear_cart"]["path"])
             for line in order["items"]:
                 ctx = {"item_id": int(line["item_id"]), "quantity": int(line["quantity"]),
-                       "place_slug": partner["place_slug"], "item_options": item_options_payload(line)}
+                       "place_slug": (order.get("quote") or {}).get("place_slug") or partner["place_slug"],
+                       "item_options": item_options_payload(line)}
                 await rt.fetch(ocfg["add_item"]["method"], ocfg["add_item"]["path"],
                                fill_template(ocfg["add_item"]["body"], ctx))
             cart = await rt.fetch("GET", self.cfg["endpoints"]["cart"].format(lat=addr["lat"], lon=addr["lon"]))

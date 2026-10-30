@@ -8,6 +8,7 @@ recalcula el servidor al crear el pedido, como siempre.
 """
 import re
 import time
+import unicodedata
 from collections import Counter, defaultdict
 from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List, Optional, Tuple
@@ -24,8 +25,13 @@ NOT_DRINK_CAT_RE = re.compile(r"combo|promo|oferta|men[uú]|wrap|pizza|hamburg|b
 _cache: Dict[int, Tuple[float, Dict[str, Any]]] = {}
 
 
-def _stats(partner_id: int) -> Dict[str, Any]:
-    """{'count': Counter(item), 'pairs': {item: Counter(otro)}} con caché corta (cambia con cada pedido)."""
+def _norm(name: str) -> str:
+    return " ".join(unicodedata.normalize("NFD", name or "").encode("ascii", "ignore").decode().lower().split())
+
+
+def _stats_by_name(partner_id: int) -> Dict[str, Any]:
+    """{'count': Counter(nombre), 'pairs': {nombre: Counter(otro)}} con caché corta (cambia con cada pedido).
+    Por nombre de producto y no por id: cada sucursal de la marca tiene sus propios ids en Yango."""
     hit = _cache.get(partner_id)
     if hit and time.monotonic() - hit[0] < settings.upsell_cache_seconds:
         return hit[1]
@@ -34,7 +40,7 @@ def _stats(partner_id: int) -> Dict[str, Any]:
     pairs: Dict[str, Counter] = defaultdict(Counter)
     for r in db.query("SELECT items FROM orders WHERE partner_id=? AND status!='cancelado' AND created_at>=?",
                       (partner_id, since)):
-        ids = sorted({str(i["item_id"]) for i in db.row_dict(r, ("items",))["items"]})
+        ids = sorted({_norm(i["name"]) for i in db.row_dict(r, ("items",))["items"]})
         count.update(ids)
         for a in ids:
             for b in ids:
@@ -43,6 +49,18 @@ def _stats(partner_id: int) -> Dict[str, Any]:
     out = {"count": count, "pairs": pairs}
     _cache[partner_id] = (time.monotonic(), out)
     return out
+
+
+def _stats(partner_id: int, menu: Dict[str, Any]) -> Dict[str, Any]:
+    """Las cuentas por nombre traducidas a los ids de este menú."""
+    st = _stats_by_name(partner_id)
+    ids = {_norm(it["name"]): iid for iid, it in menu["items"].items()}
+    count: Counter = Counter({ids[n]: c for n, c in st["count"].items() if n in ids})
+    pairs: Dict[str, Counter] = defaultdict(Counter)
+    for a, others in st["pairs"].items():
+        if a in ids:
+            pairs[ids[a]] = Counter({ids[b]: n for b, n in others.items() if b in ids})
+    return {"count": count, "pairs": pairs}
 
 
 def clear_cache(partner_id: Optional[int] = None) -> None:
@@ -76,7 +94,7 @@ def suggest(partner_id: int, menu: Dict[str, Any], item_ids: List[str], context:
     items = menu["items"]
     given = [str(i) for i in item_ids if str(i) in items]
     ok = lambda i: i in items and items[i].get("available") and i not in given  # noqa: E731
-    st = _stats(partner_id)
+    st = _stats(partner_id, menu)
     out: List[Dict[str, Any]] = []
 
     drinks = [i for i in drink_ids(menu) if ok(i)]
@@ -108,7 +126,7 @@ def suggest(partner_id: int, menu: Dict[str, Any], item_ids: List[str], context:
 
 def top_pairs(partner_id: int, menu: Dict[str, Any], limit: int = 8) -> List[Dict[str, Any]]:
     """Combinaciones más frecuentes para el admin."""
-    st = _stats(partner_id)
+    st = _stats(partner_id, menu)
     seen, out = set(), []
     flat = [(n, a, b) for a, c in st["pairs"].items() for b, n in c.items() if a < b]
     for n, a, b in sorted(flat, reverse=True):
@@ -136,7 +154,7 @@ def bestsellers(partner_id: int, menu: Dict[str, Any], config: Optional[Dict[str
     if config.get("mode") == "manual" and config.get("items"):
         return {"items": [i for i in config["items"] if ok(i)][:limit], "source": "manual"}
     drinks = set(drink_ids(menu))
-    count = _stats(partner_id)["count"]
+    count = _stats(partner_id, menu)["count"]
     out = [i for i, n in count.most_common() if ok(i) and i not in drinks][:limit]
     source = "pedidos"
     if len(out) < 4:

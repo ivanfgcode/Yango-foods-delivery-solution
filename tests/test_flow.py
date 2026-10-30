@@ -137,7 +137,7 @@ def test_bot_retries_then_manual(client, monkeypatch):
 
 def test_order_validation(client):
     bad = client.post("/api/wrap-roll/orders", json=order_body(client, address={**FAR, "text": "x y z", "reference": "casa 1"}))
-    assert bad.status_code == 422 and "no entrega" in bad.json()["detail"]
+    assert bad.status_code == 422 and "no llegamos" in bad.json()["detail"]
     item = cart_item(client)
     bad = client.post("/api/wrap-roll/orders", json=order_body(client, items=[{**item, "options": {}}]))
     assert bad.status_code == 422

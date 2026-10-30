@@ -19,6 +19,8 @@
   let cart = store.get(CART_KEY, []);
   let view = "cart";
   let point = null, quote = null, quoteSeq = 0, addrDirty = false, map = null;
+  let branch = null;  // sucursal que atiende la dirección del cliente (la asigna Yango)
+  const tr = (id) => (menu && menu.alias && menu.alias[id]) || id;  // ids configurados (principal) → esta sucursal
 
   // ------------------------------------------------------------------ util
   function toast(msg) { const t = $("#toast"); t.textContent = msg; t.classList.add("on"); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("on"), 1800); }
@@ -211,9 +213,10 @@
   const upsCache = {};
   async function loadUpsell(ids, context, box) {
     const key = `${context}:${[...new Set(ids)].sort().join(",")}`;
-    try { upsCache[key] = upsCache[key] || await api(`/upsell?context=${context}&items=${encodeURIComponent([...new Set(ids)].join(","))}`); }
+    const b = branch ? `&branch=${encodeURIComponent(branch.slug)}` : "";
+    try { upsCache[key + b] = upsCache[key + b] || await api(`/upsell?context=${context}&items=${encodeURIComponent([...new Set(ids)].join(","))}${b}`); }
     catch (e) { return; }
-    const recs = upsCache[key].items.map((r) => ({...r, it: menu.items[r.item_id]})).filter((r) => r.it && r.it.available);
+    const recs = upsCache[key + b].items.map((r) => ({...r, it: menu.items[r.item_id]})).filter((r) => r.it && r.it.available);
     if (!recs.length || !box.isConnected) return;
     const drinks = recs.every((r) => r.reason === "bebida");
     const title = context === "cart" ? (drinks ? "¿Algo para tomar?" : "Otras personas también pidieron") : (drinks ? "Acompáñalo con una bebida" : "Otras personas lo combinaron con");
@@ -236,23 +239,22 @@
   // ------------------------------------------------------------------ TikTok: videos elegidos por el restaurante con su producto
   // «Más vendidos»: lo calcula el servidor (pedidos de la web o elegidos a mano en el admin).
   function renderBest() {
-    const its = (S.bestsellers || []).map((id) => menu.items[id]).filter((it) => it && it.available);
+    const its = (S.bestsellers || []).map((id) => menu.items[tr(id)]).filter((it) => it && it.available);
+    $("#best").hidden = its.length < 2;
     if (its.length < 2) return;
-    $("#best").hidden = false;
     $("#bestRail").innerHTML = its.map(card).join("");
     $$(".card[data-id]", $("#bestRail")).forEach((el) => (el.onclick = () => openItem(el.dataset.id)));
     reveal($("#best"));
   }
-  const videoItems = (v) => (v.item_ids || []).map((id) => menu.items[id]).filter((it) => it && it.available);
+  const videoItems = (v) => (v.item_ids || []).map((id) => menu.items[tr(id)]).filter((it) => it && it.available);
   function renderTikTok() {
     const vids = (S.tiktok || []).filter((v) => /^\d+$/.test(v.id));
+    $("#tt").hidden = !vids.length;
     if (!vids.length) return;
-    $("#tt").hidden = false;
     $("#ttRail").innerHTML = vids.map((v, i) => {
       const its = videoItems(v), it = its[0], poster = v.poster || (it && it.image) || "";
       return `<div class="tt-card reveal" data-v="${i}" role="button" tabindex="0" aria-label="Ver video${it ? ` de ${esc(it.name)}` : ""}">
         ${poster ? `<img loading="lazy" src="${esc(poster)}" alt="">` : ""}<span class="tt-play">${icon("play")}</span>
-        ${v.author ? `<span class="tt-au">@${esc(v.author)}</span>` : ""}
         ${it ? `<button type="button" class="tt-chip" data-item="${esc(it.id)}"><span>${esc(it.name)}</span><b>${money(itemPrice(it))}${its.length > 1 ? ` <small>+${its.length - 1} más</small>` : ""}</b></button>` : ""}</div>`;
     }).join("");
     $$(".tt-card", $("#ttRail")).forEach((c) => {
@@ -331,10 +333,11 @@
   const openCart = () => { view = "cart"; renderCart(); open($("#cartSheet")); };
   $("#openCart").onclick = openCart; $("#floatCartBtn").onclick = openCart;
   $("#backBtn").onclick = () => { view = "cart"; renderCart(); };
-  $("#addrPill").onclick = () => { if (!cart.length) return toast("Agrega productos para elegir la entrega"); view = "checkout"; renderCart(); open($("#cartSheet")); initMap(); };
+  $("#addrPill").onclick = () => openLoc(false);
 
-  // ------------------------------------------------------------------ mapa y cotización
+  // ------------------------------------------------------------------ sucursal, mapa y cotización
   function setQuoteBox(cls, text) { $("#quoteBox").className = `quote ${cls}`; $("#quoteText").innerHTML = text; }
+  const savePoint = (p) => store.set(POINT_KEY, {lat: p.lat, lon: p.lon, label: p.label || "", branch: branch && branch.slug});
   const onPointChange = debounce(async (lat, lon) => {
     point = {lat, lon};
     const seq = ++quoteSeq;
@@ -345,17 +348,17 @@
       const txt = g.address.short_text || g.address.text || "";
       if (!addrDirty) $("#fAddr").value = txt;
       $("#addrPillText").textContent = txt || "Mi dirección";
-      store.set(POINT_KEY, {lat, lon, label: txt});
+      savePoint({lat, lon, label: txt});
     }).catch(() => {});
     await refreshQuote(seq);
   }, 380);
   async function refreshQuote(seq = ++quoteSeq) {
     if (!point) return;
     try {
-      const q = await api("/quote", {lat: point.lat, lon: point.lon, subtotal: round2(subtotal())});
+      const q = await api("/quote", {lat: point.lat, lon: point.lon, subtotal: round2(subtotal()), branch: branch && branch.slug});
       if (seq !== quoteSeq) return;
       quote = q;
-      if (!q.available) setQuoteBox("bad", unavailableText(q));
+      if (!q.available) { setQuoteBox("bad", unavailableText(q)); otherBranch(seq); }
       else if (q.below_min_order) setQuoteBox("bad", `El pedido mínimo es <b>${money(q.min_order)}</b>`);
       else if (q.delivery_fee == null) setQuoteBox("bad", "No pudimos calcular el envío para este pedido");
       else setQuoteBox("ok", `Envío <b>${q.delivery_fee ? money(q.delivery_fee) : "gratis"}</b>${q.eta_min ? ` · llega en ${q.eta_min}–${q.eta_max} min` : ""}${q.surge ? " · alta demanda" : ""}`);
@@ -365,6 +368,19 @@
       quote = null; setQuoteBox("bad", esc(e.message));
     }
     renderFoot();
+  }
+  // El pin se movió a una zona que atiende otra sucursal: se ofrece cambiar (menú y precios de esa sucursal).
+  async function otherBranch(seq) {
+    try {
+      const {branch: b} = await api(`/branch?lat=${point.lat}&lon=${point.lon}`);
+      if (seq !== quoteSeq || !b || !branch || b.slug === branch.slug) return;
+      setQuoteBox("bad", `Esta dirección la atiende <b>${esc(b.name)}</b>. <button type="button" class="linkbtn" id="swBranch">Cambiar de sucursal</button>`);
+      $("#swBranch").onclick = async () => {
+        setQuoteBox("loading", "Cargando el menú de esa sucursal…");
+        try { await loadMenu(b.slug); savePoint({...point, label: $("#fAddr").value}); } catch (e) { toast(e.message); }
+        refreshQuote();
+      };
+    } catch (e) {}
   }
   function unavailableText(q) {
     if (q.reason === "zona_cerrada") return "Por alta demanda no llegamos a esta zona ahora. Prueba más tarde.";
@@ -376,76 +392,180 @@
   }
   function loadScript(src) { return new Promise((ok, ko) => { const s = document.createElement("script"); s.src = src; s.onload = ok; s.onerror = ko; document.head.appendChild(s); }); }
   function loadCss(href) { const l = document.createElement("link"); l.rel = "stylesheet"; l.href = href; document.head.appendChild(l); }
+  const primaryColor = () => getComputedStyle(document.body).getPropertyValue("--primary").trim() || "#E8402F";
   // Mapa de Yandex (los mismos datos que usan Yango y Yango Maps: calles y números de casa de Bolivia).
   // La clave YANDEX_MAPS_API_KEY es opcional; sin ella también carga. Leaflet/OSM queda solo de respaldo.
-  async function yandexMap(center, lift) {
-    const key = S.yandexKey ? `apikey=${encodeURIComponent(S.yandexKey)}&` : "";
-    await loadScript(`https://api-maps.yandex.ru/2.1/?${key}lang=${encodeURIComponent(S.mapLang || "es_ES")}`);
+  async function yandexMap(id, center, lift, onMoved) {
+    if (!window.ymaps) {
+      const key = S.yandexKey ? `apikey=${encodeURIComponent(S.yandexKey)}&` : "";
+      await loadScript(`https://api-maps.yandex.ru/2.1/?${key}lang=${encodeURIComponent(S.mapLang || "es_ES")}`);
+    }
     await new Promise((ok, ko) => { ymaps.ready(ok, ko); setTimeout(() => ko(new Error("ymaps timeout")), 12000); });
-    const m = new ymaps.Map("map", {center, zoom: 17, controls: ["zoomControl"]},
+    const m = new ymaps.Map(id, {center, zoom: 17, controls: ["zoomControl"]},
       {suppressMapOpenBlock: true, yandexMapDisablePoiInteractivity: true, zoomControlSize: "small", zoomControlPosition: {left: 10, top: 10}});
-    if (S.branch) m.geoObjects.add(new ymaps.Placemark([S.branch.lat, S.branch.lon], {hintContent: S.branch.name, iconCaption: S.branch.name},
-      {preset: "islands#foodCircleIcon", iconColor: getComputedStyle(document.body).getPropertyValue("--primary").trim() || "#E8402F"}));
+    let mark = null;
     m.events.add("actionbegin", () => lift(true));
-    m.events.add("actionend", () => { lift(false); const [la, lo] = m.getCenter(); moved(la, lo); });
-    return {setCenter: (la, lo) => m.setCenter([la, lo], 17, {duration: 300}), resize: () => m.container.fitToViewport()};
+    m.events.add("actionend", () => { lift(false); const [la, lo] = m.getCenter(); onMoved(la, lo); });
+    return {setCenter: (la, lo) => m.setCenter([la, lo], 17, {duration: 300}), resize: () => m.container.fitToViewport(),
+      setBranch: (b) => {
+        if (mark) m.geoObjects.remove(mark);
+        mark = b && b.lat != null ? new ymaps.Placemark([b.lat, b.lon], {hintContent: b.name, iconCaption: b.name}, {preset: "islands#foodCircleIcon", iconColor: primaryColor()}) : null;
+        if (mark) m.geoObjects.add(mark);
+      }};
   }
-  async function leafletMap(center, lift) {
-    loadCss("https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css");
-    await loadScript("https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js");
-    $("#map").innerHTML = "";
-    const m = L.map("map", {zoomControl: true}).setView(center, 16);
+  async function leafletMap(id, center, lift, onMoved) {
+    if (!window.L) {
+      loadCss("https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css");
+      await loadScript("https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js");
+    }
+    $(`#${id}`).innerHTML = "";
+    const m = L.map(id, {zoomControl: true}).setView(center, 16);
     L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {maxZoom: 19, subdomains: "abcd", attribution: "© OpenStreetMap © CARTO"}).addTo(m);
-    if (S.branch) L.marker([S.branch.lat, S.branch.lon], {title: S.branch.name, icon: L.divIcon({className: "branch-pin", html: icon("map-pin"), iconSize: [30, 30], iconAnchor: [15, 28]})}).addTo(m);
+    let mark = null;
     m.on("movestart", () => lift(true));
-    m.on("moveend", () => { lift(false); const c = m.getCenter(); moved(c.lat, c.lng); });
+    m.on("moveend", () => { lift(false); const c = m.getCenter(); onMoved(c.lat, c.lng); });
     setTimeout(() => m.invalidateSize(), 350);
-    return {setCenter: (la, lo) => m.flyTo([la, lo], 17, {duration: 0.6}), resize: () => m.invalidateSize()};
+    return {setCenter: (la, lo) => m.flyTo([la, lo], 17, {duration: 0.6}), resize: () => m.invalidateSize(),
+      setBranch: (b) => {
+        if (mark) mark.remove();
+        mark = b && b.lat != null ? L.marker([b.lat, b.lon], {title: b.name, icon: L.divIcon({className: "branch-pin", html: icon("map-pin"), iconSize: [30, 30], iconAnchor: [15, 28]})}).addTo(m) : null;
+      }};
+  }
+  async function makeMap(id, center, onMoved) {
+    const box = $(`#${id}`).parentElement, pin = $(".pin", box), dot = $(".pin-dot", box);
+    const lift = (up) => { pin.classList.toggle("up", up); dot.classList.toggle("up", up); };
+    try { return await yandexMap(id, center, lift, onMoved); } catch (e) { return leafletMap(id, center, lift, onMoved); }
   }
   async function initMap() {
-    if (S.branch) { $("#branchLine").hidden = false; $("#branchName").textContent = S.branch.name; }
+    showBranch();
     if (map) { setTimeout(() => map.resize(), 60); if (point) refreshQuote(); return; }
     const saved = store.get(POINT_KEY, null);
     const center = saved ? [saved.lat, saved.lon] : S.center;
-    const pin = $("#pin"), dot = $(".pin-dot");
-    const lift = (up) => { pin.classList.toggle("up", up); dot.classList.toggle("up", up); };
     try {
-      try { map = await yandexMap(center, lift); } catch (e) { map = await leafletMap(center, lift); }
+      map = await makeMap("map", center, moved);
+      map.setBranch(branch);
       moved(center[0], center[1]);
-      if (!saved) locate(true);
+      if (!saved) locate(true, map);
     } catch (e) { setQuoteBox("bad", "No se pudo cargar el mapa. Revisa tu conexión."); }
   }
   function moved(la, lo) { addrDirty = false; onPointChange(la, lo); }
-  function locate(silent) {
+  function locate(silent, m) {
     if (!navigator.geolocation) return silent || toast("Tu navegador no permite ubicarte");
-    navigator.geolocation.getCurrentPosition((p) => map && map.setCenter(p.coords.latitude, p.coords.longitude),
+    navigator.geolocation.getCurrentPosition((p) => m && m.setCenter(p.coords.latitude, p.coords.longitude),
       (e) => silent || toast(e.code === 1 ? "Activa la ubicación para este sitio en tu navegador" : "No pudimos ubicarte, escribe tu calle o mueve el mapa"),
       {enableHighAccuracy: true, timeout: 10000, maximumAge: 60000});
   }
   // Buscador de dirección: lo que se escribe se busca en Yango y al elegir, el mapa va ahí (el pin sigue mandando).
-  let suggSeq = 0;
-  const showSugg = (on) => { $("#addrSugg").hidden = !on; $("#fAddr").setAttribute("aria-expanded", String(on)); };
-  const searchAddr = debounce(async () => {
-    const q = $("#fAddr").value.trim(), seq = ++suggSeq;
-    if (q.length < 3) return showSugg(false);
-    try {
-      const {results} = await api("/address-search", {q});
-      if (seq !== suggSeq) return;
-      $("#addrSugg").innerHTML = results.map((r, i) => `<button type="button" role="option" data-s="${i}">${icon("map-pin")}<span><b>${esc(r.title)}</b><small>${esc(r.subtitle)}</small></span></button>`).join("")
-        || `<p class="note">Sin resultados. Mueve el mapa hasta tu puerta.</p>`;
-      $$("[data-s]", $("#addrSugg")).forEach((b) => (b.onmousedown = (e) => {
-        e.preventDefault(); const r = results[+b.dataset.s];
-        showSugg(false); $("#fAddr").value = r.title; if (map) map.setCenter(r.lat, r.lon);
-      }));
-      showSugg(true);
-    } catch (e) { showSugg(false); }
-  }, 350);
-  $("#fAddr").addEventListener("input", searchAddr);
-  $("#fAddr").addEventListener("blur", () => setTimeout(() => showSugg(false), 150));
-  $("#fAddr").addEventListener("keydown", (e) => { if (e.key === "Escape") showSugg(false); });
-  $("#locateBtn").onclick = () => locate(false);
+  function bindSearch(input, list, onPick) {
+    let seq = 0;
+    const show = (on) => { list.hidden = !on; input.setAttribute("aria-expanded", String(on)); };
+    const search = debounce(async () => {
+      const q = input.value.trim(), my = ++seq;
+      if (q.length < 3) return show(false);
+      try {
+        const {results} = await api("/address-search", {q});
+        if (my !== seq) return;
+        list.innerHTML = results.map((r, i) => `<button type="button" role="option" data-s="${i}">${icon("map-pin")}<span><b>${esc(r.title)}</b><small>${esc(r.subtitle)}</small></span></button>`).join("")
+          || `<p class="note">Sin resultados. Mueve el mapa hasta tu puerta.</p>`;
+        $$("[data-s]", list).forEach((b) => (b.onmousedown = (e) => {
+          e.preventDefault(); const r = results[+b.dataset.s];
+          show(false); input.value = r.title; onPick(r);
+        }));
+        show(true);
+      } catch (e) { show(false); }
+    }, 350);
+    input.addEventListener("input", search);
+    input.addEventListener("blur", () => setTimeout(() => show(false), 150));
+    input.addEventListener("keydown", (e) => { if (e.key === "Escape") show(false); });
+  }
+  bindSearch($("#fAddr"), $("#addrSugg"), (r) => map && map.setCenter(r.lat, r.lon));
+  $("#locateBtn").onclick = () => locate(false, map);
   $("#fAddr").addEventListener("input", () => (addrDirty = true));
   $$('input[name="pay"]').forEach((r) => r.addEventListener("change", () => { $("#changeField").hidden = $('input[name="pay"]:checked').value !== "cash"; }));
+
+  // ------------------------------------------------------------------ ubicación primero: qué sucursal te atiende
+  let locMap = null, locPoint = null, locBranch = null, locSeq = 0;
+  const locStatus = (cls, html) => { $("#locStatus").className = `quote ${cls}`; $("#locText").innerHTML = html; };
+  async function openLoc(first) {
+    $("#locSkip").hidden = !first;
+    open($("#locSheet"));
+    const saved = store.get(POINT_KEY, null), c = saved ? [saved.lat, saved.lon] : S.center;
+    if (locMap) return setTimeout(() => locMap.resize(), 60);
+    try { locMap = await makeMap("locMap", c, locMoved); } catch (e) { return locStatus("bad", "No se pudo cargar el mapa. Revisa tu conexión."); }
+    locMoved(c[0], c[1]);
+    if (!saved) locate(true, locMap);
+  }
+  const locMoved = debounce(async (lat, lon) => {
+    const seq = ++locSeq;
+    locPoint = {lat, lon}; locBranch = null; $("#locOk").disabled = true;
+    locStatus("loading", "Buscando la sucursal que te atiende…");
+    api("/geocode", {lat, lon}).then((g) => {
+      if (seq !== locSeq || !g.ok || !g.address) return;
+      locPoint.label = g.address.short_text || g.address.text || ""; locPoint.geocoded = g.address;
+      if (document.activeElement !== $("#locQ")) $("#locQ").value = locPoint.label;
+    }).catch(() => {});
+    try {
+      const {branch: b} = await api(`/branch?lat=${lat}&lon=${lon}`);
+      if (seq !== locSeq) return;
+      locBranch = b; if (locMap) locMap.setBranch(b);
+      if (!b) return locStatus("bad", "Por ahora no llegamos a esta dirección. Prueba otra.");
+      locStatus(b.available ? "ok" : "bad", b.available ? `Te atiende <b>${esc(b.name)}</b>${b.eta_min ? ` · ${b.eta_min}–${b.eta_max} min` : ""}`
+        : `<b>${esc(b.name)}</b> no está llegando a esta zona ahora. Puedes ver su menú y pedir más tarde.`);
+      $("#locOk").disabled = false;
+    } catch (e) { if (seq === locSeq) locStatus("bad", esc(e.message)); }
+  }, 400);
+  bindSearch($("#locQ"), $("#locSugg"), (r) => locMap && locMap.setCenter(r.lat, r.lon));
+  $("#locLocate").onclick = () => locate(false, locMap);
+  $("#locSkip").onclick = () => closeAll();
+  $("#locOk").onclick = async () => {
+    if (!locBranch) return;
+    const p = {...locPoint};
+    point = {lat: p.lat, lon: p.lon, geocoded: p.geocoded};
+    $("#addrPillText").textContent = p.label || "Mi dirección";
+    $("#fAddr").value = p.label || ""; addrDirty = false;
+    closeAll();
+    if (!branch || branch.slug !== locBranch.slug) { try { await loadMenu(locBranch.slug); } catch (e) { toast(e.message); } }
+    savePoint(p);
+    if (map) map.setCenter(p.lat, p.lon);
+    refreshEta(p);
+  };
+  function showBranch() {
+    if (!branch) return;
+    $("#branchLine").hidden = false; $("#branchName").textContent = branch.name;
+    $("#metaBranch").hidden = false; $("#metaBranchName").textContent = branch.name.replace(/^.*?\s[-–]\s/, "");
+    if (map) map.setBranch(branch);
+  }
+  function refreshEta(p) {
+    api("/quote", {lat: p.lat, lon: p.lon, subtotal: 0, branch: branch && branch.slug}).then((q) => {
+      if (q.available && q.eta_min) $("#metaEta").innerHTML = `${icon("bike")}<b>${q.eta_min}–${q.eta_max} min</b>`;
+    }).catch(() => {});
+  }
+  // Menú de la sucursal; si cambia, el carrito pasa a la nueva sucursal buscando cada producto por su nombre.
+  async function loadMenu(slug) {
+    const prev = menu;
+    const m = await api(`/menu${slug ? `?branch=${encodeURIComponent(slug)}` : ""}`);
+    menu = m; branch = m.branch;
+    if (prev && prev.branch && prev.branch.slug !== branch.slug) moveCart(prev, m);
+    renderMenu(); saveCart(); renderBest(); renderTikTok(); showBranch();
+  }
+  function moveCart(prev, next) {
+    const byName = {}; Object.values(next.items).forEach((it) => { byName[norm(it.name)] = byName[norm(it.name)] || it; });
+    let lost = 0;
+    cart = cart.map((l) => {
+      const old = prev.items[l.item_id], it = old && byName[norm(old.name)];
+      if (!it) { lost++; return null; }
+      const options = {};
+      for (const g of old.groups) {
+        const ids = l.options[g.id]; if (!ids || !ids.length) continue;
+        const ng = it.groups.find((x) => norm(x.name) === norm(g.name));
+        const nids = (ids || []).map((oid) => { const o = g.options.find((x) => x.id === oid); const no = o && ng && ng.options.find((x) => norm(x.name) === norm(o.name)); return no && no.id; });
+        if (!ng || nids.some((x) => !x)) { lost++; return null; }
+        options[ng.id] = nids;
+      }
+      return {...l, item_id: it.id, options, key: it.id + "|" + JSON.stringify(Object.keys(options).sort().map((k) => [k, [...options[k]].sort()]))};
+    }).filter(Boolean);
+    toast(lost ? `Te atiende ${next.branch.name}: ${lost} producto(s) no están en esta sucursal` : `Te atiende ${next.branch.name}`);
+  }
 
   // ------------------------------------------------------------------ pedido
   const prof = store.get(PROFILE_KEY, {});
@@ -467,7 +587,7 @@
       address: {lat: point.lat, lon: point.lon, text: $("#fAddr").value.trim(), reference: $("#fRef").value.trim(), comment: $("#fNote").value.trim(), geocoded: point.geocoded || null},
       payment: {method, change_for: method === "cash" && $("#fChange").value.trim() ? $("#fChange").value.replace(",", ".") : null},
       items: cart.map((l) => ({item_id: l.item_id, quantity: l.quantity, options: l.options})),
-      expected_total: quote.total,
+      expected_total: quote.total, branch: branch && branch.slug,
     };
     const btn = $("#placeBtn"); btn.disabled = true; btn.textContent = "Enviando…";
     try {
@@ -482,9 +602,20 @@
     if (e.origin !== location.origin || !e.data || e.data.type !== "theme") return;
     for (const [k, v] of Object.entries(e.data.vars || {})) document.body.style.setProperty(k, v);
   });
-  if (savedPoint) api("/quote", {lat: savedPoint.lat, lon: savedPoint.lon, subtotal: 0}).then((q) => {
-    if (q.available && q.eta_min) $("#metaEta").innerHTML = `${icon("bike")}<b>${q.eta_min}–${q.eta_max} min</b>`;
-  }).catch(() => {});
-  api("/menu").then((m) => { menu = m; renderMenu(); saveCart(); renderBest(); renderTikTok(); })
-    .catch((e) => { $("#menu").innerHTML = `<p class="note" style="padding:40px 0">${esc(e.message)}</p>`; });
+  // Ubicación primero: con la dirección guardada se entra directo a su sucursal; sin ella se pregunta.
+  (async () => {
+    const saved = savedPoint && savedPoint.branch ? savedPoint : null;
+    try { await loadMenu(saved && saved.branch); }
+    catch (e) {
+      try { if (!saved) throw e; await loadMenu(null); }
+      catch (e2) { $("#menu").innerHTML = `<p class="note" style="padding:40px 0">${esc(e2.message)}</p>`; return; }
+    }
+    if (!saved) return openLoc(true);
+    point = {lat: saved.lat, lon: saved.lon};
+    refreshEta(saved);
+    // La sucursal asignada puede cambiar (horarios, zonas): se revisa sin molestar.
+    api(`/branch?lat=${saved.lat}&lon=${saved.lon}`).then(async ({branch: b}) => {
+      if (b && branch && b.slug !== branch.slug) { await loadMenu(b.slug); savePoint(saved); }
+    }).catch(() => {});
+  })();
 })();
