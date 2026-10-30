@@ -39,13 +39,19 @@ login:
   session_cookies: ["Session_id", "sessionid2"]   # cookies de Yango ID tras entrar (por confirmar con una cuenta)
 
 order:
+  # Prueba en seco con la cuenta real (2026-10-30), sin pulsar «Pagar». Falta antes de encender ORDER_PLACEMENT_ENABLED:
+  #  * El carrito real va ligado al x-device-id de la web: el bot debe mandar las mismas cabeceras (si no, usa otro carrito).
+  #  * La dirección del cliente se fija con POST /api/v2/cart/go-checkout (la página usa la dirección guardada).
+  #  * Teléfono de contacto del checkout = el de la cuenta: el del cliente va en el comentario.
+  #  * El NIT queda en el navegador del bot: sin NIT hay que vaciarlo para que no pase al pedido siguiente.
   verified: false                  # true cuando se grabe un pedido real y se ajusten los pasos
   # 1) Vaciar el carrito de la cuenta (cada cuenta = un restaurante, un pedido a la vez).
-  clear_cart: {method: DELETE, path: "/api/v1/cart"}
-  # 2) Agregar cada plato. Placeholders: {item_id} {quantity} {place_slug} {item_options} (lista JSON).
+  #    VERIFICADO 2026-10-30: no hay «vaciar» (DELETE /api/v1/cart da 405); se borra cada línea del carrito.
+  clear_cart: {items_path: "items", id_path: "id", method: DELETE, path: "/api/v1/cart/{cart_item_id}?longitude={lon}&latitude={lat}&screen=menu&shippingType=delivery&autoTranslate=false"}
+  # 2) Agregar cada plato (VERIFICADO 2026-10-30: mismo cuerpo que manda la web al pulsar «Añadir»). Placeholders: {item_id} {quantity} {place_slug} {item_options} (lista JSON).
   add_item:
     method: POST
-    path: "/api/v1/cart"
+    path: "/api/v1/cart?longitude={lon}&latitude={lat}&screen=menu&shippingType=delivery&autoTranslate=false"   # sin la ubicación Yango responde 400
     body: {item_id: "{item_id}", quantity: "{quantity}", place_slug: "{place_slug}",
            place_business: "restaurant", item_options: "{item_options}"}
   # 3) Leer el carrito en la dirección del cliente y comparar con lo cotizado (subtotal y envío).
@@ -61,16 +67,22 @@ order:
     - {action: click, names: ["{address_text}"], optional: true}
     - {action: fill, labels: ["Departamento", "Apartment", "Depto"], value: "{reference}", optional: true}
     - {action: fill, labels: ["Comentario para el mensajero", "Comment for courier", "Comentario", "Comment"], value: "{comment}"}
-    # Factura: Yango la muestra al local como «Usuario» y «NIT del usuario» (lo lee restotec-yango). Por verificar
-    # los textos exactos del checkout; si no aparecen, el NIT igual va en el comentario («FACTURA: NIT ...»).
-    - {action: click, if: nit, names: ["Factura", "Necesito factura", "Datos para la factura", "Invoice"], optional: true}
-    - {action: fill, if: nit, labels: ["NIT", "NIT o CI", "NIT del usuario", "TIN", "Customer's TIN"], value: "{nit}", optional: true}
-    - {action: fill, if: nit, labels: ["Razón social", "Nombre para la factura", "Nombre", "Name"], value: "{razon_social}", optional: true}
-    - {action: click, names: ["Efectivo", "Cash", "Наличные"]}
-    - {action: click, names: ["Hacer pedido", "Realizar pedido", "Place order", "Pedir", "Оформить заказ"]}
+    # Factura (VERIFICADO 2026-10-30): fila «NIT» → ventana «Enter tax number» con «Nombre y apellido» y «NIT» → «Listo».
+    # El local lo ve como «Usuario» / «NIT del usuario» (lo lee restotec-yango). También va en el comentario.
+    - {action: click, if: nit, names: ["NIT"]}
+    - {action: fill, if: nit, labels: ["Nombre y apellido"], value: "{razon_social}"}
+    - {action: fill, if: nit, labels: ["NIT"], value: "{nit}"}
+    - {action: click, if: nit, names: ["Listo"]}
+    # Pago (VERIFICADO 2026-10-30): la cuenta tiene tarjeta VISA y «Código QR» por defecto. Siempre se elige
+    # «Efectivo» y se comprueba antes de pulsar «Pagar»; si no se ve «Efectivo», el pedido va a revisión.
+    - {action: click, names: ["Editar"]}
+    - {action: click, names: ["Efectivo"]}
+    - {action: click, names: ["Seleccionar"]}
+    - {action: require_after, label: "Método de pago", value: "Efectivo"}
+    - {action: click, names: ["Pagar"]}
     - {action: capture, response_regex: "/api/v1/orders|eats-orders|order_nr", json_paths: ["order_nr", "orderNr", "order.order_nr"]}
   # Botones que el bot NUNCA pulsa.
-  never_click: ["Cancelar pedido", "Cancel order", "Pagar con tarjeta", "Card", "Agregar tarjeta"]
+  never_click: ["Cancelar pedido", "Cancel order", "Pagar con tarjeta", "Card", "Agregar tarjeta", "Vincular nueva tarjeta", "USDT"]
 
 # Vendor app del restaurante (cuenta del local, partners.vendor_account). VERIFICADO 2026-10-30 con una cuenta de
 # 57 locales: la sesión es el token de localStorage persist:auth (cabeceras x-oauth y x-partner-id). Igual que restotec-yango

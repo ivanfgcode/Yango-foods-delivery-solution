@@ -99,6 +99,11 @@ class AccountRuntime:
             for _ in range(max(1, settings.pages_per_account)):
                 page = await self.context.new_page()
                 await page.goto(home, wait_until="domcontentloaded", timeout=60000)
+                # La web redirige sola tras cargar (/es-la → /bo/...): se espera a que quede quieta antes de usarla.
+                try:
+                    await page.wait_for_load_state("networkidle", timeout=15000)
+                except Exception:
+                    pass
                 self.pages.append(page)
 
     async def close(self) -> None:
@@ -114,6 +119,16 @@ class AccountRuntime:
         return self.pages[self._rr]
 
     async def fetch(self, method: str, path: str, body: Any = None) -> Any:
+        try:
+            return await self._fetch(method, path, body)
+        except Exception as e:
+            # Si la pestaña navegó a mitad de la consulta, una lectura se repite una vez. Una escritura no: pudo llegar.
+            if method != "GET" or "context was destroyed" not in str(e):
+                raise
+            await asyncio.sleep(1.5)
+            return await self._fetch(method, path, body)
+
+    async def _fetch(self, method: str, path: str, body: Any = None) -> Any:
         await self.ensure()
         async with self.sem:
             page = self._page()
@@ -369,12 +384,13 @@ class YangoWebSource(YangoSource):
         rt = self.rt(account)
         addr = order["address"]
         async with rt.order_lock:
-            await rt.fetch(ocfg["clear_cart"]["method"], ocfg["clear_cart"]["path"])
+            await self._clear_cart(rt, addr["lat"], addr["lon"])
             for line in order["items"]:
                 ctx = {"item_id": int(line["item_id"]), "quantity": int(line["quantity"]),
                        "place_slug": (order.get("quote") or {}).get("place_slug") or partner["place_slug"],
                        "item_options": item_options_payload(line)}
-                await rt.fetch(ocfg["add_item"]["method"], ocfg["add_item"]["path"],
+                await rt.fetch(ocfg["add_item"]["method"],
+                               ocfg["add_item"]["path"].format(lat=addr["lat"], lon=addr["lon"]),
                                fill_template(ocfg["add_item"]["body"], ctx))
             cart = await rt.fetch("GET", self.cfg["endpoints"]["cart"].format(lat=addr["lat"], lon=addr["lon"]))
             y_sub = float(dig(cart, ocfg["cart_subtotal_path"]) or 0)
@@ -386,6 +402,13 @@ class YangoWebSource(YangoSource):
                 raise PlacementMismatch(f"Envío en Yango {y_fee} > cotizado {order['delivery_fee']}")
             nr = await self._checkout(rt, order, ocfg)
         return {"yango_order_nr": nr, "yango_total": y_total, "delivery_fee": y_fee}
+
+    async def _clear_cart(self, rt: AccountRuntime, lat: float, lon: float) -> None:
+        """Yango no tiene «vaciar carrito»: se borra cada línea (como el botón «Reducir cantidad» de la web)."""
+        cc = self.cfg["order"]["clear_cart"]
+        cart = await rt.fetch("GET", self.cfg["endpoints"]["cart"].format(lat=lat, lon=lon))
+        for line in dig(cart, cc["items_path"]) or []:
+            await rt.fetch(cc["method"], cc["path"].format(cart_item_id=dig(line, cc["id_path"]), lat=lat, lon=lon))
 
     async def _checkout(self, rt: AccountRuntime, order: Dict[str, Any], ocfg: Dict[str, Any]) -> str:
         addr = order["address"]
@@ -416,6 +439,12 @@ class YangoWebSource(YangoSource):
                         await self._fill_any(page, step["labels"], fill_template(step["value"], ctx))
                     elif act == "press":
                         await page.keyboard.press(step["key"])
+                    elif act == "require_after":
+                        # Comprueba lo que la página muestra justo debajo de una etiqueta (p. ej. el método de pago).
+                        lines = [l.strip() for l in (await page.inner_text("body")).splitlines() if l.strip()]
+                        shown = next((lines[i + 1] for i, l in enumerate(lines[:-1]) if l == step["label"]), None)
+                        if shown != step["value"]:
+                            raise PlacementMismatch(f"{step['label']}: Yango muestra «{shown}», se esperaba «{step['value']}»")
                     elif act == "wait_text":
                         await page.get_by_text(step["text"]).first.wait_for(timeout=step.get("timeout", 15000))
                     elif act == "capture":
@@ -451,7 +480,10 @@ class YangoWebSource(YangoSource):
 
     async def _click_any(self, page: Any, names: List[str]) -> None:
         for n in names:
-            for loc in (page.get_by_role("button", name=n), page.get_by_text(n, exact=True)):
+            # Nombre exacto: «Pagar» nunca debe coincidir con «Pagar con tarjeta».
+            for loc in (page.get_by_role("button", name=n, exact=True),
+                        page.locator(f"label[aria-label={json.dumps(n)}]"),  # opciones tipo radio (método de pago)
+                        page.get_by_text(n, exact=True)):
                 if await loc.count():
                     await loc.first.click(timeout=8000)
                     await page.wait_for_timeout(600)
@@ -460,7 +492,9 @@ class YangoWebSource(YangoSource):
 
     async def _fill_any(self, page: Any, labels: List[str], value: str) -> None:
         for lab in labels:
-            for loc in (page.get_by_label(lab), page.get_by_placeholder(lab)):
+            # Solo campos de texto: la fila «NIT» del checkout también es un botón con esa etiqueta.
+            for loc in (page.get_by_placeholder(lab, exact=True), page.get_by_role("textbox", name=lab, exact=True),
+                        page.locator("input:visible, textarea:visible").and_(page.get_by_label(lab))):
                 if await loc.count():
                     await loc.first.fill(value, timeout=8000)
                     return
