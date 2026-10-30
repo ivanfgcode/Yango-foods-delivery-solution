@@ -381,7 +381,7 @@ document.getElementById("f").onsubmit = async (e) => { e.preventDefault();
     $("#ob").innerHTML = rows.map((o) => `<tr>
       <td>${esc(when(o.created_at))}</td><td class="mono">${esc(o.number)}</td>
       <td>${esc(o.partner_name)}<br><span class="muted mono">${esc(o.account)}</span></td>
-      <td>${esc(o.customer.first_name)} ${esc(o.customer.last_name)} · ${esc(o.customer.phone)}<br><span class="muted">${esc(o.address.text)} · ${esc(o.address.reference)}</span><br>
+      <td>${esc(o.customer.first_name)} ${esc(o.customer.last_name)} · ${esc(o.customer.phone)}${o.customer.nit ? `<br><span class="muted">Factura: NIT ${esc(o.customer.nit)} · ${esc(o.customer.razon_social)}</span>` : ""}<br><span class="muted">${esc(o.address.text)} · ${esc(o.address.reference)}</span><br>
         <a class="muted" target="_blank" rel="noopener" href="https://yandex.com/maps/?pt=${o.address.lon},${o.address.lat}&z=17"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg?v={{ v }}#map-pin"></use></svg>${o.address.lat}, ${o.address.lon}</a></td>
       <td>${o.items.map((i) => `${i.quantity}× ${esc(i.name)}${i.options.length ? ` <span class="muted">(${esc(i.options.map((x) => x.name).join(", "))})</span>` : ""}`).join("<br>")}</td>
       <td>${CUR}${o.total}<br><span class="muted">envío ${CUR}${o.delivery_fee} · ${esc(o.payment.label)}</span></td>

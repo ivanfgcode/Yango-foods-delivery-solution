@@ -389,7 +389,9 @@ class YangoWebSource(YangoSource):
 
     async def _checkout(self, rt: AccountRuntime, order: Dict[str, Any], ocfg: Dict[str, Any]) -> str:
         addr = order["address"]
+        cust = order.get("customer") or {}
         ctx = {"address_text": addr["text"], "reference": addr["reference"], "comment": order["yango_comment"],
+               "nit": cust.get("nit") or "", "razon_social": cust.get("razon_social") or "",
                "lat": addr["lat"], "lon": addr["lon"], "locale": settings.yango_locale_path}
         never = [n.lower() for n in ocfg.get("never_click") or []]
         page = await rt.context.new_page()
@@ -399,6 +401,8 @@ class YangoWebSource(YangoSource):
         try:
             for step in ocfg["checkout_steps"]:
                 act, optional = step["action"], step.get("optional", False)
+                if step.get("if") and not ctx.get(step["if"]):
+                    continue  # paso condicional (p. ej. factura solo si el cliente dio NIT)
                 try:
                     if act == "goto":
                         await page.goto(self.url(fill_template(step["path"], ctx)), wait_until="domcontentloaded",

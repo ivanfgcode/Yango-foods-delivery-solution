@@ -75,7 +75,7 @@
       <div class="sum"><span>Envío</span><span>${money(o.delivery_fee)}</span></div>
       ${o.service_fee ? `<div class="sum"><span>Tarifa de servicio</span><span>${money(o.service_fee)}</span></div>` : ""}
       <div class="sum total"><span>Total · ${esc(o.payment)}</span><span>${money(o.total)}</span></div>
-      <p class="note"><span class="ln"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg?v={{ v }}#map-pin"></use></svg>${esc(o.address)} · ${esc(o.reference)}</span>${o.eta_min ? `<span class="ln"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg?v={{ v }}#timer"></use></svg>Tiempo estimado: ${o.eta_min}–${o.eta_max} min</span>` : ""}</p>`;
+      <p class="note"><span class="ln"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg?v={{ v }}#map-pin"></use></svg>${esc(o.address)} · ${esc(o.reference)}</span>${o.invoice ? `<span class="ln"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg?v={{ v }}#file-text"></use></svg>Factura: NIT ${esc(o.invoice.nit)} · ${esc(o.invoice.razon_social)}</span>` : ""}${o.eta_min ? `<span class="ln"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg?v={{ v }}#timer"></use></svg>Tiempo estimado: ${o.eta_min}–${o.eta_max} min</span>` : ""}</p>`;
   }
   render();
   async function refresh() {

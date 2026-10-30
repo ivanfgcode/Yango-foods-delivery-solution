@@ -324,7 +324,7 @@ document.getElementById("loginForm").onsubmit = async (e) => {
   async function loadOrders() {
     const rows = await API("/orders");
     $("#ordersBody").innerHTML = rows.map((o) => `<tr><td>${esc(new Date(o.created_at).toLocaleString("es-BO", {dateStyle: "short", timeStyle: "short"}))}</td><td class="mono">${esc(o.number)}</td>
-      <td>${esc(o.customer)}<br><span class="muted">${esc(o.phone)}</span></td><td>${o.items.map((i) => `${i.quantity}× ${esc(i.name)}`).join("<br>")}</td>
+      <td>${esc(o.customer)}<br><span class="muted">${esc(o.phone)}</span>${o.invoice ? `<br><span class="muted">Factura: NIT ${esc(o.invoice.nit)} · ${esc(o.invoice.razon_social)}</span>` : ""}</td><td>${o.items.map((i) => `${i.quantity}× ${esc(i.name)}`).join("<br>")}</td>
       <td class="mono">${money(o.total)}</td><td>${esc(o.payment)}</td><td><span class="pill ${esc(o.status)}">${esc(ST[o.status] || o.status)}</span></td><td class="mono">${esc(o.yango_order_nr || "")}</td></tr>`).join("")
       || `<tr><td colspan="8" class="empty">Todavía no hay pedidos.</td></tr>`;
     $("#recentBody").innerHTML = rows.slice(0, 6).map((o) => `<tr><td><b>${esc(o.customer)}</b><br><span class="muted">${o.items.map((i) => `${i.quantity}× ${esc(i.name)}`).join(", ")}</span></td>

@@ -37,6 +37,8 @@ class Settings:
 
         self.public_base_url = os.getenv("PUBLIC_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
         self.admin_key = os.getenv("ADMIN_KEY", "dev-admin")
+        # Claves de admin adicionales (separadas por coma), p. ej. una por operador; se revocan borrando la variable.
+        self.admin_keys_extra = [k.strip() for k in os.getenv("ADMIN_KEYS_EXTRA", "").split(",") if len(k.strip()) >= 24]
         self.secret_key = os.getenv("SECRET_KEY", "dev-secret-change-me")
 
         # mock = Yango simulado (desarrollo y tests) | yango_web = food.yango.com real con Playwright

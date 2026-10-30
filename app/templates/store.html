@@ -147,6 +147,12 @@
       </div>
       <label class="field"><span>Celular</span><div class="phone"><b>+591</b><input id="fPhone" inputmode="numeric" autocomplete="tel-national" maxlength="12" placeholder="7XXXXXXX" required></div></label>
 
+      <label class="check" id="invToggle"><input type="checkbox" id="fInv"><span>Necesito factura</span></label>
+      <div class="two" id="invFields" hidden>
+        <label class="field"><span>NIT o CI</span><input id="fNit" inputmode="numeric" autocomplete="off" maxlength="20" placeholder="1234567"></label>
+        <label class="field"><span>Razón social</span><input id="fRazon" autocomplete="organization" maxlength="80" placeholder="Nombre o empresa"></label>
+      </div>
+
       <div class="step-h"><i>3</i>Pago al mensajero</div>
       <div class="pay">
         <label><input type="radio" name="pay" value="cash" checked><svg class="ic" aria-hidden="true"><use href="/static/icons.svg?v={{ v }}#banknote"></use></svg>Efectivo</label>

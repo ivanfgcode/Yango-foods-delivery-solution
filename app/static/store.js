@@ -570,6 +570,10 @@
   // ------------------------------------------------------------------ pedido
   const prof = store.get(PROFILE_KEY, {});
   $("#fFirst").value = prof.first_name || ""; $("#fLast").value = prof.last_name || ""; $("#fPhone").value = prof.phone || "";
+  // Factura (opcional): NIT o CI y razón social; se recuerdan para el próximo pedido.
+  $("#fNit").value = prof.nit || ""; $("#fRazon").value = prof.razon_social || "";
+  $("#fInv").checked = !!prof.nit; $("#invFields").hidden = !prof.nit;
+  $("#fInv").onchange = () => { $("#invFields").hidden = !$("#fInv").checked; if ($("#fInv").checked) $("#fNit").focus(); };
   const savedPoint = store.get(POINT_KEY, null);
   if (savedPoint && savedPoint.label) $("#addrPillText").textContent = savedPoint.label;
   async function placeOrder() {
@@ -578,12 +582,15 @@
     const checks = [[!point, "Marca tu ubicación en el mapa", null], [$("#fAddr").value.trim().length < 3, "Escribe la dirección", "#fAddr"],
       [$("#fRef").value.trim().length < 3, "Agrega número de casa o una referencia", "#fRef"], [$("#fFirst").value.trim().length < 2, "Escribe tu nombre", "#fFirst"],
       [$("#fLast").value.trim().length < 2, "Escribe tu apellido", "#fLast"], [!/^[67]\d{7}$/.test(phone.replace(/^591/, "")), "Escribe un celular válido (8 dígitos)", "#fPhone"]];
+    const inv = $("#fInv").checked, nit = $("#fNit").value.replace(/[\s.]/g, "");
+    if (inv) checks.push([!/^\d{4,15}(-?[0-9A-Za-z]{1,3})?$/.test(nit), "Escribe un NIT o CI válido", "#fNit"], [$("#fRazon").value.trim().length < 2, "Escribe la razón social para la factura", "#fRazon"]);
     const bad = checks.find((c) => c[0]);
     if (bad) { showErr(err, bad[1]); if (bad[2]) { $(bad[2]).focus({preventScroll: true}); $(bad[2]).scrollIntoView({behavior: "smooth", block: "center"}); } return; }
     showErr(err, "");
     const method = $('input[name="pay"]:checked').value;
     const body = {
-      customer: {first_name: $("#fFirst").value.trim(), last_name: $("#fLast").value.trim(), phone},
+      customer: {first_name: $("#fFirst").value.trim(), last_name: $("#fLast").value.trim(), phone,
+        ...(inv ? {nit, razon_social: $("#fRazon").value.trim()} : {})},
       address: {lat: point.lat, lon: point.lon, text: $("#fAddr").value.trim(), reference: $("#fRef").value.trim(), comment: $("#fNote").value.trim(), geocoded: point.geocoded || null},
       payment: {method, change_for: method === "cash" && $("#fChange").value.trim() ? $("#fChange").value.replace(",", ".") : null},
       items: cart.map((l) => ({item_id: l.item_id, quantity: l.quantity, options: l.options})),

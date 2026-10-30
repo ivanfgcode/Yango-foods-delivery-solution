@@ -241,3 +241,29 @@ def test_glass_theme_and_versioned_assets(client):
     r = client.put("/api/wrap-roll/portal/theme", headers=ADMIN, json={"glass": False})
     assert r.status_code == 200 and r.json()["glass"] is False
     assert 'class="motion glass' not in client.get("/wrap-roll").text
+
+
+def test_order_with_invoice(client, monkeypatch):
+    """NIT y razón social: opcionales, juntos, validados; van al comentario de Yango y a la vista del pedido."""
+    monkeypatch.setattr(settings, "order_placement_enabled", True)
+    from app import runtime
+    src = runtime.get_runtime().source
+    bad = order_body(client)
+    bad["customer"] = {**bad["customer"], "nit": "12AB", "razon_social": "Juan"}
+    assert client.post("/api/wrap-roll/orders", json=bad).status_code == 422
+    bad["customer"] = {**bad["customer"], "nit": "1234567", "razon_social": ""}
+    assert "razón social" in client.post("/api/wrap-roll/orders", json=bad).json()["detail"]
+    body = order_body(client)
+    body["customer"] = {**body["customer"], "nit": "1.234.567", "razon_social": "Pérez SRL"}
+    r = client.post("/api/wrap-roll/orders", json=body)
+    o = wait_status(client, r.json()["token"], {"colocado"})
+    assert o["invoice"] == {"nit": "1234567", "razon_social": "Pérez SRL"}
+    assert "FACTURA: NIT 1234567 a nombre de Pérez SRL" in src.placed[-1]["comment"]
+    r = client.post("/api/wrap-roll/orders", json=order_body(client))
+    assert r.json()["order"]["invoice"] is None
+
+
+def test_extra_admin_key(client, monkeypatch):
+    monkeypatch.setattr(settings, "admin_keys_extra", ["k" * 32])
+    assert client.get("/api/admin/partners", headers={"x-admin-key": "k" * 32}).status_code == 200
+    assert client.get("/api/admin/partners", headers={"x-admin-key": "k" * 31}).status_code == 401

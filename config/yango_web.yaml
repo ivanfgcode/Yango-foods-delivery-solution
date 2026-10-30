@@ -61,6 +61,11 @@ order:
     - {action: click, names: ["{address_text}"], optional: true}
     - {action: fill, labels: ["Departamento", "Apartment", "Depto"], value: "{reference}", optional: true}
     - {action: fill, labels: ["Comentario para el mensajero", "Comment for courier", "Comentario", "Comment"], value: "{comment}"}
+    # Factura: Yango la muestra al local como «Usuario» y «NIT del usuario» (lo lee restotec-yango). Por verificar
+    # los textos exactos del checkout; si no aparecen, el NIT igual va en el comentario («FACTURA: NIT ...»).
+    - {action: click, if: nit, names: ["Factura", "Necesito factura", "Datos para la factura", "Invoice"], optional: true}
+    - {action: fill, if: nit, labels: ["NIT", "NIT o CI", "NIT del usuario", "TIN", "Customer's TIN"], value: "{nit}", optional: true}
+    - {action: fill, if: nit, labels: ["Razón social", "Nombre para la factura", "Nombre", "Name"], value: "{razon_social}", optional: true}
     - {action: click, names: ["Efectivo", "Cash", "Наличные"]}
     - {action: click, names: ["Hacer pedido", "Realizar pedido", "Place order", "Pedir", "Оформить заказ"]}
     - {action: capture, response_regex: "/api/v1/orders|eats-orders|order_nr", json_paths: ["order_nr", "orderNr", "order.order_nr"]}
