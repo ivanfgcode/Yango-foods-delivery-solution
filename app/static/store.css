@@ -1,8 +1,8 @@
 /* Tienda pública. Colores, tipografías, tamaños y esquinas vienen del tema del partner (variables en <body>).
-[hidden]{display:none!important}
    Movimiento (mismo lenguaje que aportea): aparición al hacer scroll, entrada del hero, Ken Burns en la portada,
    brillo en botones, onda al pulsar, foco que sigue al ratón y «vuelo» al carrito. Se apaga con «reducir movimiento». */
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 html{-webkit-text-size-adjust:100%;scroll-behavior:smooth}
 body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font-body);font-size:var(--base-size);line-height:1.45;-webkit-font-smoothing:antialiased;
   --line:color-mix(in srgb,var(--text) 9%,transparent);--soft:color-mix(in srgb,var(--text) 5%,var(--bg));
