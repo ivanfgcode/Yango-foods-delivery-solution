@@ -51,6 +51,22 @@ CREATE TABLE IF NOT EXISTS branches (
     updated_at TEXT NOT NULL
 );
 
+-- Plan de Menu Deli Bo por partner: precio por sucursal, meses que paga Yango, permanencia y acuerdo aceptado.
+CREATE TABLE IF NOT EXISTS billing (
+    partner_id INTEGER PRIMARY KEY REFERENCES partners(id),
+    price_bs REAL NOT NULL,
+    branches INTEGER,                     -- sucursales contratadas; NULL = las que conocemos en Yango
+    sponsored_months INTEGER NOT NULL,    -- meses pagados por Yango al empezar
+    min_paid_months INTEGER NOT NULL,     -- permanencia mínima después del patrocinio
+    start_date TEXT NOT NULL,             -- YYYY-MM-DD
+    paid_until TEXT,                      -- último día cubierto por pagos del partner (lo marca el equipo)
+    accepted_at TEXT,
+    accepted_name TEXT,
+    accepted_ip TEXT,
+    terms_version TEXT,
+    updated_at TEXT NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS branch_menus (
     place_slug TEXT PRIMARY KEY,
     data TEXT NOT NULL,

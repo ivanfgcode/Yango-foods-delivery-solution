@@ -1,4 +1,4 @@
-# Yango Foods · Pedidos propios
+# Menu Deli Bo · Pedidos propios con delivery de Yango
 
 Web de pedidos propia para cada partner (`dominio.com/<restaurante>`) con el delivery hecho por Yango.
 Cada partner tiene un **restaurante oculto** en Yango Foods, visible solo para una cuenta cliente nuestra
@@ -68,6 +68,18 @@ Cada partner tiene un **restaurante oculto** en Yango Foods, visible solo para u
 | `/<slug>/pedido/<token>` | Cliente: estado del pedido |
 | `/<slug>/portal` | Partner: diseño (logo, portada, colores, tipografías, tamaños, cuadrícula/lista), textos, videos de TikTok con su producto, pausar pedidos, ver pedidos |
 | `/admin` | Equipo: **Resumen** (ventas, pedidos, por atender, ticket y envío medio, lo más vendido, restaurantes, hora pico, mejor día; por periodo y restaurante), pedidos (marcar colocado, reintentar, copiar comentario), restaurantes, cuentas Yango (SMS o cookie), eventos |
+
+## Plan Menu Deli Bo (monetización)
+
+* **Precio**: `PLAN_PRICE_BS` (Bs150) por sucursal y por mes; 0 % de comisión por pedido.
+* **Meses pagados por Yango**: `PLAN_SPONSORED_MONTHS` (3) al empezar. **Permanencia**: `PLAN_MIN_PAID_MONTHS` (3) meses
+  pagados después del patrocinio; luego mes a mes.
+* El partner ve en su panel (`/<slug>/portal`) el plan, el calendario de cobros, sus sucursales y el **acuerdo**, que acepta
+  con su nombre (se guarda fecha, IP y versión). Cobro manual por QR o transferencia (`PLAN_PAYMENT_INFO`).
+* El equipo ajusta cada plan en Admin → Restaurantes → **Plan** (precio, sucursales, meses de Yango, permanencia, inicio y
+  «pagado hasta»). Estados: pagado por Yango, activo, pago pendiente, sin aceptar.
+* El texto del acuerdo está en `app/templates/portal.html` (versión `billing.TERMS_VERSION`): revisarlo con un abogado
+  antes de usarlo con clientes; si cambia, subir la versión para que se vuelva a aceptar.
 
 ## Sesiones de las cuentas
 

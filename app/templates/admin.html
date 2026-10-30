@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Admin · Pedidos propios</title>
+<title>Admin · Menu Deli Bo</title>
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="/static/admin.css?v={{ v }}">
@@ -17,7 +17,7 @@
 {% if not logged %}
 <section class="in-panel acceso">
   <div class="in-ident"><span class="in-glifo" aria-hidden="true"><svg viewBox="0 0 32 32"><use href="#glifo"/></svg></span>
-    <div><h1>Pedidos propios</h1><p class="in-sub">Admin · delivery con Yango</p></div></div>
+    <div><h1>Menu Deli Bo</h1><p class="in-sub">Admin · delivery con Yango</p></div></div>
   <form id="f"><input type="password" id="k" required placeholder="Clave de administrador" autocomplete="current-password" aria-label="Clave de administrador">
   <button class="btn acc">Entrar</button><div class="msg bad" id="m"></div></form></section>
 <script>
@@ -28,7 +28,7 @@ document.getElementById("f").onsubmit = async (e) => { e.preventDefault();
 {% else %}
 <header class="barra">
   <div class="in-ident"><span class="in-glifo" aria-hidden="true"><svg viewBox="0 0 32 32"><use href="#glifo"/></svg></span>
-    <div><h1>Pedidos propios</h1><p class="in-sub" id="src">—</p></div></div>
+    <div><h1>Menu Deli Bo</h1><p class="in-sub" id="src">—</p></div></div>
   <nav class="tabs" id="tabs" aria-label="Secciones"><i class="pildora" aria-hidden="true"></i><button class="on" data-t="summary">Resumen</button><button data-t="orders">Pedidos</button><button data-t="store">Tienda</button><button data-t="partners">Restaurantes</button><button data-t="accounts">Cuentas Yango</button><button data-t="events">Eventos</button></nav>
   <div class="in-cab-der">
     <button class="in-chip" id="chipBot" type="button" aria-label="Estado de las cuentas Yango"><i class="in-punto" aria-hidden="true"></i><span id="chipTxt">Cuentas</span></button>
@@ -134,7 +134,7 @@ document.getElementById("f").onsubmit = async (e) => { e.preventDefault();
         <label class="f" style="flex:1 1 140px"><span>Contraseña portal</span><input name="password" type="password" minlength="8"></label>
         <button class="btn acc" style="margin-bottom:12px">Crear</button>
       </form><div class="msg" id="npMsg"></div></div>
-    <div class="card"><h2>Restaurantes</h2><div class="tw"><table><thead><tr><th>Restaurante</th><th>Cuenta</th><th>Local Yango</th><th>Menú</th><th>Estado</th><th></th></tr></thead><tbody id="pb"></tbody></table></div></div>
+    <div class="card"><h2>Restaurantes</h2><div class="tw"><table><thead><tr><th>Restaurante</th><th>Cuenta</th><th>Local Yango</th><th>Menú</th><th>Plan Menu Deli Bo</th><th>Estado</th><th></th></tr></thead><tbody id="pb"></tbody></table></div></div>
   </section>
 
   <section id="t-accounts" class="sec" hidden>
@@ -515,6 +515,13 @@ document.getElementById("f").onsubmit = async (e) => { e.preventDefault();
   $("#pkClose").onclick = cerrarPick; $("#pkFondo").onclick = cerrarPick;
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && pk) cerrarPick(); });
 
+  const PLAN = {patrocinado: ["ok", "pagado por Yango"], activo: ["ok", "activo"], pago_pendiente: ["manual", "pago pendiente"], sin_aceptar: ["revision", "sin aceptar"]};
+  function planCell(b) {
+    if (!b) return "—";
+    const [cls, txt] = PLAN[b.state] || ["", b.state];
+    return `<span class="pill ${cls}">${txt}</span><br><span class="muted">${b.branches} suc. · ${CUR}${b.monthly_bs}/mes · Yango hasta ${esc(b.sponsored_until)}</span>
+      ${b.due_bs ? `<br><span class="pill manual">debe ${CUR}${b.due_bs}</span>` : ""}${b.accepted_name ? `<br><span class="muted">aceptó: ${esc(b.accepted_name)}</span>` : ""}`;
+  }
   async function partnersTab() {
     const rows = await api("/partners");
     $("#pb").innerHTML = rows.map((p) => `<tr>
@@ -522,9 +529,29 @@ document.getElementById("f").onsubmit = async (e) => { e.preventDefault();
       <td class="mono">${esc(p.account)}</td>
       <td>${p.place_slug ? `<span class="mono">${esc(p.place_slug)}</span><br><span class="muted">${esc(p.place_address || "")}</span>` : `<span class="muted">sin resolver</span>`}<br><a class="muted" href="${esc(p.yango_url || "#")}" target="_blank" rel="noopener">${esc((p.yango_url || "").slice(0, 60))}</a></td>
       <td>${p.menu ? `${esc(when(p.menu.synced_at))}${p.menu.error ? `<br><span class="pill error">${esc(p.menu.error)}</span>` : ""}` : `<span class="muted">—</span>`}</td>
+      <td>${planCell(p.billing)}</td>
       <td><span class="pill ${p.enabled ? "ok" : "cancelado"}">${p.enabled ? "activo" : "inactivo"}</span> ${p.accepting_orders ? "" : `<span class="pill manual">pausado</span>`}</td>
-      <td style="white-space:nowrap"><button class="btn sm" data-sync="${esc(p.slug)}">Sincronizar</button> <button class="btn ghost sm" data-pw="${esc(p.slug)}">Contraseña</button> <button class="btn ghost sm" data-toggle="${esc(p.slug)}" data-on="${p.enabled ? 1 : 0}">${p.enabled ? "Desactivar" : "Activar"}</button></td></tr>`).join("")
-      || `<tr><td colspan="6" class="muted">Sin restaurantes.</td></tr>`;
+      <td style="white-space:nowrap"><button class="btn sm" data-plan="${esc(p.slug)}">Plan</button> <button class="btn sm" data-sync="${esc(p.slug)}">Sincronizar</button> <button class="btn ghost sm" data-pw="${esc(p.slug)}">Contraseña</button> <button class="btn ghost sm" data-toggle="${esc(p.slug)}" data-on="${p.enabled ? 1 : 0}">${p.enabled ? "Desactivar" : "Activar"}</button></td></tr>`).join("")
+      || `<tr><td colspan="7" class="muted">Sin restaurantes.</td></tr>`;
+    $$("[data-plan]").forEach((b) => (b.onclick = () => {
+      const tr = b.closest("tr"), next = tr.nextElementSibling;
+      if (next && next.classList.contains("plan-row")) return next.remove();
+      const pb = rows.find((x) => x.slug === b.dataset.plan).billing;
+      tr.insertAdjacentHTML("afterend", `<tr class="plan-row"><td colspan="7"><div class="row" style="align-items:flex-end">
+        <label class="f" style="width:130px;margin:0"><span>Bs por sucursal</span><input name="price_bs" type="number" min="0" step="1" value="${pb.price_bs}"></label>
+        <label class="f" style="width:130px;margin:0"><span>Sucursales (vacío = auto)</span><input name="branches" type="number" min="1" value="${pb.branches_contracted ?? ""}" placeholder="${pb.branches}"></label>
+        <label class="f" style="width:130px;margin:0"><span>Meses pagados por Yango</span><input name="sponsored_months" type="number" min="0" value="${pb.sponsored_months}"></label>
+        <label class="f" style="width:130px;margin:0"><span>Permanencia (meses)</span><input name="min_paid_months" type="number" min="0" value="${pb.min_paid_months}"></label>
+        <label class="f" style="width:150px;margin:0"><span>Inicio</span><input name="start_date" type="date" value="${pb.start_date}"></label>
+        <label class="f" style="width:150px;margin:0"><span>Pagado hasta</span><input name="paid_until" type="date" value="${pb.paid_until || ""}"></label>
+        <button class="btn acc sm" data-save-plan="${esc(b.dataset.plan)}">Guardar</button><span class="msg"></span></div></td></tr>`);
+      const row = tr.nextElementSibling;
+      row.querySelector("[data-save-plan]").onclick = async () => {
+        const body = Object.fromEntries([...row.querySelectorAll("input")].map((i) => [i.name, i.value === "" ? null : (i.type === "number" ? +i.value : i.value)]));
+        try { await post(`/partners/${b.dataset.plan}/billing`, body, "PUT"); partnersTab(); }
+        catch (e) { const m = row.querySelector(".msg"); m.className = "msg bad"; m.textContent = e.message; }
+      };
+    }));
     $$("[data-sync]").forEach((b) => (b.onclick = async () => { b.disabled = true; b.textContent = "…"; try { const r = await post(`/partners/${b.dataset.sync}/sync`, {}); alert(`Menú: ${r.items} productos en ${r.categories} categorías`); } catch (e) { alert(e.message); } partnersTab(); }));
     $$("[data-pw]").forEach((b) => (b.onclick = async () => { const pw = prompt("Nueva contraseña del portal (mín. 8)"); if (!pw) return; try { await post(`/partners/${b.dataset.pw}/password`, {password: pw}); alert("Listo"); } catch (e) { alert(e.message); } }));
     $$("[data-toggle]").forEach((b) => (b.onclick = async () => { await post(`/partners/${b.dataset.toggle}`, {enabled: b.dataset.on === "1" ? 0 : 1}, "PUT"); partnersTab(); }));

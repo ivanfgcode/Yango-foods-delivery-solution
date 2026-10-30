@@ -424,3 +424,5 @@ footer.foot{color:var(--muted);font-size:.82rem;text-align:center;padding:36px 1
 .glass .sheet .fo .btn,.glass .float-cart .btn .pill{background-image:linear-gradient(180deg,rgba(255,255,255,.24),rgba(255,255,255,0) 58%)}
 .glass .sheet .fo .btn{box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 12px 28px -14px color-mix(in srgb,var(--primary) 80%,transparent)}
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.glass .float-cart .btn,.glass #top .cart-btn{background:rgba(28,28,30,.9)}}
+.foot .powered{margin-top:10px;font-size:.78rem;opacity:.6}
+.foot .powered b{font-weight:800}

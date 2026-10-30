@@ -610,7 +610,7 @@
       try { if (!saved) throw e; await loadMenu(null); }
       catch (e2) { $("#menu").innerHTML = `<p class="note" style="padding:40px 0">${esc(e2.message)}</p>`; return; }
     }
-    if (!saved) return openLoc(true);
+    if (!saved) return new URLSearchParams(location.search).has("preview") ? undefined : openLoc(true);  // vista previa del portal: sin preguntar
     point = {lat: saved.lat, lon: saved.lon};
     refreshEta(saved);
     // La sucursal asignada puede cambiar (horarios, zonas): se revisa sin molestar.

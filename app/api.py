@@ -17,7 +17,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from app import (auth, branches, dashboard, db, geo, menu as menu_mod, orders, partners, quotes, runtime as runtime_mod, themes,
+from app import (auth, billing, branches, dashboard, db, geo, menu as menu_mod, orders, partners, quotes, runtime as runtime_mod, themes,
                  tiktok, upsell)
 from app.config import ROOT, settings
 from bot import sessions
@@ -395,6 +395,35 @@ async def portal_profile(request: Request, slug: str, body: Dict[str, Any] = Bod
     return partners.set_profile(slug, body)
 
 
+@app.get("/api/{slug}/portal/summary")
+async def portal_summary(request: Request, slug: str, days: int = 30):
+    """Ventas del restaurante para el inicio del portal (mismos números que el resumen del admin)."""
+    auth.require_portal(request, slug)
+    p = _partner_or_404(slug, public=False)
+    return dashboard.summary(max(0, min(days, 3650)), p["id"])
+
+
+@app.get("/api/{slug}/portal/billing")
+async def portal_billing(request: Request, slug: str):
+    auth.require_portal(request, slug)
+    p = _partner_or_404(slug, public=False)
+    return {**billing.summary(p), "payment_info": settings.plan_payment_info}
+
+
+@app.post("/api/{slug}/portal/billing/accept")
+async def portal_billing_accept(request: Request, slug: str, body: Dict[str, Any] = Body(...)):
+    """El partner acepta el acuerdo (nombre de quien acepta, fecha, IP y versión de los términos)."""
+    auth.require_portal(request, slug)
+    p = _partner_or_404(slug, public=False)
+    if body.get("accept") is not True:
+        raise HTTPException(422, "Marca la casilla para aceptar el acuerdo")
+    ip = request.headers.get("x-forwarded-for", "").split(",")[0].strip() or (request.client.host if request.client else "")
+    try:
+        return {**billing.accept(p, str(body.get("name") or ""), ip), "payment_info": settings.plan_payment_info}
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+
+
 @app.put("/api/{slug}/portal/accepting")
 async def portal_accepting(request: Request, slug: str, body: Dict[str, Any] = Body(...)):
     auth.require_portal(request, slug)
@@ -551,6 +580,10 @@ async def admin_partners(request: Request):
         m = db.one("SELECT synced_at, error, length(data) n FROM menus WHERE partner_id=?", (p["id"],))
         p.pop("portal_password_hash", None)
         p["menu"] = dict(m) if m else None
+        b = billing.summary(p)
+        p["billing"] = {k: b[k] for k in ("state", "branches", "monthly_bs", "price_bs", "sponsored_months", "min_paid_months",
+                                          "start_date", "sponsored_until", "commitment_until", "paid_until", "due_bs",
+                                          "accepted_at", "accepted_name", "branches_contracted")}
         out.append(p)
     return out
 
@@ -575,6 +608,17 @@ async def admin_update_partner(request: Request, slug: str, body: Dict[str, Any]
     p = partners.update(slug, **body)
     p.pop("portal_password_hash", None)
     return p
+
+
+@app.put("/api/admin/partners/{slug}/billing")
+async def admin_partner_billing(request: Request, slug: str, body: Dict[str, Any] = Body(...)):
+    """Plan del partner: precio por sucursal, sucursales, meses que paga Yango, permanencia, inicio, pagado hasta."""
+    auth.require_admin(request)
+    p = _partner_or_404(slug, public=False)
+    try:
+        return billing.update(p, body)
+    except (ValueError, TypeError) as e:
+        raise HTTPException(422, f"Dato inválido: {e}")
 
 
 @app.post("/api/admin/partners/{slug}/password")
