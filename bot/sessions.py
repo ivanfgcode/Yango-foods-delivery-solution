@@ -79,6 +79,10 @@ def to_storage_state(raw: Any) -> Dict[str, Any]:
     yango = [c for c in conv if "yango" in c["domain"] or "yandex" in c["domain"]]
     if not yango:
         raise SessionImportError("No hay cookies de yango.com en el archivo")
+    # Yandex Browser (y algunas extensiones) exportan Session_id con la firma tapada: así Yango no la acepta.
+    if any(c["name"] == "Session_id" and "XXXXXXXX" in c["value"] for c in conv):
+        raise SessionImportError("La cookie Session_id viene censurada (termina en XXXX). Expórtala desde Chrome o "
+                                 "Safari, o copia la línea «cookie:» de la pestaña Red de las herramientas del navegador.")
     return {"cookies": conv, "origins": origins}
 
 

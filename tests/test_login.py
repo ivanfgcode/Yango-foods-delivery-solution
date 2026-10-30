@@ -92,3 +92,10 @@ def client_no_sync(fresh_db):
     api.app.state.background = False
     with TestClient(api.app) as c:
         yield c
+
+
+def test_masked_session_cookie_rejected():
+    import pytest
+    from bot.sessions import SessionImportError, to_storage_state
+    with pytest.raises(SessionImportError, match="censurada"):
+        to_storage_state([{"name": "Session_id", "value": "3:1.5|60:1.2.XXXXXXXXXXXXXXXXXXXX", "domain": ".yango.com"}])
