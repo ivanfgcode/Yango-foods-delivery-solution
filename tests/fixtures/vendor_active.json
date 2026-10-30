@@ -1,0 +1,123 @@
+{
+ "orders_by_status": [
+  {
+   "status": "new",
+   "orders": [
+    {
+     "order_nr": "261030-BO0376630",
+     "place_id": 6574723,
+     "status": "new",
+     "service": "eda",
+     "flow": "native",
+     "sum": "32",
+     "items_count": 1,
+     "created_at": "2026-10-30T18:46:35.649552+00:00",
+     "end_date": "2026-10-30T19:01:35+00:00"
+    },
+    {
+     "order_nr": "261030-BO8233267",
+     "place_id": 2713773,
+     "status": "new",
+     "service": "eda",
+     "flow": "native",
+     "sum": "71",
+     "items_count": 5,
+     "created_at": "2026-10-30T18:46:28.865444+00:00",
+     "end_date": "2026-10-30T19:05:28+00:00"
+    }
+   ]
+  },
+  {
+   "status": "accepted",
+   "orders": [
+    {
+     "order_nr": "261030-BO2471219",
+     "place_id": 3188730,
+     "status": "accepted",
+     "service": "eda",
+     "flow": "native",
+     "sum": "35",
+     "items_count": 1,
+     "created_at": "2026-10-30T18:29:36.570043+00:00",
+     "end_date": "2026-10-30T18:36:36+00:00",
+     "courier_approximate_arrival_time": "2026-10-30T18:45:47.62991+00:00",
+     "delivery_status": "arrived_to_restaurant"
+    },
+    {
+     "order_nr": "261030-BO4046646",
+     "place_id": 3188730,
+     "status": "accepted",
+     "service": "eda",
+     "flow": "native",
+     "sum": "64",
+     "items_count": 2,
+     "created_at": "2026-10-30T18:32:09.41806+00:00",
+     "end_date": "2026-10-30T18:39:09+00:00",
+     "courier_approximate_arrival_time": "2026-10-30T18:42:17.667+00:00",
+     "delivery_status": "arrived_to_restaurant"
+    },
+    {
+     "order_nr": "261030-BO5107186",
+     "place_id": 3079558,
+     "status": "accepted",
+     "service": "eda",
+     "flow": "native",
+     "sum": "37",
+     "items_count": 4,
+     "created_at": "2026-10-30T18:21:18.743503+00:00",
+     "end_date": "2026-10-30T18:41:18+00:00",
+     "courier_approximate_arrival_time": "2026-10-30T18:39:46.425+00:00",
+     "delivery_status": "arrived_to_restaurant"
+    }
+   ]
+  },
+  {
+   "status": "ready",
+   "orders": [
+    {
+     "order_nr": "261030-BO4586290",
+     "place_id": 3079553,
+     "status": "ready",
+     "service": "eda",
+     "flow": "native",
+     "sum": "39",
+     "items_count": 4,
+     "created_at": "2026-10-30T17:57:04.677139+00:00",
+     "end_date": "2026-10-30T18:17:04+00:00",
+     "courier_approximate_arrival_time": "2026-10-30T18:21:53.53+00:00",
+     "delivery_status": "arrived_to_restaurant"
+    },
+    {
+     "order_nr": "261030-BO2434931",
+     "place_id": 3273580,
+     "status": "ready",
+     "service": "eda",
+     "flow": "native",
+     "sum": "52",
+     "items_count": 1,
+     "created_at": "2026-10-30T18:31:25.19267+00:00",
+     "end_date": "2026-10-30T18:38:24+00:00",
+     "courier_approximate_arrival_time": "2026-10-30T18:45:37.452+00:00",
+     "delivery_status": "accepted"
+    },
+    {
+     "order_nr": "261030-BO6119923",
+     "place_id": 6574723,
+     "status": "ready",
+     "service": "eda",
+     "flow": "native",
+     "sum": "35",
+     "items_count": 1,
+     "created_at": "2026-10-30T18:29:06.766145+00:00",
+     "end_date": "2026-10-30T18:44:06+00:00",
+     "courier_approximate_arrival_time": "2026-10-30T18:47:48.698059+00:00",
+     "delivery_status": "accepted"
+    }
+   ]
+  },
+  {
+   "status": "in_delivery",
+   "orders": []
+  }
+ ]
+}

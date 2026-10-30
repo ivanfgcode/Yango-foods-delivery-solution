@@ -108,3 +108,15 @@ def test_pwa_files(client):
     page = client.get(f"/wrap-roll/pedido/{token}").text
     assert "manifest.webmanifest?order=" in page and "Agregar a inicio" in page and "Activar avisos" in page
     assert orders.get(token)["track_stage"] is None
+
+
+def test_parse_real_vendor_fixture():
+    """Respuesta real de vendor.yango.com (2026-10-30), recortada: sin datos de clientes."""
+    from pathlib import Path
+    body = json.loads((Path(__file__).parent / "fixtures" / "vendor_active.json").read_text())
+    a = tracking.parse_vendor_active(body)
+    assert a and all(nr.startswith("261030-BO") for nr in a)
+    expected = {"new": "recibido", "accepted": "preparando", "ready": "listo", "in_delivery": "en_camino"}
+    for g in body["orders_by_status"]:
+        for o in g["orders"]:
+            assert a[o["order_nr"]]["stage"] == expected[g["status"]]

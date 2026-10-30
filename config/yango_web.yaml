@@ -67,7 +67,8 @@ order:
   # Botones que el bot NUNCA pulsa.
   never_click: ["Cancelar pedido", "Cancel order", "Pagar con tarjeta", "Card", "Agregar tarjeta"]
 
-# Vendor app del restaurante (cuenta del local, partners.vendor_account). Igual que restotec-yango
+# Vendor app del restaurante (cuenta del local, partners.vendor_account). VERIFICADO 2026-10-30 con una cuenta de
+# 57 locales: la sesión es el token de localStorage persist:auth (cabeceras x-oauth y x-partner-id). Igual que restotec-yango
 # (bot/sources/yango_web.py, docs/VENDOR_APP.md, verificado 2026-10-04/07). Solo lectura: nunca se pulsa nada.
 vendor:
   base_url: "https://vendor.yango.com"

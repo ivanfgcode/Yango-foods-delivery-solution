@@ -162,9 +162,10 @@ class VendorRuntime:
     async def _on_request(self, request: Any) -> None:
         if self.cfg["api_prefix"] + "/" in request.url:
             try:
-                h = await request.all_headers()  # .headers oculta las de seguridad (Authorization incluida)
-                self.headers = {k: v for k, v in h.items()
-                                if not k.startswith(":") and k.lower() not in ("content-length", "host", "cookie")}
+                h = await request.all_headers()  # .headers oculta las de seguridad (x-oauth incluida)
+                if h.get("x-oauth"):  # sin token la web también llama (ab/configs): esas no sirven
+                    self.headers = {k: v for k, v in h.items() if not k.startswith(":")
+                                    and k.lower() not in ("content-length", "host", "cookie", "x-idempotency-token")}
             except Exception:
                 pass
 
@@ -187,10 +188,14 @@ class VendorRuntime:
             if re.search(self.cfg["logged_out_url_regex"], self.page.url):
                 await self.close()
                 raise SessionDown(f"vendor {self.account}: la vendor app pide iniciar sesión")
-            for _ in range(20):  # la web pide los activos al cargar: de ahí salen las cabeceras
+            for _ in range(30):  # la web pide los activos al cargar: de ahí salen las cabeceras
                 if self.headers:
                     break
                 await asyncio.sleep(0.5)
+            if not self.headers:
+                # La sesión de la vendor app es un token en localStorage (persist:auth), no una cookie.
+                await self.close()
+                raise SessionDown(f"vendor {self.account}: sin token de la vendor app (persist:auth vencido o falta)")
 
     async def close(self) -> None:
         if self.context is not None:
