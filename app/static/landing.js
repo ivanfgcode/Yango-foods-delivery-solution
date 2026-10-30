@@ -38,11 +38,20 @@
     stage.addEventListener("pointerleave", () => (phone.style.transform = ""));
   }
 
-  // La barra de arriba se esconde al bajar y vuelve al subir.
+  // Barra de arriba: fondo al bajar; se esconde al seguir bajando y vuelve al subir. Botón fijo abajo en el móvil.
   let lastY = 0;
-  addEventListener("scroll", () => {
-    const y = scrollY; $("#nav").style.transform = y > 400 && y > lastY ? "translateY(-130%)" : ""; lastY = y;
-  }, {passive: true});
+  const onScroll = () => {
+    const y = scrollY;
+    $("#nav").classList.toggle("solid", y > 30);
+    $("#nav").style.transform = y > 500 && y > lastY ? "translateY(-110%)" : "";
+    $("#stickyCta").classList.toggle("on", y > 520 && innerHeight + y < document.body.scrollHeight - 260);
+    lastY = y;
+  };
+  addEventListener("scroll", onScroll, {passive: true}); onScroll();
+  const drawer = $("#drawer");
+  const setMenu = (on) => { drawer.classList.toggle("open", on); drawer.setAttribute("aria-hidden", String(!on)); $("#menuBtn").setAttribute("aria-expanded", String(on)); document.body.style.overflow = on ? "hidden" : ""; };
+  $("#menuBtn").onclick = () => setMenu(true); $("#menuClose").onclick = () => setMenu(false);
+  $$("a", drawer).forEach((a) => a.addEventListener("click", () => setMenu(false)));
 
   // Antes / con Menu Deli Bo: los pasos aparecen uno a uno.
   const TOTAL = {bad: ["25 min", "y una persona pendiente del celular"], good: ["2 min", "y nadie tuvo que contestar un chat"]};

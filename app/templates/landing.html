@@ -4,12 +4,12 @@
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Menu Deli Bo · Tu web de pedidos con el delivery de Yango</title>
 <meta name="description" content="Tu restaurante vendiendo por su propia web, sin contestar chats ni buscar moto. Menú y envío en vivo con Yango, 0 % de comisión. Los primeros meses los paga Yango.">
-<meta name="theme-color" content="#F7F5F0">
+<meta name="theme-color" content="#0A0A0B">
 <meta property="og:title" content="Menu Deli Bo · Tu web de pedidos con el delivery de Yango">
 <meta property="og:description" content="Vende por tu propia web. Yango entrega. 0 % de comisión por pedido.">
 <meta property="og:image" content="/static/landing/phone-store.jpg?v={{ v }}">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600&display=swap">
 <link rel="stylesheet" href="/static/landing.css?v={{ v }}">
 </head>
 <body>
@@ -24,8 +24,16 @@
     <a class="logo" href="#"><span class="logo-mark"><svg><use href="#md-mark"/></svg></span>Menu Deli <em>Bo</em></a>
     <nav class="links"><a href="#problemas">Problemas</a><a href="#como">Cómo funciona</a><a href="#ahorro">Ahorro</a><a href="#precio">Precio</a><a href="#preguntas">Preguntas</a></nav>
     <a class="btn pri sm" href="{{ wa }}">Quiero mi web</a>
+    <button class="menu-btn" id="menuBtn" aria-label="Abrir menú" aria-expanded="false">{{ ic("menu") }}</button>
   </div>
 </header>
+<div class="drawer" id="drawer" aria-hidden="true">
+  <div class="top"><a class="logo" href="#"><span class="logo-mark"><svg><use href="#md-mark"/></svg></span>Menu Deli <em>Bo</em></a>
+    <button class="close" id="menuClose" aria-label="Cerrar menú">{{ ic("x") }}</button></div>
+  <a class="l" href="#problemas">Problemas</a><a class="l" href="#como">Cómo funciona</a><a class="l" href="#ahorro">Ahorro</a><a class="l" href="#precio">Precio</a><a class="l" href="#preguntas">Preguntas</a>
+  <a class="btn pri" href="{{ wa }}">Quiero mi web</a>
+</div>
+<a class="sticky-cta" id="stickyCta" href="{{ wa }}">Habla con nosotros</a>
 
 <main>
   <!-- HERO -->
@@ -81,7 +89,7 @@
   <section class="sec dark" id="como">
     <div class="wrap">
       <div class="sec-h rv"><span class="eyebrow">{{ ic("timer") }}Un pedido, de principio a fin</span>
-        <h2 class="h2" style="color:#fff">De 25 minutos de chat a <em>2 toques.</em></h2>
+        <h2 class="h2" >De 25 minutos de chat a <em>2 toques.</em></h2>
         <p class="lead">Mira lo que pasa con un pedido por WhatsApp y con tu web de Menu Deli Bo.</p></div>
       <div class="vs-toggle rv" role="tablist"><button class="on" data-vs="bad" role="tab">Por WhatsApp</button><button data-vs="good" class="good" role="tab">Con Menu Deli Bo</button></div>
       <div class="flow" id="flowBad">
@@ -174,7 +182,7 @@
         <div class="calc-out rv" style="--d:1">
           <span class="eyebrow">{{ ic("sparkles") }}Frente a vender por una app de delivery</span>
           <div class="big" id="oSave">Bs0</div>
-          <div style="color:#A7A9B0">te quedas cada mes: la comisión que no pagas, menos el plan</div>
+          <div class="sub">te quedas cada mes: la comisión que no pagas, menos el plan</div>
           <div class="out-lines">
             <div><span>Ventas por tu web</span><b id="oSales">—</b></div>
             <div><span>Comisión que pagarías en una app</span><b id="oCommission">—</b></div>
@@ -195,7 +203,7 @@
         <div class="price-card rv">
           <span class="tag">Plan Pro</span>
           <div class="price-big"><b>{{ currency }}{{ price|int }}</b><span>por sucursal / mes</span></div>
-          <div style="color:#A7A9B0">0 % de comisión por pedido · sin costo de instalación</div>
+          <div class="sub">0 % de comisión por pedido · sin costo de instalación</div>
           <div class="ticks" style="margin-top:24px">
             <div>{{ ic("circle-check") }}Web de pedidos con tu marca</div>
             <div>{{ ic("circle-check") }}Menú y precios sincronizados con Yango, por sucursal</div>
@@ -206,7 +214,7 @@
           <a class="btn pri" style="margin-top:28px;width:100%" href="{{ wa }}">Quiero mi web</a>
         </div>
         <div class="yango-box rv" style="--d:1">
-          <div><span class="eyebrow" style="color:#fff">{{ ic("gift") }}Patrocinado por Yango</span>
+          <div><span class="eyebrow">{{ ic("gift") }}Patrocinado por Yango</span>
             <h3 style="margin-top:12px">Tus primeros {{ sponsored }} meses los paga Yango.</h3>
             <p style="margin-top:10px;opacity:.9">Empiezas a vender desde el primer día sin pagar nada. Después, {{ currency }}{{ price|int }} por sucursal al mes, con una permanencia mínima de {{ min_paid }} meses y luego mes a mes.</p></div>
           <div class="months">

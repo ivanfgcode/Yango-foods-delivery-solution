@@ -2,14 +2,14 @@
    texto y un único naranja para lo que importa (la cabeza de cada serie, el máximo, lo que hay que atender).
    charts.js lee estas variables para pintar los lienzos. */
 :root {
-  --in-negro: #0c0c0e; --in-panel: #111113; --in-celda: #1b1c20; --in-celda-alta: #212227;
+  --in-negro: #0A0A0B; --in-panel: #111113; --in-celda: #1b1c20; --in-celda-alta: #212227;
   --in-tinta: #e8e4d8; --in-suave: #a6a398; --in-tenue: #8a877e;
   --in-filo: rgba(232, 228, 216, .09); --in-filo-alto: rgba(232, 228, 216, .2); --in-luz: rgba(255, 255, 255, .06);
-  --in-nar: #ff6a2b; --in-nar-t: #ff8a57; --in-nar-suave: rgba(255, 106, 43, .3);
+  --in-nar: #E6FF4A; --in-nar-t: #E6FF4A; --in-nar-suave: rgba(230, 255, 74, .25);
   --in-ok: #7fc28a; --in-ok-suave: rgba(127, 194, 138, .16);
   --in-sombra: rgba(0, 0, 0, .55); --in-det: #1f2025; --in-det-2: #18191d; --in-grano: .5;
   --in-curva: cubic-bezier(.22, 1, .36, 1);
-  --in-titulo: "Space Grotesk", system-ui, sans-serif;
+  --in-titulo: "Inter Tight", "Inter", system-ui, sans-serif;
   --in-cifras: "JetBrains Mono", ui-monospace, "SF Mono", monospace;
   --in-radio: 18px;
   color-scheme: dark;
@@ -18,7 +18,7 @@
   --in-negro: #e7e3da; --in-panel: #f2efe8; --in-celda: #fbfaf6; --in-celda-alta: #ffffff;
   --in-tinta: #1b1b1f; --in-suave: #5a5852; --in-tenue: #6c6a62;
   --in-filo: rgba(27, 27, 31, .1); --in-filo-alto: rgba(27, 27, 31, .22); --in-luz: rgba(255, 255, 255, .9);
-  --in-nar: #f05a1a; --in-nar-t: #b73d0a; --in-nar-suave: rgba(240, 90, 26, .26);
+  --in-nar: #6E8000; --in-nar-t: #556300; --in-nar-suave: rgba(110, 128, 0, .2);
   --in-ok: #2e7d32; --in-ok-suave: rgba(46, 125, 50, .12);
   --in-sombra: rgba(70, 56, 36, .28); --in-det: #ffffff; --in-det-2: #f7f5ef; --in-grano: .35;
   color-scheme: light;
@@ -40,7 +40,7 @@ svg, canvas { display: block; }
 /* escena */
 .in-escena { position: relative; isolation: isolate; min-height: 100vh; padding: 20px 24px 60px; }
 .in-fondo { position: fixed; inset: 0; z-index: -1; pointer-events: none; }
-.in-resplandor { position: absolute; left: 50%; top: -34%; width: 90%; aspect-ratio: 1.7; transform: translateX(-50%); background: radial-gradient(closest-side, rgba(255, 106, 43, .075), transparent); }
+.in-resplandor { position: absolute; left: 50%; top: -34%; width: 90%; aspect-ratio: 1.7; transform: translateX(-50%); background: radial-gradient(closest-side, rgba(230, 255, 74, .06), transparent); }
 :root[data-tema="claro"] .in-resplandor { background: radial-gradient(closest-side, rgba(255, 255, 255, .85), transparent); }
 .in-grano { position: absolute; inset: 0; opacity: var(--in-grano); mix-blend-mode: soft-light;
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .9  0 0 0 0 .88  0 0 0 0 .84  0 0 0 .22 0'/></filter><rect width='160' height='160' filter='url(%23n)'/></svg>"); }
@@ -183,7 +183,8 @@ input::placeholder, textarea::placeholder { color: var(--in-tenue); }
 .btn:hover { border-color: var(--in-filo-alto); }
 .btn:active { transform: scale(.96); }
 .btn:disabled { opacity: .45; cursor: default; }
-.btn.acc { background: var(--in-nar); border-color: var(--in-nar); color: #1d0c04; }
+.btn.acc { background: var(--in-nar); border-color: var(--in-nar); color: #0A0A0B; }
+:root[data-tema="claro"] .btn.acc { color: #fff; }
 .btn.ghost { background: transparent; }
 .btn.sm { height: 30px; padding: 0 11px; font-size: 12px; border-radius: 10px; }
 .msg { min-height: 16px; font: 400 12px/1.4 var(--in-cifras); color: var(--in-suave); }
