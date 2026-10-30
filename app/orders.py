@@ -194,7 +194,7 @@ def list_orders(partner_id: Optional[int] = None, status: Optional[str] = None, 
 
 def public_view(o: Dict[str, Any]) -> Dict[str, Any]:
     from app.tracking import TEXT
-    stage = o.get("track_stage") if o["status"] == "colocado" else None
+    stage = o.get("track_stage") if o["status"] in ("colocado", "cancelado") else None
     return {
         "number": o["number"], "status": o["status"],
         "status_text": TEXT[stage][0] if stage else CUSTOMER_STATUS[o["status"]],

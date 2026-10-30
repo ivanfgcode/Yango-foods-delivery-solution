@@ -206,6 +206,8 @@ async def poll_once(source: Any) -> int:
             n += 1
             await notify(o["token"], stage)
             if stage == "cancelado":
+                # Cancelado en Yango: también en la web (listas, panel y resumen lo cuentan como cancelado).
+                orders.set_status(o["token"], "cancelado")
                 await alerts.alert("pedido_cancelado", f"[CANCELADO] Pedido #{o['number']} ({o['yango_order_nr']}) "
                                                        f"cancelado en Yango ({raw}).")
     return n

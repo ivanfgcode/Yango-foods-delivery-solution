@@ -92,7 +92,7 @@ def test_customer_account_tracking(client, monkeypatch):
     rt.source.vendor_status[nr] = "refused"
     assert client.portal.call(tracking.poll_once, rt.source) == 1
     o = client.get(f"/api/wrap-roll/orders/{token}").json()
-    assert o["stage"] == "cancelado" and o["status_text"] == "Pedido cancelado"
+    assert o["stage"] == "cancelado" and o["status_text"] == "Pedido cancelado" and o["status"] == "cancelado"
 
 
 def test_pwa_files(client):
