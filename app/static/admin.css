@@ -5,11 +5,11 @@
   --in-negro: #0A0A0B; --in-panel: #111113; --in-celda: #1b1c20; --in-celda-alta: #212227;
   --in-tinta: #e8e4d8; --in-suave: #a6a398; --in-tenue: #8a877e;
   --in-filo: rgba(232, 228, 216, .09); --in-filo-alto: rgba(232, 228, 216, .2); --in-luz: rgba(255, 255, 255, .06);
-  --in-nar: #E6FF4A; --in-nar-t: #E6FF4A; --in-nar-suave: rgba(230, 255, 74, .25);
+  --in-nar: #F2FF5C; --in-nar-t: #F2FF5C; --in-nar-suave: rgba(230, 255, 74, .25);
   --in-ok: #7fc28a; --in-ok-suave: rgba(127, 194, 138, .16);
   --in-sombra: rgba(0, 0, 0, .55); --in-det: #1f2025; --in-det-2: #18191d; --in-grano: .5;
   --in-curva: cubic-bezier(.22, 1, .36, 1);
-  --in-titulo: "Inter Tight", "Inter", system-ui, sans-serif;
+  --in-titulo: "Inter", "Helvetica Neue", Arial, system-ui, sans-serif;
   --in-cifras: "JetBrains Mono", ui-monospace, "SF Mono", monospace;
   --in-radio: 18px;
   color-scheme: dark;

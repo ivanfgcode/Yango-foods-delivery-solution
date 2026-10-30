@@ -9,7 +9,7 @@
 <meta property="og:description" content="Vende por tu propia web. Yango entrega. 0 % de comisión por pedido.">
 <meta property="og:image" content="/static/landing/phone-store.jpg?v={{ v }}">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter+Tight:wght@300;400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap">
 <link rel="stylesheet" href="/static/landing.css?v={{ v }}">
 </head>
 <body>
@@ -21,14 +21,14 @@
 
 <header class="nav" id="nav">
   <div class="wrap bar">
-    <a class="logo" href="#"><span class="logo-mark"><svg><use href="#md-mark"/></svg></span>Menu Deli <em>Bo</em></a>
+    <a class="logo" href="#"><span class="logo-mark"><svg><use href="#md-mark"/></svg></span><span>Menu Deli <em>Bo</em></span></a>
     <nav class="links"><a href="#problemas">Problemas</a><a href="#como">Cómo funciona</a><a href="#ahorro">Ahorro</a><a href="#precio">Precio</a><a href="#preguntas">Preguntas</a></nav>
     <a class="btn pri sm" href="{{ wa }}">Quiero mi web</a>
     <button class="menu-btn" id="menuBtn" aria-label="Abrir menú" aria-expanded="false">{{ ic("menu") }}</button>
   </div>
 </header>
 <div class="drawer" id="drawer" aria-hidden="true">
-  <div class="top"><a class="logo" href="#"><span class="logo-mark"><svg><use href="#md-mark"/></svg></span>Menu Deli <em>Bo</em></a>
+  <div class="top"><a class="logo" href="#"><span class="logo-mark"><svg><use href="#md-mark"/></svg></span><span>Menu Deli <em>Bo</em></span></a>
     <button class="close" id="menuClose" aria-label="Cerrar menú">{{ ic("x") }}</button></div>
   <a class="l" href="#problemas">Problemas</a><a class="l" href="#como">Cómo funciona</a><a class="l" href="#ahorro">Ahorro</a><a class="l" href="#precio">Precio</a><a class="l" href="#preguntas">Preguntas</a>
   <a class="btn pri" href="{{ wa }}">Quiero mi web</a>
@@ -42,11 +42,11 @@
     <div class="wrap hero-grid">
       <div>
         <span class="pill rv"><b>Yango</b>Tus primeros {{ sponsored }} meses los paga Yango</span>
-        <h1 class="rv" style="--d:1">Tu restaurante vendiendo solo,<br><span class="rot" id="rot"><span class="on">sin contestar chats.</span><span>sin buscar moto.</span><span>sin errores de precio.</span><span>sin comisiones.</span></span></h1>
+        <h1 class="rv" style="--d:1">Tu restaurante vendiendo a domicilio, sin contestar chats ni buscar moto</h1>
         <p class="lead rv" style="--d:2">Una web de pedidos con tu marca. Tu cliente elige, ve el precio exacto y el envío a su puerta, y un mensajero de Yango se lo lleva. Tú solo cocinas.</p>
         <div class="cta rv" style="--d:3">
-          <a class="btn pri" href="{{ wa }}">Quiero mi web{{ ic("arrow-right") }}</a>
-          {% if demo %}<a class="btn" href="/{{ demo }}" target="_blank" rel="noopener">{{ ic("external-link") }}Ver una tienda real</a>{% endif %}
+          <a class="btn" href="{{ wa }}">Solicitar mi web gratis</a>
+          {% if demo %}<a class="textlink" href="/{{ demo }}" target="_blank" rel="noopener">Ver una tienda real{{ ic("arrow-right") }}</a>{% endif %}
         </div>
         <div class="trust rv" style="--d:4"><span>{{ ic("circle-check") }}0 % de comisión por pedido</span><span>{{ ic("circle-check") }}Delivery de Yango</span><span>{{ ic("circle-check") }}Sin instalación</span></div>
       </div>
@@ -261,7 +261,7 @@
   </section>
 </main>
 
-<footer><div class="wrap"><a class="logo" href="#"><span class="logo-mark"><svg><use href="#md-mark"/></svg></span>Menu Deli <em>Bo</em></a>
+<footer><div class="wrap"><a class="logo" href="#"><span class="logo-mark"><svg><use href="#md-mark"/></svg></span><span>Menu Deli <em>Bo</em></span></a>
   <span>Pedidos propios con el delivery de Yango · Bolivia</span></div></footer>
 
 <script>

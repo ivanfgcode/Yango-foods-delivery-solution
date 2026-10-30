@@ -12,16 +12,6 @@
   }), {rootMargin: "0px 0px -8% 0px", threshold: .08}) : null;
   $$(".rv").forEach((el) => (io ? io.observe(el) : el.classList.add("in")));
 
-  // Palabra que rota en el titular.
-  const words = $$("#rot span");
-  let wi = 0;
-  if (!reduced && words.length > 1) setInterval(() => {
-    const cur = words[wi]; wi = (wi + 1) % words.length; const nxt = words[wi];
-    cur.classList.remove("on"); cur.classList.add("out");
-    nxt.classList.remove("out"); nxt.classList.add("on");
-    setTimeout(() => cur.classList.remove("out"), 700);
-  }, 2400);
-
   // Avisos que aparecen sobre el teléfono, en bucle.
   const toasts = $$(".toast");
   const showToasts = () => toasts.forEach((t, i) => setTimeout(() => t.classList.add("on"), 600 + i * 900));
@@ -44,7 +34,7 @@
     const y = scrollY;
     $("#nav").classList.toggle("solid", y > 30);
     $("#nav").style.transform = y > 500 && y > lastY ? "translateY(-110%)" : "";
-    $("#stickyCta").classList.toggle("on", y > 520 && innerHeight + y < document.body.scrollHeight - 260);
+    $("#stickyCta").classList.toggle("on", y > 120 && innerHeight + y < document.body.scrollHeight - 260);
     lastY = y;
   };
   addEventListener("scroll", onScroll, {passive: true}); onScroll();
