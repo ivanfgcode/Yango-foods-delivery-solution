@@ -401,6 +401,14 @@ class YangoWebSource(YangoSource):
                 "address": (place.get("address") or {}).get("short"), "logo_url": logo, "accent_color": accent}
 
     async def check_session(self, account: str) -> Dict[str, Any]:
+        res = await self._check_session(account)
+        if not res["ok"] and "closed" in res["detail"]:
+            # La pestaña se cerró a mitad de la comprobación (el bot la reabrió para un pedido): no es sesión caída.
+            await asyncio.sleep(3)
+            res = await self._check_session(account)
+        return res
+
+    async def _check_session(self, account: str) -> Dict[str, Any]:
         rt = self.rt(account)
         try:
             await rt.ensure()
