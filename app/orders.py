@@ -174,8 +174,12 @@ def list_orders(partner_id: Optional[int] = None, status: Optional[str] = None, 
 
 
 def public_view(o: Dict[str, Any]) -> Dict[str, Any]:
+    from app.tracking import TEXT
+    stage = o.get("track_stage") if o["status"] == "colocado" else None
     return {
-        "number": o["number"], "status": o["status"], "status_text": CUSTOMER_STATUS[o["status"]],
+        "number": o["number"], "status": o["status"],
+        "status_text": TEXT[stage][0] if stage else CUSTOMER_STATUS[o["status"]],
+        "stage": stage, "stage_text": TEXT[stage][1] if stage else None, "courier_eta": o.get("track_eta"),
         "items": [{"name": i["name"], "quantity": i["quantity"], "amount": i["amount"],
                    "options": [x["name"] for x in i["options"]]} for i in o["items"]],
         "subtotal": o["subtotal"], "delivery_fee": o["delivery_fee"], "service_fee": o["service_fee"],

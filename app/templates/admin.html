@@ -528,7 +528,7 @@ document.getElementById("f").onsubmit = async (e) => { e.preventDefault();
     const rows = await api("/partners");
     $("#pb").innerHTML = rows.map((p) => `<tr>
       <td><b>${esc(p.name)}</b><br><a href="/${esc(p.slug)}" target="_blank" rel="noopener" class="mono">/${esc(p.slug)}</a> · <a href="/${esc(p.slug)}/portal" target="_blank" rel="noopener">portal</a></td>
-      <td class="mono">${esc(p.account)}</td>
+      <td class="mono">${esc(p.account)}<br><button class="btn ghost sm" data-vendor="${esc(p.slug)}" data-cur="${esc(p.vendor_account || "")}" title="Cuenta de la vendor app del local: de ahí se lee el estado de los pedidos">${p.vendor_account ? `vendor: ${esc(p.vendor_account)}` : "+ vendor app"}</button></td>
       <td>${p.place_slug ? `<span class="mono">${esc(p.place_slug)}</span><br><span class="muted">${esc(p.place_address || "")}</span>` : `<span class="muted">sin resolver</span>`}<br><a class="muted" href="${esc(p.yango_url || "#")}" target="_blank" rel="noopener">${esc((p.yango_url || "").slice(0, 60))}</a></td>
       <td>${p.menu ? `${esc(when(p.menu.synced_at))}${p.menu.error ? `<br><span class="pill error">${esc(p.menu.error)}</span>` : ""}` : `<span class="muted">—</span>`}</td>
       <td>${planCell(p.billing)}</td>
@@ -570,6 +570,11 @@ document.getElementById("f").onsubmit = async (e) => { e.preventDefault();
     }));
     $$("[data-sync]").forEach((b) => (b.onclick = async () => { b.disabled = true; b.textContent = "…"; try { const r = await post(`/partners/${b.dataset.sync}/sync`, {}); alert(`Menú: ${r.items} productos en ${r.categories} categorías`); } catch (e) { alert(e.message); } partnersTab(); }));
     $$("[data-pw]").forEach((b) => (b.onclick = async () => { const pw = prompt("Nueva contraseña del portal (mín. 8)"); if (!pw) return; try { await post(`/partners/${b.dataset.pw}/password`, {password: pw}); alert("Listo"); } catch (e) { alert(e.message); } }));
+    $$("[data-vendor]").forEach((b) => (b.onclick = async () => {
+      const v = prompt("Cuenta de la vendor app de este local (vendor.yango.com). Carga sus cookies en Cuentas Yango con el mismo nombre. Vacío = seguir con la cuenta cliente.", b.dataset.cur);
+      if (v === null) return;
+      try { await post(`/partners/${b.dataset.vendor}`, {vendor_account: v.trim()}, "PUT"); partnersTab(); } catch (e) { alert(e.message); }
+    }));
     $$("[data-toggle]").forEach((b) => (b.onclick = async () => { await post(`/partners/${b.dataset.toggle}`, {enabled: b.dataset.on === "1" ? 0 : 1}, "PUT"); partnersTab(); }));
   }
   $("#np").onsubmit = async (e) => {

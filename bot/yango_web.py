@@ -137,6 +137,86 @@ class AccountRuntime:
             raise RuntimeError(f"Respuesta no JSON en {path.split('?')[0]}")
 
 
+VENDOR_FETCH_JS = """
+async ([url, headers]) => {
+  const r = await fetch(url, {headers, credentials: 'include'});
+  return {status: r.status, text: await r.text()};
+}
+"""
+
+
+class VendorRuntime:
+    """Sesión de la vendor app del local (vendor.yango.com), solo lectura. Como en restotec-yango: la web llama a su API
+    con cabeceras propias (token incluido); se copian de sus peticiones y se reusan con fetch() desde la misma pestaña."""
+
+    def __init__(self, source: "YangoWebSource", account: str) -> None:
+        self.source = source
+        self.account = account
+        self.cfg = source.cfg["vendor"]
+        self.context = None
+        self.page = None
+        self.headers: Dict[str, str] = {}
+        self.session_mtime = 0.0
+        self._lock = asyncio.Lock()
+
+    async def _on_request(self, request: Any) -> None:
+        if self.cfg["api_prefix"] + "/" in request.url:
+            try:
+                h = await request.all_headers()  # .headers oculta las de seguridad (Authorization incluida)
+                self.headers = {k: v for k, v in h.items()
+                                if not k.startswith(":") and k.lower() not in ("content-length", "host", "cookie")}
+            except Exception:
+                pass
+
+    async def ensure(self) -> None:
+        path = sessions.session_path(self.account)
+        if not path.exists():
+            raise SessionDown(f"La cuenta vendor {self.account} no tiene sesión cargada")
+        mtime = path.stat().st_mtime
+        async with self._lock:
+            if self.page is not None and mtime == self.session_mtime and not self.page.is_closed():
+                return
+            await self.close()
+            self.context = await self.source.browser.new_context(storage_state=str(path), locale="es-BO",
+                                                                 timezone_id=settings.timezone)
+            self.session_mtime = mtime
+            self.page = await self.context.new_page()
+            self.page.on("request", self._on_request)
+            await self.page.goto(self.cfg["base_url"] + self.cfg["home_path"], wait_until="domcontentloaded",
+                                 timeout=60000)
+            if re.search(self.cfg["logged_out_url_regex"], self.page.url):
+                await self.close()
+                raise SessionDown(f"vendor {self.account}: la vendor app pide iniciar sesión")
+            for _ in range(20):  # la web pide los activos al cargar: de ahí salen las cabeceras
+                if self.headers:
+                    break
+                await asyncio.sleep(0.5)
+
+    async def close(self) -> None:
+        if self.context is not None:
+            try:
+                await self.context.close()
+            except Exception:
+                pass
+        self.context, self.page = None, None
+
+    async def get(self, path: str) -> Any:
+        await self.ensure()
+        url = self.cfg["base_url"] + self.cfg["api_prefix"] + path
+        try:
+            res = await asyncio.wait_for(self.page.evaluate(VENDOR_FETCH_JS, [url, self.headers]),
+                                         timeout=settings.bot_request_timeout)
+        except Exception:
+            await self.close()
+            raise
+        if res["status"] in (401, 403):
+            await self.close()
+            raise SessionDown(f"vendor {self.account}: HTTP {res['status']}")
+        if res["status"] >= 400:
+            raise RuntimeError(f"vendor HTTP {res['status']} en {path.split('?')[0]}")
+        return json.loads(res["text"]) if res["text"] else {}
+
+
 class YangoWebSource(YangoSource):
     name = "yango_web"
 
@@ -145,6 +225,7 @@ class YangoWebSource(YangoSource):
         self._pw = None
         self.browser = None
         self.accounts: Dict[str, AccountRuntime] = {}
+        self.vendors: Dict[str, VendorRuntime] = {}
 
     def url(self, path: str) -> str:
         return settings.yango_base_url + path.replace("{locale}", settings.yango_locale_path)
@@ -156,7 +237,7 @@ class YangoWebSource(YangoSource):
                                                       executable_path=settings.chromium_executable or None)
 
     async def stop(self) -> None:
-        for rt in self.accounts.values():
+        for rt in list(self.accounts.values()) + list(self.vendors.values()):
             await rt.close()
         if self.browser:
             await self.browser.close()
@@ -204,6 +285,20 @@ class YangoWebSource(YangoSource):
         body = {"part": text, "position": [lon, lat], "state": {"current_mode": "eats"}, "type": "a",
                 "action": "user_input"}
         return await self.rt(account).fetch("POST", self.cfg["endpoints"]["suggest"], body)
+
+    async def order_tracking(self, account: str) -> Dict[str, Any]:
+        return await self.rt(account).fetch("GET", self.cfg["endpoints"]["order_tracking"])
+
+    def vendor(self, account: str) -> VendorRuntime:
+        if account not in self.vendors:
+            self.vendors[account] = VendorRuntime(self, account)
+        return self.vendors[account]
+
+    async def vendor_active(self, account: str) -> Dict[str, Any]:
+        return await self.vendor(account).get(self.cfg["vendor"]["active"])
+
+    async def vendor_order(self, account: str, order_nr: str) -> Optional[Dict[str, Any]]:
+        return await self.vendor(account).get(self.cfg["vendor"]["order"].format(order_nr=order_nr))
 
     async def resolve_place(self, account: str, yango_url: str) -> Dict[str, Any]:
         rt = self.rt(account)

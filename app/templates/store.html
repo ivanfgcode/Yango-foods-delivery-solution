@@ -9,6 +9,11 @@
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="{{ fonts_href }}">
 <link rel="stylesheet" href="/static/store.css?v={{ v }}">
+<link rel="manifest" href="/{{ p.slug }}/manifest.webmanifest">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="{{ p.name }}">
+<link rel="apple-touch-icon" href="{{ theme.logo_url or ('/' ~ p.slug ~ '/icon.svg') }}">
 </head>
 <body style="{{ css_vars }}" class="motion{{ ' glass' if theme.glass else '' }}{{ ' grid-layout' if theme.card_layout == 'grid' else '' }}">
 <header class="top{{ ' dark' if theme.dark_header else '' }}" id="top">

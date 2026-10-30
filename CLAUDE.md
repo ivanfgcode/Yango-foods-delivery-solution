@@ -11,6 +11,7 @@ Lee [README.md](README.md) primero. Proyecto hermano: `ivanfgcode/restotec-yango
 * Íconos: Lucide en `app/static/icons.svg` (`<use href="/static/icons.svg#nombre">`). Sin emojis en la interfaz ni en las alertas.
 * El bot nunca pulsa nada de `order.never_click` ni paga con tarjeta. Pago siempre efectivo/QR al mensajero.
 * La sucursal la decide Yango con la dirección (`app/branches.py`); el servidor la recalcula al crear el pedido. Lo configurado (más vendidos, TikTok) usa ids de la sucursal principal y se traduce por nombre.
+* Seguimiento (`app/tracking.py`): la vendor app se usa solo para leer estados, nunca se pulsa nada en ella. Avisos al cliente por Web Push (`app/push.py`, `app/static/sw.js`).
 * Un pedido a la vez por cuenta (carrito único). Las consultas (catálogo, menú, geocodificación) sí en paralelo.
 * Lo que viene de food.yango.com se valida con fixtures reales en `tests/fixtures/`. Si cambia el formato, actualizar fixture y parser juntos.
 * Nunca commitear `.env`, `data/` (base, sesiones, subidas) ni credenciales. Secretos en variables de Railway.

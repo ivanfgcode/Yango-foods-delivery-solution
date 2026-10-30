@@ -7,6 +7,11 @@
 <meta name="theme-color" content="{{ theme.primary }}">
 <link rel="stylesheet" href="{{ fonts_href }}">
 <link rel="stylesheet" href="/static/store.css?v={{ v }}">
+<link rel="manifest" href="/{{ p.slug }}/manifest.webmanifest?order={{ token }}">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="{{ p.name }}">
+<link rel="apple-touch-icon" href="{{ theme.logo_url or ('/' ~ p.slug ~ '/icon.svg') }}">
 </head>
 <body style="{{ css_vars }}">
 <header class="top always{{ ' dark' if theme.dark_header else '' }}"><div class="wrap">
@@ -17,7 +22,22 @@
     <div class="status-hero" id="hero"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg?v={{ v }}#receipt"></use></svg></div>
     <p class="note" id="num"></p>
     <h1 id="title"></h1>
+    <p class="note" id="sub" hidden></p>
     <ul class="steps" id="steps"></ul>
+    <section class="notify" id="notify" hidden>
+      <div class="notify-hd"><span class="notify-ic"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg?v={{ v }}#bell"></use></svg></span>
+        <div><b id="nTitle">Te avisamos cuando cambie tu pedido</b><p id="nText">Recibe un aviso en tu teléfono cuando lo preparen, salga el mensajero y llegue.</p></div></div>
+      <ol class="howto" id="nIos" hidden>
+        <li><svg class="ic" aria-hidden="true"><use href="/static/icons.svg?v={{ v }}#share"></use></svg><span>Toca <b>Compartir</b> en la barra de Safari</span></li>
+        <li><svg class="ic" aria-hidden="true"><use href="/static/icons.svg?v={{ v }}#square-plus"></use></svg><span>Elige <b>Agregar a inicio</b> y luego <b>Agregar</b></span></li>
+        <li><svg class="ic" aria-hidden="true"><use href="/static/icons.svg?v={{ v }}#smartphone"></use></svg><span>Abre <b>{{ p.name }}</b> desde tu pantalla de inicio y toca <b>Activar avisos</b></span></li>
+      </ol>
+      <div class="notify-act">
+        <button class="btn" id="nOn" type="button" hidden><svg class="ic" aria-hidden="true"><use href="/static/icons.svg?v={{ v }}#bell"></use></svg>Activar avisos</button>
+        <button class="btn ghost" id="nInstall" type="button" hidden><svg class="ic" aria-hidden="true"><use href="/static/icons.svg?v={{ v }}#download"></use></svg>Instalar la app</button>
+      </div>
+      <p class="note" id="nMsg"></p>
+    </section>
     <div id="detail"></div>
     <p class="note">El mensajero de Yango te llamará si necesita ubicarte. Pagas al recibir.</p>
     <p style="margin-top:18px"><a class="btn ghost" href="/{{ p.slug }}" style="text-decoration:none">Volver al menú</a></p>
@@ -29,18 +49,27 @@
   let o = {{ order_json | safe }};
   const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
   const money = (n) => `${CUR}${Number(n).toLocaleString("es-BO", {maximumFractionDigits: 2})}`;
-  const ORDER = ["recibido", "confirmando", "confirmado"];
-  function stage(s) { return s === "colocado" ? 2 : (s === "colocando" || s === "manual" || s === "revision") ? 1 : 0; }
+  const STEPS = [["Pedido recibido", "receipt"], ["Confirmado por el restaurante", "badge-check"], ["En preparación", "chef-hat"],
+                 ["En camino", "bike"], ["Entregado", "package-check"]];
+  const STAGE_IX = {recibido: 1, preparando: 2, listo: 2, en_camino: 3, entregado: 4};
+  const FINAL = (x) => x.status === "cancelado" || x.stage === "entregado" || x.stage === "cancelado";
+  function step(x) {
+    if (x.stage) return STAGE_IX[x.stage] ?? 1;
+    return x.status === "colocado" ? 1 : 0;
+  }
   function render() {
     document.getElementById("num").textContent = `Pedido #${o.number}`;
     document.getElementById("title").textContent = o.status_text;
+    const sub = document.getElementById("sub");
+    sub.hidden = !o.stage_text; sub.textContent = o.stage_text || "";
     const hero = document.getElementById("hero");
-    const ico = o.status === "colocado" ? "bike" : o.status === "cancelado" ? "circle-x" : "receipt";
+    const cancelled = o.status === "cancelado" || o.stage === "cancelado";
+    const st = cancelled ? -1 : step(o);
+    const ico = cancelled ? "circle-x" : STEPS[Math.max(st, 0)][1];
     hero.innerHTML = `<svg class="ic" aria-hidden="true"><use href="/static/icons.svg?v={{ v }}#${ico}"></use></svg>`;
-    hero.classList.toggle("ok", o.status === "colocado");
-    const st = o.status === "cancelado" ? -1 : stage(o.status);
-    const labels = ["Pedido recibido", "Confirmando con el restaurante", "Confirmado · en preparación y entrega"];
-    document.getElementById("steps").innerHTML = labels.map((l, i) => `<li class="${i <= st ? "done" : ""}${i === st ? " now" : ""}"><i></i>${esc(l)}</li>`).join("");
+    hero.classList.toggle("ok", st >= 1);
+    const labels = STEPS.map((s, i) => i === 2 && o.stage === "listo" ? "Listo, esperando al mensajero" : s[0]);
+    document.getElementById("steps").innerHTML = cancelled ? "" : labels.map((l, i) => `<li class="${i <= st ? "done" : ""}${i === st && st < 4 ? " now" : ""}"><i></i>${esc(l)}</li>`).join("");
     document.getElementById("detail").innerHTML = `
       ${o.items.map((i) => `<div class="sum" style="color:var(--text)"><span>${i.quantity}× ${esc(i.name)}${i.options.length ? `<br><small class="note">${esc(i.options.join(", "))}</small>` : ""}</span><span>${money(i.amount)}</span></div>`).join("")}
       <div class="sum"><span>Envío</span><span>${money(o.delivery_fee)}</span></div>
@@ -49,9 +78,72 @@
       <p class="note"><span class="ln"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg?v={{ v }}#map-pin"></use></svg>${esc(o.address)} · ${esc(o.reference)}</span>${o.eta_min ? `<span class="ln"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg?v={{ v }}#timer"></use></svg>Tiempo estimado: ${o.eta_min}–${o.eta_max} min</span>` : ""}</p>`;
   }
   render();
-  const poll = setInterval(async () => {
-    try { const r = await fetch(`/api/${SLUG}/orders/${TOKEN}`); if (r.ok) { o = await r.json(); render(); if (o.status === "colocado" || o.status === "cancelado") clearInterval(poll); } } catch (e) {}
-  }, 5000);
+  async function refresh() {
+    try { const r = await fetch(`/api/${SLUG}/orders/${TOKEN}`); if (r.ok) { o = await r.json(); render(); } } catch (e) {}
+  }
+  const poll = setInterval(() => { if (FINAL(o)) clearInterval(poll); else refresh(); }, 8000);
+  document.addEventListener("visibilitychange", () => { if (!document.hidden) refresh(); });
+  try { localStorage.setItem(`carta:last:${SLUG}`, JSON.stringify({token: TOKEN, number: o.number, at: Date.now()})); } catch (e) {}
+
+  // Avisos del pedido: Web Push. En iPhone solo funciona con la web instalada en la pantalla de inicio (iOS 16.4+).
+  const $ = (id) => document.getElementById(id);
+  const ua = navigator.userAgent, ios = /iphone|ipad|ipod/i.test(ua) || (/macintosh/i.test(ua) && navigator.maxTouchPoints > 1);
+  const standalone = matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
+  const canPush = "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+  let installEvt = null;
+  const b64 = (s) => { const p = "=".repeat((4 - s.length % 4) % 4), r = atob((s + p).replace(/-/g, "+").replace(/_/g, "/"));
+    return Uint8Array.from(r, (c) => c.charCodeAt(0)); };
+  function setMsg(t) { $("nMsg").textContent = t || ""; }
+  function done() {
+    $("nTitle").textContent = "Avisos activados";
+    $("nText").textContent = "Te avisaremos en este teléfono cuando cambie el estado de tu pedido.";
+    $("nOn").hidden = true; $("nIos").hidden = true; setMsg("");
+  }
+  async function subscribe() {
+    const reg = await navigator.serviceWorker.register("/sw.js", {scope: "/"});
+    await navigator.serviceWorker.ready;
+    const {key} = await (await fetch("/api/push/key")).json();
+    const sub = await reg.pushManager.getSubscription() || await reg.pushManager.subscribe({userVisibleOnly: true, applicationServerKey: b64(key)});
+    const r = await fetch(`/api/${SLUG}/orders/${TOKEN}/push`, {method: "POST", headers: {"content-type": "application/json"}, body: JSON.stringify(sub)});
+    if (!r.ok) throw new Error("no se guardó");
+    try { localStorage.setItem(`carta:push:${TOKEN}`, "1"); } catch (e) {}
+    done();
+  }
+  function setupNotify() {
+    if (FINAL(o)) return;
+    const box = $("notify");
+    if (!(ios && !standalone) && (!canPush || Notification.permission === "denied")) return;
+    box.hidden = false;
+    let already = false; try { already = localStorage.getItem(`carta:push:${TOKEN}`) === "1"; } catch (e) {}
+    if (ios && !standalone) {
+      $("nTitle").textContent = "Instala la app para recibir avisos";
+      $("nText").textContent = "En iPhone los avisos llegan con la web en tu pantalla de inicio. Toma 10 segundos:";
+      $("nIos").hidden = false;
+      return;
+    }
+    if (already && Notification.permission === "granted") { done(); subscribe().catch(() => {}); return; }
+    $("nOn").hidden = false;
+    $("nOn").onclick = async () => {
+      $("nOn").disabled = true; setMsg("");
+      try {
+        const perm = await Notification.requestPermission();
+        if (perm !== "granted") { setMsg("Sin permiso no podemos avisarte. Puedes seguir el pedido en esta página."); return; }
+        await subscribe();
+      } catch (e) { setMsg("No pudimos activar los avisos en este navegador."); }
+      finally { $("nOn").disabled = false; }
+    };
+  }
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("/sw.js", {scope: "/"}).catch(() => {});
+    navigator.serviceWorker.addEventListener("message", (e) => { if (e.data && e.data.type === "order-update") refresh(); });
+  }
+  window.addEventListener("beforeinstallprompt", (e) => {
+    e.preventDefault(); installEvt = e;
+    if (FINAL(o)) return;
+    $("notify").hidden = false; $("nInstall").hidden = false;
+    $("nInstall").onclick = async () => { installEvt.prompt(); await installEvt.userChoice; installEvt = null; $("nInstall").hidden = true; };
+  });
+  setupNotify();
 })();
 </script>
 </body>

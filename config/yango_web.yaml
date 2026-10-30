@@ -16,6 +16,9 @@ endpoints:
   menu: "/api/v2/menu/retrieve/{place_slug}?latitude={lat}&longitude={lon}&autoTranslate=false"
   finalsuggest: "/eats/v1/persuggest/v1/finalsuggest"
   suggest: "/eats/v1/persuggest/v1/suggest"   # búsqueda por texto (verificado 2026-10-30, sin sesión)
+  # Seguimiento de los pedidos de la cuenta cliente. POR VERIFICAR con sesión (tools/record_traffic.py): el parser
+  # busca el número de pedido en cualquier parte del JSON y toma su status (app/tracking.find_status).
+  order_tracking: "/api/v2/orders/tracking"
   cart: "/api/v1/cart?longitude={lon}&latitude={lat}&screen=menu&shippingType=delivery&autoTranslate=false"
 
 session:
@@ -63,3 +66,13 @@ order:
     - {action: capture, response_regex: "/api/v1/orders|eats-orders|order_nr", json_paths: ["order_nr", "orderNr", "order.order_nr"]}
   # Botones que el bot NUNCA pulsa.
   never_click: ["Cancelar pedido", "Cancel order", "Pagar con tarjeta", "Card", "Agregar tarjeta"]
+
+# Vendor app del restaurante (cuenta del local, partners.vendor_account). Igual que restotec-yango
+# (bot/sources/yango_web.py, docs/VENDOR_APP.md, verificado 2026-10-04/07). Solo lectura: nunca se pulsa nada.
+vendor:
+  base_url: "https://vendor.yango.com"
+  home_path: "/home"                       # la web pide los pedidos activos cada pocos segundos desde aquí
+  api_prefix: "/4.0/restapp-front"
+  active: "/eats-restapp-orders/v2/active"  # orders_by_status[].orders[] {order_nr, status: new|accepted|ready|in_delivery}
+  order: "/eats-restapp-orders/v1/order?order_nr={order_nr}"   # detalle: status final (released/given o refused)
+  logged_out_url_regex: "passport\\.|/auth"

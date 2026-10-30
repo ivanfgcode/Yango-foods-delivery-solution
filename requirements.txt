@@ -7,4 +7,5 @@ python-multipart>=0.0.9
 jinja2>=3.1
 playwright==1.60.0   # debe coincidir con la imagen Docker
 tzdata>=2024.1
+pywebpush>=2.0
 pytest>=8.0

@@ -3,6 +3,7 @@ import asyncio
 import copy
 import json
 import random
+import time
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -34,6 +35,10 @@ class MockSource(YangoSource):
         self.zone_closed_beyond_km: Optional[float] = None
         self.fail_next = 0
         self.mismatch_next = False
+        # Seguimiento simulado (vendor app): estado forzado por pedido o, si no, avance con el tiempo.
+        self.vendor_status: Dict[str, str] = {}
+        self.vendor_timeline = [(0, "new"), (20, "accepted"), (60, "ready"), (120, "in_delivery"), (300, "released")]
+        self._placed_at: Dict[str, float] = {}
         place = self._catalog["payload"]["foundPlace"]["place"]
         self.lat = place["address"]["location"]["latitude"]
         self.lon = place["address"]["location"]["longitude"]
@@ -134,7 +139,32 @@ class MockSource(YangoSource):
             self.mismatch_next = False
             raise PlacementMismatch("envío simulado distinto")
         nr = f"261029-BO{random.randint(1000000, 9999999)}"
+        self._placed_at[nr] = time.monotonic()
         self.placed.append({"account": account, "order": order["number"], "yango_order_nr": nr,
                             "comment": order["yango_comment"]})
         return {"yango_order_nr": nr, "yango_total": order["subtotal"] + order["delivery_fee"],
                 "delivery_fee": order["delivery_fee"]}
+
+    def _vendor_raw(self, nr: str) -> str:
+        if nr in self.vendor_status:
+            return self.vendor_status[nr]
+        age = time.monotonic() - self._placed_at.get(nr, time.monotonic())
+        return [st for t, st in self.vendor_timeline if age >= t][-1]
+
+    async def vendor_active(self, account: str) -> Dict[str, Any]:
+        await asyncio.sleep(self.latency)
+        groups: Dict[str, List[Dict[str, Any]]] = {s: [] for s in ("new", "accepted", "ready", "in_delivery")}
+        for nr in self._placed_at:
+            raw = self._vendor_raw(nr)
+            if raw in groups:
+                groups[raw].append({"order_nr": nr, "status": raw, "place_id": 1, "sum": "0"})
+        return {"orders_by_status": [{"status": k, "orders": v} for k, v in groups.items()]}
+
+    async def vendor_order(self, account: str, order_nr: str) -> Optional[Dict[str, Any]]:
+        await asyncio.sleep(self.latency)
+        return {"order_nr": order_nr, "status": self._vendor_raw(order_nr)} if order_nr in self._placed_at else None
+
+    async def order_tracking(self, account: str) -> Dict[str, Any]:
+        await asyncio.sleep(self.latency)
+        return {"payload": {"trackedOrders": [{"order": {"orderNr": nr}, "status": {"id": self._vendor_raw(nr)}}
+                                              for nr in self._placed_at]}}

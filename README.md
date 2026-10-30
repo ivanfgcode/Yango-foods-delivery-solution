@@ -114,6 +114,15 @@ Abrir `http://127.0.0.1:8000/wrap-roll`, el portal `…/wrap-roll/portal` (contr
 
 Con Yango real sin cookies (solo restaurantes públicos): `YANGO_SOURCE=yango_web ALLOW_ANONYMOUS=true`.
 
+## Seguimiento del pedido y avisos push (PWA)
+
+* `app/tracking.py` lee el estado de los pedidos colocados cada `TRACKING_SECONDS`:
+  * **Vendor app del local** (`vendor.yango.com`, como restotec-yango) si el restaurante tiene *cuenta vendor* (Admin → Restaurantes → «+ vendor app»; sus cookies se cargan en Cuentas Yango con el mismo nombre). `eats-restapp-orders/v2/active` da `new | accepted | ready | in_delivery`; cuando el pedido sale de la lista, el detalle `v1/order` dice si se entregó o se canceló. Solo lectura.
+  * Si no, la **cuenta cliente** que colocó el pedido (`endpoints.order_tracking`, por verificar con sesión).
+* Etapas: recibido → preparando → listo → en camino → entregado (o cancelado). Nunca retroceden. Un cancelado avisa al equipo.
+* La página del pedido invita a activar avisos. Android/Chrome: botón «Activar avisos» (Web Push con VAPID, `app/push.py`) y «Instalar la app». iPhone: pasos Compartir → Agregar a inicio → abrir y activar (iOS 16.4+ solo da push a webs instaladas). El manifest del pedido abre la app directo en su seguimiento.
+* `/sw.js` muestra las notificaciones; tocar una abre el pedido. Claves VAPID: `VAPID_PRIVATE_KEY` o `data/vapid.json` (volumen).
+
 ## Railway
 
 Servicio desde este repo (Dockerfile), **volumen en `/app/data`**, 1 réplica, variables de `.env.example`.

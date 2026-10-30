@@ -275,6 +275,19 @@ body.grid-layout .grid .card .bd{padding:0 4px 4px}
 .steps li.done i{background:var(--primary);border-color:var(--primary)}
 .steps li.now i{animation:ring 1.6s ease-out infinite}
 @keyframes ring{0%{box-shadow:0 0 0 0 color-mix(in srgb,var(--primary) 45%,transparent)}100%{box-shadow:0 0 0 10px transparent}}
+.notify{margin:18px 0 6px;padding:18px;border-radius:calc(var(--radius) + 4px);background:var(--primary-soft);border:1px solid color-mix(in srgb,var(--primary) 22%,transparent);text-align:left;animation:card-in .7s var(--out) .2s both}
+.notify-hd{display:flex;gap:14px;align-items:flex-start}
+.notify-hd b{display:block;font-size:1.02rem;margin-bottom:3px}
+.notify-hd p{margin:0;color:var(--muted);font-size:.9rem;line-height:1.45}
+.notify-ic{width:42px;height:42px;border-radius:50%;background:var(--primary);color:var(--on-primary);display:grid;place-items:center;flex:none;font-size:20px}
+.notify-act{display:grid;gap:10px;margin-top:14px}
+.notify-act:empty,.notify-act:not(:has(.btn:not([hidden]))){display:none}
+.howto{list-style:none;counter-reset:h;padding:0;margin:14px 0 0;display:grid;gap:8px}
+.howto li{counter-increment:h;display:flex;gap:12px;align-items:center;background:var(--bg);border-radius:calc(var(--radius)*.7);padding:11px 14px;font-size:.92rem}
+.howto li::before{content:counter(h);width:22px;height:22px;border-radius:50%;background:var(--text);color:var(--bg);display:grid;place-items:center;font-size:.75rem;font-weight:800;flex:none}
+.howto .ic{color:var(--primary);font-size:20px;flex:none}
+.live-order{position:fixed;left:50%;top:max(12px,env(safe-area-inset-top));transform:translateX(-50%);z-index:60;display:flex;align-items:center;gap:10px;padding:10px 12px 10px 16px;border-radius:999px;background:var(--text);color:var(--bg);text-decoration:none;font-size:.88rem;font-weight:600;box-shadow:var(--shadow);white-space:nowrap;animation:pop-in .5s var(--spring) .6s both}
+.live-order b{background:var(--primary);color:var(--on-primary);border-radius:999px;padding:5px 11px;font-size:.8rem}
 footer.foot{color:var(--muted);font-size:.82rem;text-align:center;padding:36px 16px 120px}
 .toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%) translateY(20px);background:var(--text);color:var(--bg);padding:11px 18px;border-radius:999px;font-weight:700;opacity:0;transition:all .35s var(--spring);z-index:80;pointer-events:none;box-shadow:var(--shadow)}
 .toast.on{opacity:1;transform:translateX(-50%)}

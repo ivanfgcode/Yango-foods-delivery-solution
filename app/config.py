@@ -86,6 +86,12 @@ class Settings:
         self.telegram_bot_token = os.getenv("TELEGRAM_BOT_TOKEN", "")
         self.telegram_chat_id = os.getenv("TELEGRAM_CHAT_ID", "")
 
+        # Seguimiento de pedidos (vendor app del local o cuenta cliente) y avisos Web Push al cliente.
+        self.tracking_seconds = _int("TRACKING_SECONDS", 30)
+        self.tracking_hours = _int("TRACKING_HOURS", 4)   # después de esto se deja de seguir un pedido
+        self.vapid_private_key = os.getenv("VAPID_PRIVATE_KEY", "")  # PEM; sin ella se genera data/vapid.json
+        self.vapid_subject = os.getenv("VAPID_SUBJECT", "mailto:soporte@carta.bo")
+
         # Anti abuso: pedidos por IP en la ventana.
         self.orders_per_ip = _int("ORDERS_PER_IP", 8)
         self.orders_per_ip_window = _int("ORDERS_PER_IP_WINDOW", 600)

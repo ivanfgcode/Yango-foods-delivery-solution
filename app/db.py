@@ -121,6 +121,16 @@ CREATE TABLE IF NOT EXISTS accounts (
     session_imported_at TEXT,
     checked_at TEXT
 );
+
+-- Suscripciones Web Push del cliente a un pedido (avisos de estado en el teléfono).
+CREATE TABLE IF NOT EXISTS push_subs (
+    endpoint TEXT PRIMARY KEY,
+    order_token TEXT NOT NULL,
+    p256dh TEXT NOT NULL,
+    auth TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS push_subs_order ON push_subs(order_token);
 """
 
 _lock = threading.RLock()
@@ -148,7 +158,10 @@ def connect() -> sqlite3.Connection:
 
 # Columnas agregadas después de crear la base en producción: (tabla, columna, tipo).
 ADDED_COLUMNS = [("partners", "place_name", "TEXT"), ("billing", "free_forever", "INTEGER NOT NULL DEFAULT 0"),
-                 ("billing", "free_note", "TEXT")]
+                 ("billing", "free_note", "TEXT"),
+                 # Seguimiento: cuenta de la vendor app del local y etapa del pedido leída de Yango.
+                 ("partners", "vendor_account", "TEXT"), ("orders", "track_stage", "TEXT"),
+                 ("orders", "track_raw", "TEXT"), ("orders", "track_at", "TEXT"), ("orders", "track_eta", "TEXT")]
 
 
 def _migrate(conn: sqlite3.Connection) -> None:

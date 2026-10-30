@@ -3,7 +3,7 @@ import asyncio
 import logging
 from typing import Any, Dict, Optional
 
-from app import alerts, db, menu as menu_mod, orders, partners
+from app import alerts, db, menu as menu_mod, orders, partners, tracking
 from app.config import settings
 from app.quotes import QuoteService
 from bot import sessions
@@ -75,6 +75,7 @@ class Dispatcher:
                 res = await self.rt.source.place_order(o["account"], partner, o)
                 orders.set_status(token, "colocado", yango_order_nr=res.get("yango_order_nr"),
                                   yango_total=res.get("yango_total"), error=None)
+                await tracking.notify(token, "confirmado")
                 return
             except PlacementMismatch as e:
                 orders.set_status(token, "revision", error=str(e))
@@ -119,6 +120,7 @@ class Runtime:
         if background:
             self.tasks.append(asyncio.create_task(self._menu_loop(), name="menu"))
             self.tasks.append(asyncio.create_task(self._session_loop(), name="sesiones"))
+            self.tasks.append(asyncio.create_task(self._tracking_loop(), name="seguimiento"))
 
     async def stop(self) -> None:
         for t in self.tasks + list(self.dispatcher.workers.values()):
@@ -160,6 +162,15 @@ class Runtime:
                     except Exception as e:
                         log.warning("menú %s: %s", p["slug"], e)
             await asyncio.sleep(settings.menu_sync_minutes * 60)
+
+    async def _tracking_loop(self) -> None:
+        """Estado de los pedidos colocados (vendor app o cuenta cliente) y avisos push al cliente."""
+        while True:
+            try:
+                await tracking.poll_once(self.source)
+            except Exception:  # pragma: no cover
+                log.exception("seguimiento")
+            await asyncio.sleep(settings.tracking_seconds)
 
     async def _session_loop(self) -> None:
         notified: Dict[str, str] = {}

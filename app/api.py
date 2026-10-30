@@ -17,7 +17,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from app import (alerts, auth, billing, branches, dashboard, db, geo, menu as menu_mod, orders, partners, quotes, runtime as runtime_mod, themes,
+from app import (alerts, auth, billing, branches, dashboard, db, geo, menu as menu_mod, orders, partners, push, quotes, runtime as runtime_mod, themes,
                  tiktok, upsell)
 from app.config import ROOT, settings
 from bot import sessions
@@ -166,6 +166,64 @@ def _store_ctx(p: Dict[str, Any]) -> Dict[str, Any]:
                                       "yandexKey": settings.yandex_maps_api_key,
                                       "mapLang": settings.yandex_maps_lang,
                                       "phonePrefix": settings.phone_prefix, "v": templates.env.globals["v"]})}
+
+
+@app.get("/sw.js", include_in_schema=False)
+async def service_worker():
+    """Service worker de la web del cliente (en la raíz para que cubra todas las tiendas): avisos push del pedido."""
+    return Response((ROOT / "app" / "static" / "sw.js").read_text(), media_type="application/javascript",
+                    headers={"Service-Worker-Allowed": "/", "Cache-Control": "no-cache"})
+
+
+@app.get("/{slug}/manifest.webmanifest", include_in_schema=False)
+async def web_manifest(slug: str, order: Optional[str] = None):
+    """Manifest para instalar la tienda como app. Con ?order= abre directo en el seguimiento de ese pedido."""
+    p = _partner_or_404(slug)
+    theme = themes.merge(p["theme"])
+    start = f"/{slug}"
+    if order and re.fullmatch(r"[A-Za-z0-9_-]{10,40}", order):
+        o = orders.get(order)
+        if o and o["partner_id"] == p["id"]:
+            start = f"/{slug}/pedido/{order}"
+    icons = [{"src": f"/{slug}/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any"}]
+    if theme.get("logo_url"):
+        icons.insert(0, {"src": theme["logo_url"], "sizes": "512x512", "purpose": "any"})
+    return JSONResponse({"name": p["name"], "short_name": p["name"][:24], "start_url": start, "scope": f"/{slug}",
+                         "id": f"/{slug}", "display": "standalone", "background_color": theme.get("background") or "#ffffff",
+                         "theme_color": theme.get("primary") or "#111111", "lang": "es", "icons": icons},
+                        media_type="application/manifest+json")
+
+
+@app.get("/{slug}/icon.svg", include_in_schema=False)
+async def store_icon(slug: str):
+    """Ícono de la app instalada: inicial del restaurante sobre su color (si no hay logo)."""
+    p = _partner_or_404(slug)
+    theme = themes.merge(p["theme"])
+    color = theme.get("primary") or "#111111"
+    letter = (p["name"][:1] or "C").upper().replace("&", "&amp;").replace("<", "&lt;")
+    svg = (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="112" '
+           f'fill="{color}"/><text x="256" y="340" text-anchor="middle" font-family="Inter,Arial,sans-serif" '
+           f'font-size="260" font-weight="700" fill="{theme.get("on_primary") or "#fff"}">{letter}</text></svg>')
+    return Response(svg, media_type="image/svg+xml", headers={"Cache-Control": "public, max-age=3600"})
+
+
+@app.get("/api/push/key")
+async def push_key():
+    return {"key": push.keys()["public"]}
+
+
+@app.post("/api/{slug}/orders/{token}/push")
+async def api_order_push(slug: str, token: str, body: Dict[str, Any] = Body(...)):
+    """El cliente activa los avisos de su pedido: guarda la suscripción Web Push del teléfono."""
+    p = _partner_or_404(slug)
+    o = orders.get(token)
+    if not o or o["partner_id"] != p["id"]:
+        raise HTTPException(404, "Pedido no encontrado")
+    try:
+        push.subscribe(token, body)
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+    return {"ok": True, "subscriptions": push.count(token)}
 
 
 @app.get("/{slug}/pedido/{token}", response_class=HTMLResponse)
@@ -635,7 +693,10 @@ async def admin_create_partner(request: Request, body: Dict[str, Any] = Body(...
 async def admin_update_partner(request: Request, slug: str, body: Dict[str, Any] = Body(...)):
     auth.require_admin(request)
     _partner_or_404(slug, public=False)
-    p = partners.update(slug, **body)
+    try:
+        p = partners.update(slug, **body)
+    except ValueError as e:
+        raise HTTPException(422, str(e))
     p.pop("portal_password_hash", None)
     return p
 
@@ -678,7 +739,7 @@ async def admin_accounts(request: Request):
     rows = [dict(r) for r in db.query("SELECT * FROM accounts ORDER BY name")]
     for r in rows:
         r["has_session"] = sessions.has_session(r["name"])
-        r["partners"] = [p["slug"] for p in partners.all_partners() if p["account"] == r["name"]]
+        r["partners"] = [p["slug"] for p in partners.all_partners() if r["name"] in (p["account"], p.get("vendor_account"))]
     return rows
 
 

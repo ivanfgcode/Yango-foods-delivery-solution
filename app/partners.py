@@ -75,11 +75,15 @@ def create(slug: str, name: str, account: str, yango_url: str = "", place_slug: 
 
 def update(slug: str, **fields: Any) -> Dict[str, Any]:
     allowed = {"name", "yango_url", "place_slug", "place_id", "place_lat", "place_lon", "place_address", "place_name",
-               "account", "enabled", "accepting_orders", "min_order", "brand_slug"}
+               "account", "enabled", "accepting_orders", "min_order", "brand_slug", "vendor_account"}
     sets, vals = [], []
     for k, v in fields.items():
         if k not in allowed:
             continue
+        if k == "vendor_account":
+            v = str(v or "").strip() or None
+            if v and not re.match(r"^[A-Za-z0-9_-]{1,40}$", v):
+                raise ValueError("Cuenta vendor inválida: solo letras, números, _ y -")
         if k == "yango_url":
             sets.append("brand_slug=?")
             vals.append(parse_yango_url(v)["brand_slug"])
@@ -89,8 +93,9 @@ def update(slug: str, **fields: Any) -> Dict[str, Any]:
         sets.append("updated_at=?")
         vals.append(db.now_iso())
         db.execute(f"UPDATE partners SET {', '.join(sets)} WHERE slug=?", (*vals, slug))
-        if "account" in fields:
-            db.execute("INSERT OR IGNORE INTO accounts(name) VALUES (?)", (fields["account"],))
+        for k in ("account", "vendor_account"):
+            if fields.get(k):
+                db.execute("INSERT OR IGNORE INTO accounts(name) VALUES (?)", (fields[k],))
     return get(slug)
 
 

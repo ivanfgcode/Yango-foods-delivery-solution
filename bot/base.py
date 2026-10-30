@@ -51,5 +51,17 @@ class YangoSource:
         """Crea el pedido en Yango con la cuenta. Devuelve {'yango_order_nr', 'yango_total', 'delivery_fee'}."""
         raise NotImplementedError
 
+    async def vendor_active(self, account: str) -> Dict[str, Any]:
+        """Vendor app del local (vendor.yango.com, sesión del restaurante): JSON crudo de los pedidos activos."""
+        raise NotImplementedError
+
+    async def vendor_order(self, account: str, order_nr: str) -> Optional[Dict[str, Any]]:
+        """Vendor app: detalle de un pedido (cómo terminó uno que ya no está activo)."""
+        raise NotImplementedError
+
+    async def order_tracking(self, account: str) -> Dict[str, Any]:
+        """Cuenta cliente que colocó el pedido (food.yango.com): JSON crudo del seguimiento de sus pedidos."""
+        raise NotImplementedError
+
     def health(self) -> Dict[str, Any]:
         return {"source": self.name}

@@ -602,6 +602,21 @@
     if (e.origin !== location.origin || !e.data || e.data.type !== "theme") return;
     for (const [k, v] of Object.entries(e.data.vars || {})) document.body.style.setProperty(k, v);
   });
+  // Web instalable (PWA) y aviso del último pedido en curso, que lleva a su seguimiento.
+  if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js", {scope: "/"}).catch(() => {});
+  try {
+    const last = JSON.parse(localStorage.getItem(`carta:last:${S.slug}`) || "null");
+    if (last && Date.now() - last.at < 4 * 3600e3) {
+      const a = document.createElement("a");
+      a.className = "live-order"; a.href = `/${S.slug}/pedido/${encodeURIComponent(last.token)}`;
+      a.innerHTML = `<svg class="ic" aria-hidden="true"><use href="/static/icons.svg?v=${S.v}#bike"></use></svg><span>Pedido #${esc(last.number)} en curso</span><b>Ver estado</b>`;
+      document.body.appendChild(a);
+      fetch(`/api/${S.slug}/orders/${encodeURIComponent(last.token)}`).then((r) => r.ok ? r.json() : null).then((x) => {
+        if (!x || x.status === "cancelado" || x.stage === "entregado" || x.stage === "cancelado") a.remove();
+        else a.querySelector("span").textContent = x.status_text;
+      }).catch(() => {});
+    }
+  } catch (e) {}
   // Ubicación primero: con la dirección guardada se entra directo a su sucursal; sin ella se pregunta.
   (async () => {
     const saved = savedPoint && savedPoint.branch ? savedPoint : null;
