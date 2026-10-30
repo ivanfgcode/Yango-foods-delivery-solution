@@ -289,3 +289,47 @@ footer.foot{color:var(--muted);font-size:.82rem;text-align:center;padding:36px 1
   .meta span{flex:none}
   .info-logo{width:60px;height:60px;font-size:24px}
 }
+
+/* upselling: «otras personas lo combinaron con» y bebidas al cerrar el carrito */
+.ups:empty{display:none}
+.ups{margin-top:22px;animation:rise .5s var(--out) both}
+.ups h4{display:flex;align-items:center;gap:8px;font-family:var(--font-heading);font-size:1.12rem;font-weight:800;margin:0 0 10px}
+.ups h4 .ic{color:var(--primary)}
+.ups-list{display:grid}
+.ups-it{display:flex;align-items:center;gap:12px;width:100%;padding:10px 0;border:0;border-top:1px solid var(--line);background:none;text-align:left;cursor:pointer;color:inherit}
+.ups-it:first-child{border-top:0}
+.ups-it img,.ups-it .noimg{width:58px;height:58px;border-radius:calc(var(--radius)*.6);object-fit:cover;flex:none;background:var(--soft);display:grid;place-items:center;font-weight:800;color:var(--muted)}
+.ups-it .nm{flex:1;min-width:0;font-weight:600;line-height:1.25}
+.ups-it .nm b{display:block;margin-top:3px;font-weight:800}
+.ups-add{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:var(--soft);flex:none;transition:transform .25s var(--spring),background .2s}
+.ups-it:hover .ups-add{background:var(--primary);color:var(--on-primary);transform:scale(1.08)}
+.cart-ups{margin-top:18px;padding-top:6px;border-top:1px dashed var(--line)}
+.cart-ups .ups-list{display:flex;gap:10px;overflow-x:auto;scrollbar-width:none;padding-bottom:4px}
+.cart-ups .ups-list::-webkit-scrollbar{display:none}
+.cart-ups .ups-it{flex:0 0 132px;flex-direction:column;align-items:stretch;gap:6px;padding:8px;border:1px solid var(--line);border-radius:var(--radius);position:relative}
+.cart-ups .ups-it img,.cart-ups .ups-it .noimg{width:100%;height:84px}
+.cart-ups .ups-it .nm{font-size:.86rem}
+.cart-ups .ups-add{position:absolute;top:66px;right:12px;width:30px;height:30px;background:var(--bg);box-shadow:var(--shadow-sm)}
+
+/* TikTok: carrusel de videos con el producto que aparece */
+.tt{margin-top:22px}
+.tt-h{display:flex;align-items:center;gap:8px;font-size:1.3rem;font-weight:800;margin-bottom:12px}
+.tt-rail{display:flex;gap:12px;overflow-x:auto;scroll-snap-type:x mandatory;scrollbar-width:none;padding:2px 16px 8px;margin:0 -16px}
+.tt-rail::-webkit-scrollbar{display:none}
+.tt-card{position:relative;flex:0 0 clamp(138px,34vw,180px);aspect-ratio:9/16;border-radius:calc(var(--radius) + 2px);overflow:hidden;cursor:pointer;scroll-snap-align:start;isolation:isolate;
+  background:linear-gradient(160deg,color-mix(in srgb,var(--primary) 70%,#000),#111);color:#fff;transition:transform .3s var(--ease)}
+.tt-card:hover{transform:translateY(-3px)}
+.tt-card img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:-2}
+.tt-card::after{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(0,0,0,.25),transparent 30%,transparent 50%,rgba(0,0,0,.75))}
+.tt-play{position:absolute;top:50%;left:50%;width:46px;height:46px;margin:-23px 0 0 -23px;border-radius:50%;display:grid;place-items:center;background:rgba(255,255,255,.22);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);transition:transform .3s var(--spring)}
+.tt-play .ic{fill:#fff;stroke:#fff;margin-left:3px}
+.tt-card:hover .tt-play{transform:scale(1.1)}
+.tt-au{position:absolute;top:10px;left:10px;right:10px;font-size:.75rem;font-weight:700;text-shadow:0 1px 4px rgba(0,0,0,.6);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tt-chip{position:absolute;left:8px;right:8px;bottom:8px;display:flex;flex-direction:column;align-items:flex-start;gap:1px;padding:7px 10px;border:0;border-radius:calc(var(--radius)*.7);
+  background:var(--bg);color:var(--text);text-align:left;font-size:.78rem;font-weight:700;box-shadow:var(--shadow-sm);cursor:pointer}
+.tt-chip span{max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tt-chip b{color:var(--primary);font-weight:800}
+.tt-sheet{width:min(420px,calc(100vw - 24px))}
+.tt-player{aspect-ratio:9/16;max-height:72vh;background:#000}
+.tt-player iframe{width:100%;height:100%;border:0;display:block}
+.tt-sheet .fo:empty{display:none}

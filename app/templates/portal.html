@@ -26,7 +26,7 @@ document.getElementById("loginForm").onsubmit = async (e) => {
 {% else %}
 <div class="bar">
   <b>{{ p.name }}</b>
-  <div class="tabs" id="tabs"><button class="on" data-t="design">Diseño</button><button data-t="info">Textos</button><button data-t="orders">Pedidos</button></div>
+  <div class="tabs" id="tabs"><button class="on" data-t="design">Diseño</button><button data-t="info">Textos</button><button data-t="tiktok">TikTok</button><button data-t="orders">Pedidos</button></div>
   <div class="sp"></div>
   <label class="switch" title="Pausar o reanudar pedidos en tu web"><input type="checkbox" id="accepting"> <span id="acceptLbl">Recibiendo pedidos</span></label>
   <a class="btn ghost sm" id="openStore" target="_blank" rel="noopener">Ver mi web<svg class="ic" aria-hidden="true"><use href="/static/icons.svg#external-link"></use></svg></a>
@@ -77,6 +77,19 @@ document.getElementById("loginForm").onsubmit = async (e) => {
       <label class="f"><span>Instagram</span><input data-p="instagram" maxlength="60"></label>
       <button class="btn acc" id="saveProfile">Guardar textos</button><div class="msg" id="profileMsg"></div>
       <p class="muted" id="menuInfo" style="margin-top:16px"></p>
+    </div>
+  </section>
+
+  <section id="t-tiktok" hidden>
+    <div class="card" style="max-width:820px"><h2>Videos de TikTok en tu web</h2>
+      <p class="muted">Pega el enlace de un video (en TikTok: Compartir → Copiar enlace) y elige el producto que aparece. En tu web sale un carrusel; quien lo mira puede pedir ese producto desde el video. Hasta 12 videos.</p>
+      <div class="row" style="align-items:flex-end">
+        <label class="f" style="flex:2 1 280px"><span>Enlace del video</span><input id="ttUrl" type="url" placeholder="https://www.tiktok.com/@tu_cuenta/video/7…  o  https://vm.tiktok.com/…"></label>
+        <label class="f" style="flex:1 1 200px"><span>Producto que aparece</span><select id="ttItem"></select></label>
+        <button class="btn acc" id="ttAdd" style="margin-bottom:12px">Agregar</button>
+      </div>
+      <div class="msg" id="ttMsg"></div>
+      <div id="ttList" class="tt-list"></div>
     </div>
   </section>
 
@@ -150,8 +163,9 @@ document.getElementById("loginForm").onsubmit = async (e) => {
   $$("#device button").forEach((b) => (b.onclick = () => { $$("#device button").forEach((x) => x.classList.toggle("on", x === b)); $("#preview").classList.toggle("mobile", b.dataset.v === "mobile"); }));
   $$("#tabs button").forEach((b) => (b.onclick = () => {
     $$("#tabs button").forEach((x) => x.classList.toggle("on", x === b));
-    ["design", "info", "orders"].forEach((t) => ($(`#t-${t}`).hidden = t !== b.dataset.t));
+    ["design", "info", "tiktok", "orders"].forEach((t) => ($(`#t-${t}`).hidden = t !== b.dataset.t));
     if (b.dataset.t === "orders") loadOrders();
+    if (b.dataset.t === "tiktok") loadTikTok();
   }));
   $("#accepting").onchange = async (e) => { await API("/accepting", json("PUT", {accepting: e.target.checked})); $("#acceptLbl").textContent = e.target.checked ? "Recibiendo pedidos" : "Pedidos en pausa"; };
   $("#logout").onclick = async () => { await API("/logout", {method: "POST"}); location.reload(); };
@@ -160,6 +174,42 @@ document.getElementById("loginForm").onsubmit = async (e) => {
     try { await API("/profile", json("PUT", body)); $("#profileMsg").className = "msg ok"; $("#profileMsg").textContent = "Guardado"; $("#frame").contentWindow.location.reload(); }
     catch (e) { $("#profileMsg").className = "msg bad"; $("#profileMsg").textContent = e.message; }
   };
+  // ---------------------------------------------------------------- TikTok
+  let ttMenu = null, ttVideos = [];
+  const itemOptions = (sel) => `<option value="">Sin producto</option>` + Object.values(ttMenu.items).filter((x) => x.available)
+    .sort((a, b) => a.name.localeCompare(b.name)).map((x) => `<option value="${esc(x.id)}"${x.id === sel ? " selected" : ""}>${esc(x.name)} · ${CUR}${x.promo_price ?? x.price}</option>`).join("");
+  async function loadTikTok() {
+    if (!ttMenu) ttMenu = await fetch(`/api/${SLUG}/menu`).then((r) => r.json()).catch(() => ({items: {}}));
+    $("#ttItem").innerHTML = itemOptions("");
+    ttVideos = (me.profile || {}).tiktok || [];
+    renderTikTok();
+  }
+  function renderTikTok() {
+    $("#ttList").innerHTML = ttVideos.map((v, i) => `<div class="tt-row">
+      ${v.poster ? `<img src="${esc(v.poster)}" alt="">` : `<span class="tt-ph"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#play"></use></svg></span>`}
+      <div class="tt-info"><a href="${esc(v.url)}" target="_blank" rel="noopener">${esc(v.title || "Video " + v.id)}</a><span class="muted">${v.author ? "@" + esc(v.author) : ""}</span>
+        <select data-tt-item="${i}">${itemOptions(v.item_id)}</select></div>
+      <div class="tt-act"><button class="btn ghost sm" data-tt-up="${i}" ${i ? "" : "disabled"} >Subir</button><button class="btn ghost sm" data-tt-del="${i}">Quitar</button></div></div>`).join("")
+      || `<p class="muted">Todavía no hay videos.</p>`;
+    $$("[data-tt-item]").forEach((s) => (s.onchange = () => { ttVideos[+s.dataset.ttItem].item_id = s.value || null; saveTikTok(); }));
+    $$("[data-tt-up]").forEach((b) => (b.onclick = () => { const i = +b.dataset.ttUp; [ttVideos[i - 1], ttVideos[i]] = [ttVideos[i], ttVideos[i - 1]]; saveTikTok(); }));
+    $$("[data-tt-del]").forEach((b) => (b.onclick = () => { ttVideos.splice(+b.dataset.ttDel, 1); saveTikTok(); }));
+  }
+  async function saveTikTok() {
+    try { ttVideos = await API("/tiktok", json("PUT", {videos: ttVideos.map((v) => ({id: v.id, item_id: v.item_id}))})); me.profile.tiktok = ttVideos;
+      ttMsg("ok", "Guardado"); $("#frame").contentWindow.location.reload(); }
+    catch (e) { ttMsg("bad", e.message); }
+    renderTikTok();
+  }
+  const ttMsg = (cls, txt) => { $("#ttMsg").className = `msg ${cls}`; $("#ttMsg").textContent = txt; };
+  $("#ttAdd").onclick = async () => {
+    ttMsg("", "Buscando el video en TikTok…"); $("#ttAdd").disabled = true;
+    try { ttVideos = await API("/tiktok", json("POST", {url: $("#ttUrl").value, item_id: $("#ttItem").value || null})); me.profile = me.profile || {}; me.profile.tiktok = ttVideos;
+      $("#ttUrl").value = ""; ttMsg("ok", "Video agregado"); renderTikTok(); $("#frame").contentWindow.location.reload(); }
+    catch (e) { ttMsg("bad", e.message); }
+    $("#ttAdd").disabled = false;
+  };
+
   async function loadOrders() {
     const rows = await API("/orders");
     $("#ordersBody").innerHTML = rows.map((o) => `<tr><td>${esc(new Date(o.created_at).toLocaleString("es-BO"))}</td><td class="mono">${esc(o.number)}</td>

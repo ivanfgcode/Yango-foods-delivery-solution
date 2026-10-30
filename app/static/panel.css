@@ -3,6 +3,7 @@
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121211;--surface:#1C1B1A;--text:#F2EFEA;--muted:#A39E97;--line:#2E2C2A;--soft:#252322}}
 :root[data-theme="dark"]{--bg:#121211;--surface:#1C1B1A;--text:#F2EFEA;--muted:#A39E97;--line:#2E2C2A;--soft:#252322}
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 Inter,system-ui,-apple-system,sans-serif}
 button,input,select,textarea{font:inherit;color:inherit}
 a{color:inherit}
@@ -65,3 +66,9 @@ code,.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.85
 .login-box img{width:300px;max-width:100%;border:1px solid var(--line);border-radius:12px;cursor:crosshair;background:var(--soft)}
 .login-ctl{flex:1 1 240px;min-width:0}
 .login-ctl .row{gap:6px}
+.tt-list{display:grid;gap:10px;margin-top:8px}
+.tt-row{display:flex;gap:12px;align-items:center;padding:10px;border:1px solid var(--line);border-radius:12px;background:var(--bg)}
+.tt-row img,.tt-ph{width:54px;height:96px;object-fit:cover;border-radius:8px;flex:none;background:var(--soft);display:grid;place-items:center;color:var(--muted)}
+.tt-info{flex:1;min-width:0;display:grid;gap:4px}
+.tt-info a{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tt-act{display:flex;gap:6px;flex-wrap:wrap}

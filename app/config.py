@@ -60,6 +60,10 @@ class Settings:
         self.quote_cache_seconds = _int("QUOTE_CACHE_SECONDS", 90)
         self.quote_precision = _int("QUOTE_PRECISION", 4)  # decimales de lat/lon para la caché (~11 m)
         self.menu_sync_minutes = _int("MENU_SYNC_MINUTES", 15)
+        # Upselling: pedidos de los últimos N días, mínimo de veces juntos para sugerir, caché de las cuentas.
+        self.upsell_days = _int("UPSELL_DAYS", 90)
+        self.upsell_min_pairs = _int("UPSELL_MIN_PAIRS", 2)
+        self.upsell_cache_seconds = _int("UPSELL_CACHE_SECONDS", 300)
 
         # Zona de servicio (Bolivia). Fuera de esto ni se consulta a Yango.
         self.bounds = (

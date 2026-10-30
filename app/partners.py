@@ -117,6 +117,25 @@ def set_profile(slug: str, patch: Dict[str, Any]) -> Dict[str, Any]:
     return profile
 
 
+def set_tiktok(slug: str, videos: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Videos de TikTok de la tienda: [{id, url, title, author, poster, item_id}] (máx. 12)."""
+    p = get(slug)
+    profile = dict(p["profile"] or {})
+    clean = []
+    for v in videos[:12]:
+        if not re.fullmatch(r"\d{8,25}", str(v.get("id") or "")):
+            continue
+        clean.append({"id": str(v["id"]), "url": str(v.get("url") or "")[:300],
+                      "title": re.sub(r"[<>]", "", str(v.get("title") or ""))[:150],
+                      "author": re.sub(r"[<>]", "", str(v.get("author") or ""))[:60],
+                      "poster": v.get("poster") if re.fullmatch(r"/uploads/[\w.-]+", str(v.get("poster") or "")) else None,
+                      "item_id": str(v["item_id"])[:40] if v.get("item_id") else None})
+    profile["tiktok"] = clean
+    db.execute("UPDATE partners SET profile=?, updated_at=? WHERE slug=?",
+               (json.dumps(profile, ensure_ascii=False), db.now_iso(), slug))
+    return clean
+
+
 def set_password(slug: str, password: str) -> None:
     if len(password or "") < 8:
         raise ValueError("La contraseña debe tener al menos 8 caracteres")

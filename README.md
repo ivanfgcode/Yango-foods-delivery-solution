@@ -29,7 +29,14 @@ Cada partner tiene un **restaurante oculto** en Yango Foods, visible solo para u
    `CLIENTE: Nombre Apellido | TEL: +591 7XXXXXXX | PAGO: QR al mensajero | REF: ... | NOTA: ... | WEB #ABC123`.
    Con `ORDER_PLACEMENT_ENABLED=false` (por defecto) el pedido queda **manual**: alerta por Telegram y un operador
    lo carga en Yango y lo marca en el panel.
-6. La vendor app del restaurante y los mensajeros siguen el flujo normal de Yango: no se toca nada ahí.
+6. **Upselling**: en la ficha de cada producto, «Otras personas lo combinaron con», calculado con los pedidos de la
+   web de ese restaurante (veces juntos / veces pedido, mínimo `UPSELL_MIN_PAIRS`, últimos `UPSELL_DAYS` días).
+   Sin historial, y al cerrar el carrito si no lleva bebida, sugiere bebidas del menú (las más vendidas primero).
+   Las combinaciones más frecuentes se ven en Admin → Resumen → Más vendido.
+7. **TikTok**: en el portal (pestaña TikTok) el partner pega enlaces de sus videos y etiqueta el producto que aparece.
+   En la tienda sale un carrusel; el video se reproduce con el reproductor de TikTok y trae «Pedir este producto».
+   No hace falta app de desarrollador (oEmbed público); listar los videos de la cuenta solos sí la necesitaría.
+8. La vendor app del restaurante y los mensajeros siguen el flujo normal de Yango: no se toca nada ahí.
 
 | Estado | Qué significa |
 |---|---|
@@ -45,7 +52,7 @@ Cada partner tiene un **restaurante oculto** en Yango Foods, visible solo para u
 |---|---|
 | `/<slug>` | Cliente: menú, buscador, carrito, checkout con mapa |
 | `/<slug>/pedido/<token>` | Cliente: estado del pedido |
-| `/<slug>/portal` | Partner: diseño (logo, portada, colores, tipografías, tamaños, cuadrícula/lista), textos, pausar pedidos, ver pedidos |
+| `/<slug>/portal` | Partner: diseño (logo, portada, colores, tipografías, tamaños, cuadrícula/lista), textos, videos de TikTok con su producto, pausar pedidos, ver pedidos |
 | `/admin` | Equipo: **Resumen** (ventas, pedidos, por atender, ticket y envío medio, lo más vendido, restaurantes, hora pico, mejor día; por periodo y restaurante), pedidos (marcar colocado, reintentar, copiar comentario), restaurantes, cuentas Yango (SMS o cookie), eventos |
 
 ## Sesiones de las cuentas

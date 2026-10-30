@@ -48,6 +48,11 @@
     <span class="sr">Buscar</span><input id="search" type="search" placeholder="¿Qué se te antoja?" autocomplete="off"></label>
 </div>
 
+<section class="wrap tt" id="tt" hidden aria-labelledby="ttTitle">
+  <h2 class="tt-h" id="ttTitle"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#play"></use></svg>En TikTok</h2>
+  <div class="tt-rail" id="ttRail"></div>
+</section>
+
 <nav class="cats" aria-label="Categorías"><div class="wrap" id="cats"></div></nav>
 <main class="wrap" id="menu">
   <div class="sk sk-title"></div><div class="grid"><div class="sk sk-card"></div><div class="sk sk-card"></div><div class="sk sk-card"></div><div class="sk sk-card"></div></div>
@@ -72,6 +77,13 @@
     <div class="row"><div class="qty"><button type="button" id="qMinus" aria-label="Menos"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#minus"></use></svg></button><span id="qVal">1</span><button type="button" id="qPlus" aria-label="Más"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#plus"></use></svg></button></div>
     <button class="btn" type="button" id="addBtn">Agregar</button></div>
   </div>
+</div>
+
+<!-- Video de TikTok -->
+<div class="sheet modal tt-sheet" id="ttSheet" role="dialog" aria-modal="true" aria-label="Video de TikTok">
+  <div class="hd"><button class="x" type="button" data-close aria-label="Cerrar"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#x"></use></svg></button></div>
+  <div class="tt-player"><iframe id="ttFrame" title="Video de TikTok" allow="autoplay; encrypted-media; fullscreen; picture-in-picture" allowfullscreen></iframe></div>
+  <div class="fo" id="ttFoot"></div>
 </div>
 
 <!-- Carrito y checkout -->

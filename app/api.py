@@ -15,7 +15,8 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from app import auth, dashboard, db, geo, menu as menu_mod, orders, partners, quotes, runtime as runtime_mod, themes
+from app import (auth, dashboard, db, geo, menu as menu_mod, orders, partners, quotes, runtime as runtime_mod, themes,
+                 tiktok, upsell)
 from app.config import ROOT, settings
 from bot import sessions
 from bot.login import LoginError
@@ -102,6 +103,7 @@ def _store_ctx(p: Dict[str, Any]) -> Dict[str, Any]:
             "store_json": script_json({"slug": p["slug"], "name": p["name"], "currency": settings.currency,
                                       "center": [p.get("place_lat") or -17.7833, p.get("place_lon") or -63.1821],
                                       "accepting": bool(p["accepting_orders"]),
+                                      "tiktok": (p["profile"] or {}).get("tiktok") or [],
                                       "yandexKey": settings.yandex_maps_api_key,
                                       "mapLang": settings.yandex_maps_lang,
                                       "phonePrefix": settings.phone_prefix})}
@@ -123,6 +125,15 @@ async def order_page(request: Request, slug: str, token: str):
 async def api_menu(slug: str):
     p = _partner_or_404(slug)
     return menu_mod.public_menu(_menu_or_503(p))
+
+
+@app.get("/api/{slug}/upsell")
+async def api_upsell(slug: str, items: str = "", context: str = "item"):
+    """Sugerencias para la ficha de un producto (context=item) o para cerrar el carrito (context=cart)."""
+    p = _partner_or_404(slug)
+    m = _menu_or_503(p)
+    ids = [i for i in items.split(",") if i][:30]
+    return {"items": upsell.suggest(p["id"], m, ids, "cart" if context == "cart" else "item")}
 
 
 @app.post("/api/{slug}/geocode")
@@ -200,6 +211,7 @@ async def api_create_order(request: Request, slug: str, body: Dict[str, Any] = B
     if expected is not None and abs(float(expected) - summary["total"]) > 0.01:
         raise orders.OrderError(f"El total cambió a {settings.currency}{summary['total']:g}. Revisa y confirma de nuevo.")
     o = orders.create(p, priced, summary, client_ip=ip)
+    upsell.clear_cache(p["id"])
     rt().dispatcher.enqueue(o["account"], o["token"])
     return {"token": o["token"], "number": o["number"], "url": f"/{slug}/pedido/{o['token']}",
             "order": orders.public_view(o)}
@@ -278,6 +290,48 @@ async def portal_accepting(request: Request, slug: str, body: Dict[str, Any] = B
     return {"accepting_orders": bool(body.get("accepting"))}
 
 
+@app.exception_handler(tiktok.TikTokError)
+async def _tiktok_error(request: Request, exc: tiktok.TikTokError):
+    return JSONResponse({"detail": str(exc)}, status_code=422)
+
+
+def _videos(p: Dict[str, Any]) -> list:
+    return list((p["profile"] or {}).get("tiktok") or [])
+
+
+@app.post("/api/{slug}/portal/tiktok")
+async def portal_tiktok_add(request: Request, slug: str, body: Dict[str, Any] = Body(...)):
+    """Agrega un video de TikTok (enlace) etiquetado con el producto que aparece."""
+    auth.require_portal(request, slug)
+    p = _partner_or_404(slug, public=False)
+    videos = _videos(p)
+    if len(videos) >= tiktok.MAX_VIDEOS:
+        raise HTTPException(422, f"Máximo {tiktok.MAX_VIDEOS} videos")
+    v = await tiktok.resolve(str(body.get("url") or ""), slug)
+    v["item_id"] = _item_or_none(p, body.get("item_id"))
+    videos = [x for x in videos if x["id"] != v["id"]] + [v]
+    return partners.set_tiktok(slug, videos)
+
+
+@app.put("/api/{slug}/portal/tiktok")
+async def portal_tiktok_update(request: Request, slug: str, body: Dict[str, Any] = Body(...)):
+    """Reordenar y cambiar el producto etiquetado: body {videos: [{id, item_id}]} en el orden nuevo."""
+    auth.require_portal(request, slug)
+    p = _partner_or_404(slug, public=False)
+    current = {v["id"]: v for v in _videos(p)}
+    out = []
+    for x in body.get("videos") or []:
+        v = current.get(str(x.get("id")))
+        if v:
+            out.append({**v, "item_id": _item_or_none(p, x.get("item_id"))})
+    return partners.set_tiktok(slug, out)
+
+
+def _item_or_none(p: Dict[str, Any], item_id: Any) -> Optional[str]:
+    m = menu_mod.load(p["id"])
+    return str(item_id) if item_id and m and str(item_id) in m["items"] else None
+
+
 ALLOWED_IMAGES = {"image/png": "png", "image/jpeg": "jpg", "image/webp": "webp"}
 
 
@@ -342,6 +396,12 @@ async def admin_dashboard(request: Request, days: int = 30, partner: Optional[st
     accounts = [dict(r) for r in db.query("SELECT name, status, detail, checked_at FROM accounts ORDER BY name")]
     used = {x["account"] for x in partners.all_partners() if x["enabled"]}
     out["accounts"] = [a for a in accounts if a["name"] in used] or accounts
+    out["pairs"] = []
+    for x in ([p] if p else partners.all_partners()):
+        m = menu_mod.load(x["id"])
+        if m:
+            out["pairs"] += upsell.top_pairs(x["id"], m)
+    out["pairs"] = sorted(out["pairs"], key=lambda r: -r["orders"])[:8]
     out["quotes"] = rt().quotes.stats
     out["source"] = rt().source.name
     out["order_placement_enabled"] = settings.order_placement_enabled

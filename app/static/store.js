@@ -30,7 +30,10 @@
   }
   function debounce(fn, ms) { let h; return (...a) => { clearTimeout(h); h = setTimeout(() => fn(...a), ms); }; }
   function open(el) { $("#scrim").classList.add("on"); el.classList.add("on"); document.body.style.overflow = "hidden"; }
-  function closeAll() { $$(".sheet.on").forEach((e) => e.classList.remove("on")); $("#scrim").classList.remove("on"); document.body.style.overflow = ""; }
+  function closeAll() {
+    $$(".sheet.on").forEach((e) => e.classList.remove("on")); $("#scrim").classList.remove("on"); document.body.style.overflow = "";
+    if ($("#ttFrame").src) $("#ttFrame").removeAttribute("src");  // detiene el video
+  }
   function showErr(el, msg) { el.textContent = msg; el.classList.remove("shake"); void el.offsetWidth; if (msg) el.classList.add("shake"); }
   $("#scrim").onclick = closeAll;
   $$("[data-close]").forEach((b) => (b.onclick = closeAll));
@@ -162,8 +165,11 @@
       if (need) { const ok = cur.sel[g.id].length >= need; tag.classList.toggle("done", ok); tag.classList.toggle("req", !ok); tag.innerHTML = ok ? `${icon("check")}Listo` : esc(tag.dataset.rule); }
       refreshItem();
     }));
+    $("#itemBody").insertAdjacentHTML("beforeend", `<div class="ups" id="itemUps"></div>`);
+    loadUpsell([it.id], "item", $("#itemUps"));
     showErr($("#itemErr"), "");
-    refreshItem(); open($("#itemSheet")); $("#itemBody").scrollTop = 0;
+    if (!$("#itemSheet").classList.contains("on")) open($("#itemSheet"));
+    refreshItem(); $("#itemBody").scrollTop = 0;
   }
   function missingGroup() {
     for (const g of cur.it.groups) { const need = Math.max(g.min, g.required ? 1 : 0); if ((cur.sel[g.id] || []).length < need) return g; }
@@ -200,6 +206,61 @@
     setTimeout(() => { f.remove(); bump(); }, 720);
   }
 
+  // ------------------------------------------------------------------ upselling («otras personas lo combinaron con»)
+  const needsChoice = (it) => it.groups.some((g) => Math.max(g.min, g.required ? 1 : 0) > 0);
+  const upsCache = {};
+  async function loadUpsell(ids, context, box) {
+    const key = `${context}:${[...new Set(ids)].sort().join(",")}`;
+    try { upsCache[key] = upsCache[key] || await api(`/upsell?context=${context}&items=${encodeURIComponent([...new Set(ids)].join(","))}`); }
+    catch (e) { return; }
+    const recs = upsCache[key].items.map((r) => ({...r, it: menu.items[r.item_id]})).filter((r) => r.it && r.it.available);
+    if (!recs.length || !box.isConnected) return;
+    const drinks = recs.every((r) => r.reason === "bebida");
+    const title = context === "cart" ? (drinks ? "¿Algo para tomar?" : "Otras personas también pidieron") : (drinks ? "Acompáñalo con una bebida" : "Otras personas lo combinaron con");
+    box.innerHTML = `<h4>${icon(drinks ? "cup-soda" : "sparkles")}${title}</h4><div class="ups-list">${recs.map((r) => `
+      <button type="button" class="ups-it" data-ups="${esc(r.it.id)}">
+        ${r.it.image ? `<img loading="lazy" src="${esc(r.it.image)}" alt="">` : `<span class="noimg">${esc(r.it.name[0] || "")}</span>`}
+        <span class="nm">${esc(r.it.name)}<b>${money(itemPrice(r.it))}</b></span>
+        <span class="ups-add" aria-label="Agregar ${esc(r.it.name)}">${icon("plus")}</span></button>`).join("")}</div>`;
+    $$("[data-ups]", box).forEach((b) => (b.onclick = () => quickAdd(b.dataset.ups, b)));
+  }
+  function quickAdd(id, el) {
+    const it = menu.items[id]; if (!it) return;
+    if (needsChoice(it)) return openItem(id);  // tiene opciones obligatorias: se eligen en su ficha
+    const key = id + "|[]", same = cart.find((l) => l.key === key);
+    if (same) same.quantity = Math.min(50, same.quantity + 1); else cart.push({key, item_id: id, quantity: 1, options: {}});
+    flyToCart($("img", el) || el, it.image); saveCart(); toast(`${it.name} agregado`);
+    if (view === "cart" && $("#cartSheet").classList.contains("on")) renderCart();
+  }
+
+  // ------------------------------------------------------------------ TikTok: videos elegidos por el restaurante con su producto
+  function renderTikTok() {
+    const vids = (S.tiktok || []).filter((v) => /^\d+$/.test(v.id));
+    if (!vids.length) return;
+    $("#tt").hidden = false;
+    $("#ttRail").innerHTML = vids.map((v, i) => {
+      const it = v.item_id && menu.items[v.item_id], poster = v.poster || (it && it.image) || "";
+      return `<div class="tt-card reveal" data-v="${i}" role="button" tabindex="0" aria-label="Ver video${it ? ` de ${esc(it.name)}` : ""}">
+        ${poster ? `<img loading="lazy" src="${esc(poster)}" alt="">` : ""}<span class="tt-play">${icon("play")}</span>
+        ${v.author ? `<span class="tt-au">@${esc(v.author)}</span>` : ""}
+        ${it && it.available ? `<button type="button" class="tt-chip" data-item="${esc(it.id)}"><span>${esc(it.name)}</span><b>${money(itemPrice(it))}</b></button>` : ""}</div>`;
+    }).join("");
+    $$(".tt-card", $("#ttRail")).forEach((c) => {
+      const go = () => openVideo(vids[+c.dataset.v]);
+      c.onclick = (e) => { if (!e.target.closest(".tt-chip")) go(); };
+      c.onkeydown = (e) => { if (e.key === "Enter") go(); };
+    });
+    $$(".tt-chip", $("#ttRail")).forEach((b) => (b.onclick = () => openItem(b.dataset.item)));
+    reveal($("#tt"));
+  }
+  function openVideo(v) {
+    const it = v.item_id && menu.items[v.item_id];
+    $("#ttFrame").src = `https://www.tiktok.com/player/v1/${encodeURIComponent(v.id)}?autoplay=1&description=0&music_info=0&rel=0&native_context_menu=0`;
+    $("#ttFoot").innerHTML = it && it.available ? `<button class="btn" type="button" id="ttOrder">Pedir ${esc(it.name)} · ${money(itemPrice(it))}</button>` : "";
+    if (it && it.available) $("#ttOrder").onclick = () => { closeAll(); setTimeout(() => openItem(it.id), 220); };
+    open($("#ttSheet"));
+  }
+
   // ------------------------------------------------------------------ carrito
   function saveCart() {
     cart = cart.filter((l) => menu.items[l.item_id] && menu.items[l.item_id].available);
@@ -227,6 +288,7 @@
         <div class="nm"><b>${esc(it.name)}</b>${optionNames(l) ? `<small>${esc(optionNames(l))}</small>` : ""}<small>${money(lineAmount(l))}</small></div>
         <div class="qty"><button type="button" data-d="-1" data-i="${i}" aria-label="Menos">${icon(l.quantity === 1 ? "trash-2" : "minus")}</button><span>${l.quantity}</span><button type="button" data-d="1" data-i="${i}" aria-label="Más">${icon("plus")}</button></div></div>`; }).join("")
         : `<div class="empty-cart"><div class="ico">${icon("shopping-bag")}</div><p>Tu carrito está vacío</p><p class="note">Agrega algo rico del menú</p></div>`;
+      if (cart.length) { $("#cartView").insertAdjacentHTML("beforeend", `<div class="ups cart-ups" id="cartUps"></div>`); loadUpsell(cart.map((l) => l.item_id), "cart", $("#cartUps")); }
       $$("[data-d]", $("#cartView")).forEach((b) => (b.onclick = () => {
         const l = cart[+b.dataset.i]; l.quantity += +b.dataset.d; if (l.quantity <= 0) cart.splice(+b.dataset.i, 1); saveCart();
       }));
@@ -374,6 +436,6 @@
   if (savedPoint) api("/quote", {lat: savedPoint.lat, lon: savedPoint.lon, subtotal: 0}).then((q) => {
     if (q.available && q.eta_min) $("#metaEta").innerHTML = `${icon("bike")}<b>${q.eta_min}–${q.eta_max} min</b>`;
   }).catch(() => {});
-  api("/menu").then((m) => { menu = m; renderMenu(); saveCart(); })
+  api("/menu").then((m) => { menu = m; renderMenu(); saveCart(); renderTikTok(); })
     .catch((e) => { $("#menu").innerHTML = `<p class="note" style="padding:40px 0">${esc(e.message)}</p>`; });
 })();

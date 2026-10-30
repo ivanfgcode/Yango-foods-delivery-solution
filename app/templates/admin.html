@@ -317,7 +317,9 @@ document.getElementById("f").onsubmit = async (e) => { e.preventDefault();
     } else if (m === "top") {
       set("Lo más vendido", `${periodo} · por venta en Bs (productos, sin envío)`, F(res.top[0]?.revenue), "Bs · " + (res.top[0]?.name || ""), `${F(res.products)} productos distintos · ${F(res.units)} unidades`);
       lecturas([["Unidades", F(res.units)], ["Productos", F(res.products)], ["Uds / pedido", F(res.orders ? res.units / res.orders : 0, 1)], ["Top 8", F(res.top.reduce((a, x) => a + x.revenue, 0)) + " Bs"]]);
-      lista(ranking(res.top, (x) => x.revenue, (x) => `${F(x.units)} uds · ${F(x.orders)} pedidos`));
+      lista(ranking(res.top, (x) => x.revenue, (x) => `${F(x.units)} uds · ${F(x.orders)} pedidos`) +
+        (res.pairs.length ? `<h3 class="in-c-nombre" style="margin:18px 4px 6px">Se piden juntos (base del upselling)</h3>` +
+          ranking(res.pairs.map((x) => ({...x, name: `${x.a} + ${x.b}`})), (x) => x.orders, () => "en el mismo pedido", "pedidos") : ""));
     } else if (m === "restaurantes") {
       const ps = res.partners;
       set("Ventas por restaurante", `${periodo} · total cobrado`, F(ps.length), "restaurantes", ps[0] ? `el mayor: ${ps[0].name}` : "");
