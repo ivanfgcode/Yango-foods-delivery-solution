@@ -63,6 +63,7 @@ def parse_catalog(raw: Dict[str, Any]) -> Dict[str, Any]:
         "eta_max": eta.get("max"),
         "available_from": lp.get("availableFrom"),
         "available_to": lp.get("availableTo"),
+        "other_branch": lp.get("availableSlug"),  # otra sucursal de la marca que sí atiende ese punto
         "thresholds": thresholds,
         "fallback_fee": _money(((lp.get("shippingInfoAction") or {}).get("deliveryFee") or {}).get("name")),
         "service_fee": _money((place.get("service_fee") or {}).get("amount")) or 0.0,

@@ -97,3 +97,18 @@ def test_cart_payload_templates():
     body = fill_template({"item_id": "{item_id}", "q": "{quantity}", "opts": "{item_options}", "s": "x-{item_id}"},
                          {"item_id": 5, "quantity": 2, "item_options": opts})
     assert body == {"item_id": 5, "q": 2, "opts": opts, "s": "x-5"}
+
+
+def test_catalog_zone_closed_real():
+    """Respuesta real (2026-10-30, centro de Santa Cruz): la zona no se atiende ahora y Yango sugiere otra sucursal."""
+    q = quotes.parse_catalog(json.loads((FIX / "catalog_zone_closed.json").read_text()))
+    assert q["available"] is False and q["reason"] == "cerrado"
+    assert q["other_branch"] == "wrap__roll__megacenter"
+
+
+def test_parse_suggest_keeps_only_nearby():
+    raw = json.loads((FIX / "suggest_text.json").read_text())
+    res = geo.parse_suggest(raw, -17.7648, -63.1474)
+    assert res[0]["title"] == "Rafael Peña, 100" and res[0]["exact"]
+    assert all("México" not in r["subtitle"] and "Cochabamba" not in r["subtitle"] for r in res)
+    assert abs(res[0]["lat"] + 17.7777) < 0.001

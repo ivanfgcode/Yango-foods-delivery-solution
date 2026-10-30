@@ -191,6 +191,11 @@ class YangoWebSource(YangoSource):
                 "sticky": False, "type": "a"}
         return await self.rt(account).fetch("POST", self.cfg["endpoints"]["finalsuggest"], body)
 
+    async def search_address(self, account: str, text: str, lat: float, lon: float) -> Dict[str, Any]:
+        body = {"part": text, "position": [lon, lat], "state": {"current_mode": "eats"}, "type": "a",
+                "action": "user_input"}
+        return await self.rt(account).fetch("POST", self.cfg["endpoints"]["suggest"], body)
+
     async def resolve_place(self, account: str, yango_url: str) -> Dict[str, Any]:
         rt = self.rt(account)
         await rt.ensure()

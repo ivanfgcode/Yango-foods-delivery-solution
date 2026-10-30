@@ -129,7 +129,7 @@ class Runtime:
 
     async def sync_partner(self, partner: Dict[str, Any]) -> Dict[str, Any]:
         """Resuelve el local (si falta) y actualiza el menú."""
-        if not partner.get("place_slug") or partner.get("place_lat") is None:
+        if not partner.get("place_slug") or partner.get("place_lat") is None or not partner.get("place_name"):
             if not partner.get("yango_url"):
                 raise ValueError("Falta la URL de Yango del restaurante")
             place = await self.source.resolve_place(partner["account"], partner["yango_url"])
@@ -137,7 +137,7 @@ class Runtime:
                 raise RuntimeError("Yango no devolvió el local")
             partner = partners.update(partner["slug"], place_slug=place["place_slug"], place_id=place["place_id"],
                                       place_lat=place["lat"], place_lon=place["lon"],
-                                      place_address=place.get("address"))
+                                      place_address=place.get("address"), place_name=place.get("name"))
             db.event("local_resuelto", place, partner_id=partner["id"])
         try:
             raw = await self.source.menu(partner["account"], partner["place_slug"],

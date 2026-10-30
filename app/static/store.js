@@ -358,7 +358,7 @@
       const q = await api("/quote", {lat: point.lat, lon: point.lon, subtotal: round2(subtotal())});
       if (seq !== quoteSeq) return;
       quote = q;
-      if (!q.available) setQuoteBox("bad", q.reason === "cerrado" ? "El restaurante está cerrado ahora" : "No llegamos a esta dirección. Mueve el pin o prueba otra.");
+      if (!q.available) setQuoteBox("bad", unavailableText(q));
       else if (q.below_min_order) setQuoteBox("bad", `El pedido mínimo es <b>${money(q.min_order)}</b>`);
       else if (q.delivery_fee == null) setQuoteBox("bad", "No pudimos calcular el envío para este pedido");
       else setQuoteBox("ok", `Envío <b>${q.delivery_fee ? money(q.delivery_fee) : "gratis"}</b>${q.eta_min ? ` · llega en ${q.eta_min}–${q.eta_max} min` : ""}${q.surge ? " · alta demanda" : ""}`);
@@ -368,6 +368,14 @@
       quote = null; setQuoteBox("bad", esc(e.message));
     }
     renderFoot();
+  }
+  function unavailableText(q) {
+    if (q.reason === "zona_cerrada") return "Por alta demanda no llegamos a esta zona ahora. Prueba más tarde.";
+    if (q.reason === "cerrado") {
+      const t = q.opens_at && new Date(q.opens_at);
+      return `El restaurante está cerrado ahora${t && !isNaN(t) ? ` · abre a las ${t.toLocaleTimeString("es-BO", {hour: "2-digit", minute: "2-digit"})}` : ""}`;
+    }
+    return "No llegamos a esta dirección. Mueve el pin o prueba otra.";
   }
   function loadScript(src) { return new Promise((ok, ko) => { const s = document.createElement("script"); s.src = src; s.onload = ok; s.onerror = ko; document.head.appendChild(s); }); }
   function loadCss(href) { const l = document.createElement("link"); l.rel = "stylesheet"; l.href = href; document.head.appendChild(l); }
@@ -379,6 +387,8 @@
     await new Promise((ok, ko) => { ymaps.ready(ok, ko); setTimeout(() => ko(new Error("ymaps timeout")), 12000); });
     const m = new ymaps.Map("map", {center, zoom: 17, controls: ["zoomControl"]},
       {suppressMapOpenBlock: true, yandexMapDisablePoiInteractivity: true, zoomControlSize: "small", zoomControlPosition: {left: 10, top: 10}});
+    if (S.branch) m.geoObjects.add(new ymaps.Placemark([S.branch.lat, S.branch.lon], {hintContent: S.branch.name, iconCaption: S.branch.name},
+      {preset: "islands#foodCircleIcon", iconColor: getComputedStyle(document.body).getPropertyValue("--primary").trim() || "#E8402F"}));
     m.events.add("actionbegin", () => lift(true));
     m.events.add("actionend", () => { lift(false); const [la, lo] = m.getCenter(); moved(la, lo); });
     return {setCenter: (la, lo) => m.setCenter([la, lo], 17, {duration: 300}), resize: () => m.container.fitToViewport()};
@@ -389,12 +399,14 @@
     $("#map").innerHTML = "";
     const m = L.map("map", {zoomControl: true}).setView(center, 16);
     L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {maxZoom: 19, subdomains: "abcd", attribution: "© OpenStreetMap © CARTO"}).addTo(m);
+    if (S.branch) L.marker([S.branch.lat, S.branch.lon], {title: S.branch.name, icon: L.divIcon({className: "branch-pin", html: icon("map-pin"), iconSize: [30, 30], iconAnchor: [15, 28]})}).addTo(m);
     m.on("movestart", () => lift(true));
     m.on("moveend", () => { lift(false); const c = m.getCenter(); moved(c.lat, c.lng); });
     setTimeout(() => m.invalidateSize(), 350);
     return {setCenter: (la, lo) => m.flyTo([la, lo], 17, {duration: 0.6}), resize: () => m.invalidateSize()};
   }
   async function initMap() {
+    if (S.branch) { $("#branchLine").hidden = false; $("#branchName").textContent = S.branch.name; }
     if (map) { setTimeout(() => map.resize(), 60); if (point) refreshQuote(); return; }
     const saved = store.get(POINT_KEY, null);
     const center = saved ? [saved.lat, saved.lon] : S.center;
@@ -410,8 +422,30 @@
   function locate(silent) {
     if (!navigator.geolocation) return silent || toast("Tu navegador no permite ubicarte");
     navigator.geolocation.getCurrentPosition((p) => map && map.setCenter(p.coords.latitude, p.coords.longitude),
-      () => silent || toast("No pudimos obtener tu ubicación"), {enableHighAccuracy: true, timeout: 8000});
+      (e) => silent || toast(e.code === 1 ? "Activa la ubicación para este sitio en tu navegador" : "No pudimos ubicarte, escribe tu calle o mueve el mapa"),
+      {enableHighAccuracy: true, timeout: 10000, maximumAge: 60000});
   }
+  // Buscador de dirección: lo que se escribe se busca en Yango y al elegir, el mapa va ahí (el pin sigue mandando).
+  let suggSeq = 0;
+  const showSugg = (on) => { $("#addrSugg").hidden = !on; $("#fAddr").setAttribute("aria-expanded", String(on)); };
+  const searchAddr = debounce(async () => {
+    const q = $("#fAddr").value.trim(), seq = ++suggSeq;
+    if (q.length < 3) return showSugg(false);
+    try {
+      const {results} = await api("/address-search", {q});
+      if (seq !== suggSeq) return;
+      $("#addrSugg").innerHTML = results.map((r, i) => `<button type="button" role="option" data-s="${i}">${icon("map-pin")}<span><b>${esc(r.title)}</b><small>${esc(r.subtitle)}</small></span></button>`).join("")
+        || `<p class="note">Sin resultados. Mueve el mapa hasta tu puerta.</p>`;
+      $$("[data-s]", $("#addrSugg")).forEach((b) => (b.onmousedown = (e) => {
+        e.preventDefault(); const r = results[+b.dataset.s];
+        showSugg(false); $("#fAddr").value = r.title; if (map) map.setCenter(r.lat, r.lon);
+      }));
+      showSugg(true);
+    } catch (e) { showSugg(false); }
+  }, 350);
+  $("#fAddr").addEventListener("input", searchAddr);
+  $("#fAddr").addEventListener("blur", () => setTimeout(() => showSugg(false), 150));
+  $("#fAddr").addEventListener("keydown", (e) => { if (e.key === "Escape") showSugg(false); });
   $("#locateBtn").onclick = () => locate(false);
   $("#fAddr").addEventListener("input", () => (addrDirty = true));
   $$('input[name="pay"]').forEach((r) => r.addEventListener("change", () => { $("#changeField").hidden = $('input[name="pay"]:checked').value !== "cash"; }));

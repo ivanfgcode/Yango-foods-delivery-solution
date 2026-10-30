@@ -98,6 +98,7 @@
     <div id="cartView"></div>
     <form id="checkoutView" hidden autocomplete="on" novalidate>
       <div class="step-h"><i>1</i>¿Dónde entregamos?</div>
+      <p class="branch" id="branchLine" hidden><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#map-pin"></use></svg><span>Pides a <b id="branchName"></b></span></p>
       <div class="mapbox">
         <div id="map"></div>
         <div class="pin" id="pin"><svg width="38" height="50" viewBox="0 0 38 50"><path d="M19 0C8.5 0 0 8.3 0 18.6 0 32.5 19 50 19 50s19-17.5 19-31.4C38 8.3 29.5 0 19 0z" fill="{{ theme.text }}"/><circle cx="19" cy="18.5" r="7" fill="{{ theme.background }}"/></svg></div>
@@ -105,7 +106,8 @@
         <button class="locate" type="button" id="locateBtn"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#locate-fixed"></use></svg>Mi ubicación</button>
       </div>
       <div class="quote loading" id="quoteBox"><span class="dot"></span><span id="quoteText">Mueve el mapa hasta tu puerta</span></div>
-      <label class="field"><span>Dirección</span><input id="fAddr" name="street-address" autocomplete="street-address" placeholder="Calle o avenida" required></label>
+      <div class="field addr-search"><label for="fAddr">Dirección</label><input id="fAddr" name="street-address" autocomplete="off" placeholder="Escribe tu calle o mueve el mapa" required role="combobox" aria-autocomplete="list" aria-controls="addrSugg" aria-expanded="false">
+        <div class="sugg" id="addrSugg" role="listbox" hidden></div></div>
       <label class="field"><span>N° de casa, edificio o referencia *</span><input id="fRef" placeholder="Casa 24, portón negro, frente a la farmacia" required></label>
       <label class="field"><span>Nota para el mensajero (opcional)</span><input id="fNote" maxlength="200" placeholder="Tocar el timbre 2 veces"></label>
 

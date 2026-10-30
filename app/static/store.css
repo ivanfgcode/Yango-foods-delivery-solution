@@ -337,3 +337,22 @@ footer.foot{color:var(--muted);font-size:.82rem;text-align:center;padding:36px 1
 .best h2{display:flex;align-items:center;gap:8px}
 .tt-chip small{font-weight:700;color:var(--muted);font-size:.72rem}
 .tt-prods{display:grid;max-height:30vh;overflow:auto}
+
+/* checkout: sucursal, buscador de dirección y mapa */
+.branch{display:flex;align-items:center;gap:8px;margin:-4px 0 10px;font-size:.9rem;color:var(--muted)}
+.branch .ic{color:var(--primary)}
+.branch b{color:var(--text)}
+.branch-pin{color:var(--primary);filter:drop-shadow(0 2px 3px rgba(0,0,0,.35))}
+.branch-pin .ic{width:30px;height:30px;fill:var(--bg)}
+#map [class*="gotoymaps"],#map [class*="copyrights-promo"]{display:none!important}
+.addr-search{position:relative}
+.addr-search>label{display:block;font-size:.8rem;font-weight:700;color:var(--muted);margin-bottom:6px}
+.sugg{position:absolute;left:0;right:0;top:100%;z-index:30;margin-top:4px;background:var(--bg);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;max-height:280px;overflow-y:auto}
+.sugg button{display:flex;gap:10px;align-items:flex-start;width:100%;padding:11px 14px;border:0;border-top:1px solid var(--line);background:none;text-align:left;cursor:pointer;color:inherit}
+.sugg button:first-child{border-top:0}
+.sugg button:hover,.sugg button:focus{background:var(--soft)}
+.sugg .ic{color:var(--muted);margin-top:2px}
+.sugg b{display:block;font-weight:700}
+.sugg small{display:block;color:var(--muted);font-size:.8rem;margin-top:2px}
+.sugg .note{padding:12px 14px;margin:0}
+.sugg button span{display:block;font-size:inherit;font-weight:inherit;color:inherit;margin:0;min-width:0}

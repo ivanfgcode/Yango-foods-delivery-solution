@@ -3,6 +3,7 @@ import asyncio
 import hmac
 import json
 import logging
+import re
 import os
 import secrets
 import time
@@ -118,6 +119,8 @@ def _store_ctx(p: Dict[str, Any]) -> Dict[str, Any]:
                                       "accepting": bool(p["accepting_orders"]),
                                       "tiktok": _store_videos(p),
                                       "bestsellers": _bestsellers(p)["items"],
+                                      "branch": {"name": p.get("place_name") or p["name"], "lat": p.get("place_lat"),
+                                                 "lon": p.get("place_lon")} if p.get("place_lat") is not None else None,
                                       "yandexKey": settings.yandex_maps_api_key,
                                       "mapLang": settings.yandex_maps_lang,
                                       "phonePrefix": settings.phone_prefix})}
@@ -167,6 +170,22 @@ async def api_geocode(slug: str, body: Dict[str, Any] = Body(...)):
     return {"ok": bool(res), "address": res}
 
 
+@app.post("/api/{slug}/address-search")
+async def api_address_search(slug: str, body: Dict[str, Any] = Body(...)):
+    """Lo que el cliente escribe en «Dirección» → direcciones cercanas (buscador de Yango) para mover el mapa."""
+    p = _partner_or_404(slug)
+    q = re.sub(r"\s+", " ", str(body.get("q") or "")).strip()[:80]
+    if len(q) < 3:
+        return {"results": []}
+    lat, lon = p.get("place_lat") or -17.7833, p.get("place_lon") or -63.1821
+    try:
+        raw = await rt().source.search_address(p["account"], q, lat, lon)
+    except Exception as e:
+        log.warning("búsqueda de dirección %s: %s", slug, e)
+        raise HTTPException(503, "No pudimos buscar la dirección, mueve el mapa hasta tu puerta")
+    return {"results": geo.parse_suggest(raw, lat, lon)}
+
+
 @app.post("/api/{slug}/quote")
 async def api_quote(slug: str, body: Dict[str, Any] = Body(...)):
     p = _partner_or_404(slug)
@@ -185,6 +204,17 @@ async def api_quote(slug: str, body: Dict[str, Any] = Body(...)):
         log.warning("quote %s: %s", slug, e)
         raise HTTPException(503, "No pudimos cotizar el envío, intenta de nuevo")
     out = quotes.price_for(q, subtotal)
+    if out["reason"] == "cerrado" and p.get("place_lat") is not None:
+        # Yango marca «no disponible por horario» tanto si el local cerró como si cerró la zona por demanda.
+        # El estado real del local es el de su propia ubicación: si ahí atiende, lo que está cerrado es la zona.
+        try:
+            own = await rt().quotes.quote(p["account"], p["place_slug"], p["place_lat"], p["place_lon"])
+            if own["available"]:
+                out["reason"] = "zona_cerrada"
+            else:
+                out["opens_at"] = own.get("available_from")
+        except Exception as e:
+            log.warning("estado de la sucursal %s: %s", slug, e)
     out["min_order"] = max(out.get("min_order") or 0, p.get("min_order") or 0)
     out["below_min_order"] = subtotal < out["min_order"]
     out["can_order"] = out["can_order"] and not out["below_min_order"] and bool(p["accepting_orders"])

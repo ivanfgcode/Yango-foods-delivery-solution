@@ -74,7 +74,7 @@ def create(slug: str, name: str, account: str, yango_url: str = "", place_slug: 
 
 
 def update(slug: str, **fields: Any) -> Dict[str, Any]:
-    allowed = {"name", "yango_url", "place_slug", "place_id", "place_lat", "place_lon", "place_address",
+    allowed = {"name", "yango_url", "place_slug", "place_id", "place_lat", "place_lon", "place_address", "place_name",
                "account", "enabled", "accepting_orders", "min_order", "brand_slug"}
     sets, vals = [], []
     for k, v in fields.items():

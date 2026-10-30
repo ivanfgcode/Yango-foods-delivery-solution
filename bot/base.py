@@ -35,6 +35,10 @@ class YangoSource:
         """JSON crudo de /eats/v1/persuggest/v1/finalsuggest (pin_drop)."""
         raise NotImplementedError
 
+    async def search_address(self, account: str, text: str, lat: float, lon: float) -> Dict[str, Any]:
+        """JSON crudo de /eats/v1/persuggest/v1/suggest (lo que el cliente escribe)."""
+        raise NotImplementedError
+
     async def check_session(self, account: str) -> Dict[str, Any]:
         """{'ok': bool, 'detail': str}"""
         raise NotImplementedError

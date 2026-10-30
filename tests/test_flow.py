@@ -70,6 +70,27 @@ def test_quote_near_and_far(client):
     assert out["reason"] == "fuera_de_zona"
 
 
+def test_quote_zone_closed_vs_restaurant_closed(client, monkeypatch):
+    from app import runtime
+    src = runtime.get_runtime().source
+    runtime.get_runtime().quotes._cache.clear()
+    monkeypatch.setattr(src, "zone_closed_beyond_km", 0.5)  # NEAR está a ~1 km: zona cerrada, el local abierto
+    q = client.post("/api/wrap-roll/quote", json={**NEAR, "subtotal": 43}).json()
+    assert q["reason"] == "zona_cerrada" and not q["can_order"]
+    runtime.get_runtime().quotes._cache.clear()
+    monkeypatch.setattr(src, "closed", True)  # el local mismo no atiende: cerrado de verdad
+    q = client.post("/api/wrap-roll/quote", json={**NEAR, "subtotal": 43}).json()
+    assert q["reason"] == "cerrado" and "opens_at" in q
+
+
+def test_store_shows_branch_and_address_search(client):
+    page = client.get("/wrap-roll").text
+    assert '"branch": {"name": "' in page and 'id="branchLine"' in page
+    r = client.post("/api/wrap-roll/address-search", json={"q": "Rafael Peña 100"}).json()["results"]
+    assert r and r[0]["title"] == "Rafael Peña, 100"
+    assert client.post("/api/wrap-roll/address-search", json={"q": "ab"}).json() == {"results": []}
+
+
 def test_order_manual_when_placement_off(client, monkeypatch):
     monkeypatch.setattr(settings, "order_placement_enabled", False)
     r = client.post("/api/wrap-roll/orders", json=order_body(client))

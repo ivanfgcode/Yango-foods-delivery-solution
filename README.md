@@ -15,25 +15,31 @@ Cada partner tiene un **restaurante oculto** en Yango Foods, visible solo para u
 1. **Catálogo**: el bot lee el menú del restaurante oculto de food.yango.com (`/api/v2/menu/retrieve/{local}`)
    cada `MENU_SYNC_MINUTES`. Platos, precios, promos, fotos y grupos de opciones son los de Yango, con los mismos
    ids que usa el carrito. El partner edita su menú en Yango, como siempre.
-2. **Dirección**: el cliente mueve el mapa hasta su puerta (pin fijo al centro). El mapa es **Yandex Maps**
+2. **Dirección**: el cliente escribe su calle (buscador de Yango, `/eats/v1/persuggest/v1/suggest`, solo resultados cerca
+   de la sucursal) o mueve el mapa hasta su puerta (pin fijo al centro). El mapa muestra la sucursal a la que pide. El mapa es **Yandex Maps**
    (JS API 2.1): los mismos datos que usan Yango y Yango Maps, con calles y números de casa de Bolivia. Carga sin clave;
    `YANDEX_MAPS_API_KEY` (gratis en developer.tech.yandex.ru) es recomendable en producción. Leaflet/OSM solo si Yandex no carga. El punto se geocodifica con el geocodificador de Yango
    (`/eats/v1/persuggest/v1/finalsuggest`) y el cliente agrega número/referencia (obligatorio) y nota.
-3. **Cotización**: `/api/v2/catalog/{local}?latitude&longitude&shippingType=delivery` da disponibilidad
+3. **Disponibilidad**: Yango marca igual («no disponible por horario») el local cerrado y la zona cerrada por demanda.
+   Se distingue cotizando en la ubicación de la propia sucursal: si ahí atiende, el cliente ve «Por alta demanda no
+   llegamos a esta zona ahora»; si no, «El restaurante está cerrado ahora» (estado real del local en Yango).
+   Fuera del área de reparto: «No llegamos a esta dirección». Yango también avisa si otra sucursal de la marca atiende
+   ese punto (`other_branch`); por ahora cada partner es una sola sucursal.
+4. **Cotización**: `/api/v2/catalog/{local}?latitude&longitude&shippingType=delivery` da disponibilidad
    (zona y horario), tramos de envío por monto, pedido mínimo, tarifa de servicio, ETA y recargo. No toca el carrito,
    así que se hace en paralelo: 20 cotizaciones reales en 0,7 s. Caché por punto (~11 m) `QUOTE_CACHE_SECONDS`.
-4. **Pedido**: el servidor recalcula todo (precios del menú, opciones obligatorias, envío) y rechaza si el total
+5. **Pedido**: el servidor recalcula todo (precios del menú, opciones obligatorias, envío) y rechaza si el total
    cambió respecto a lo que vio el cliente. Pago: **efectivo o QR al mensajero**.
-5. **Colocación en Yango**: un worker por cuenta (el carrito de una cuenta es uno). Vacía el carrito, agrega los
+6. **Colocación en Yango**: un worker por cuenta (el carrito de una cuenta es uno). Vacía el carrito, agrega los
    platos, compara subtotal y envío con lo cotizado (`FEE_TOLERANCE`) y hace el checkout con el comentario:
    `CLIENTE: Nombre Apellido | TEL: +591 7XXXXXXX | PAGO: QR al mensajero | REF: ... | NOTA: ... | WEB #ABC123`.
    Con `ORDER_PLACEMENT_ENABLED=false` (por defecto) el pedido queda **manual**: alerta por Telegram y un operador
    lo carga en Yango y lo marca en el panel.
-6. **Upselling**: en la ficha de cada producto, «Otras personas lo combinaron con», calculado con los pedidos de la
+7. **Upselling**: en la ficha de cada producto, «Otras personas lo combinaron con», calculado con los pedidos de la
    web de ese restaurante (veces juntos / veces pedido, mínimo `UPSELL_MIN_PAIRS`, últimos `UPSELL_DAYS` días).
    Sin historial, y al cerrar el carrito si no lleva bebida, sugiere bebidas del menú (las más vendidas primero).
    Las combinaciones más frecuentes se ven en Admin → Resumen → Más vendido.
-7. **Más vendidos y TikTok** (Admin → Tienda, o el portal del partner): arriba del menú, un carrusel «Más vendidos»
+8. **Más vendidos y TikTok** (Admin → Tienda, o el portal del partner): arriba del menú, un carrusel «Más vendidos»
    automático (productos en más pedidos de la web, sin bebidas; sin datos, la categoría «Populares» de Yango) o
    elegido a mano, y debajo los videos de TikTok: se pega el enlace (vt./vm. sirven) y se etiquetan uno o varios
    productos con el selector (foto, nombre, precio). El video se reproduce con el reproductor de TikTok y trae «Pedir».

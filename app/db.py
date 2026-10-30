@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS partners (
     place_lat REAL,
     place_lon REAL,
     place_address TEXT,
+    place_name TEXT,                      -- nombre de la sucursal en Yango («Wrap & Roll - Paragua»)
     account TEXT NOT NULL,                -- cuenta cliente de Yango que ve este restaurante
     enabled INTEGER NOT NULL DEFAULT 1,
     accepting_orders INTEGER NOT NULL DEFAULT 1,
@@ -105,7 +106,19 @@ def connect() -> sqlite3.Connection:
             _conn.execute("PRAGMA foreign_keys=ON")
             _conn.execute("PRAGMA busy_timeout=5000")
             _conn.executescript(SCHEMA)
+            _migrate(_conn)
         return _conn
+
+
+# Columnas agregadas después de crear la base en producción: (tabla, columna, tipo).
+ADDED_COLUMNS = [("partners", "place_name", "TEXT")]
+
+
+def _migrate(conn: sqlite3.Connection) -> None:
+    for table, col, kind in ADDED_COLUMNS:
+        cols = {r["name"] for r in conn.execute(f"PRAGMA table_info({table})")}
+        if col not in cols:
+            conn.execute(f"ALTER TABLE {table} ADD COLUMN {col} {kind}")
 
 
 def reset_for_tests() -> None:

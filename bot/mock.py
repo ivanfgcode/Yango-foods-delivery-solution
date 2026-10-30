@@ -4,7 +4,7 @@ import copy
 import json
 import random
 from pathlib import Path
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
 from app.config import ROOT
 from app.geo import haversine_km
@@ -26,7 +26,10 @@ class MockSource(YangoSource):
         self._catalog = _load("catalog_available.json")
         self._menu = _load("menu_retrieve.json")
         self._suggest = _load("finalsuggest_pin_drop.json")
+        self._text_suggest = _load("suggest_text.json")
         self.placed: List[Dict[str, Any]] = []
+        self.closed = False
+        self.zone_closed_beyond_km: Optional[float] = None
         self.fail_next = 0
         self.mismatch_next = False
         place = self._catalog["payload"]["foundPlace"]["place"]
@@ -55,7 +58,9 @@ class MockSource(YangoSource):
         km = haversine_km(lat, lon, self.lat, self.lon)
         ok = km <= self.radius_km
         lp = fp["locationParams"]
-        lp.update({"available": ok, "availableByLocation": ok, "distance": km,
+        # Local cerrado (en todas partes) o zona cerrada por demanda (lejos del local, pero dentro del radio).
+        by_time = not self.closed and not (self.zone_closed_beyond_km is not None and km > self.zone_closed_beyond_km)
+        lp.update({"available": ok and by_time, "availableByLocation": ok, "availableByTime": by_time, "distance": km,
                    "deliveryTime": {"min": int(10 + km * 3), "max": int(20 + km * 3)} if ok else {"min": 0, "max": 0}})
         fp["place"]["deliveryThresholds"] = self._fee_tiers(km) if ok else []
         return raw
@@ -72,6 +77,10 @@ class MockSource(YangoSource):
         r["text"] = f"Santa Cruz de la Sierra, Calle simulada {abs(int(lat * 1000)) % 90 + 1}"
         r["short_text"] = r["text"].split(", ", 1)[1]
         return raw
+
+    async def search_address(self, account: str, text: str, lat: float, lon: float) -> Dict[str, Any]:
+        await asyncio.sleep(self.latency)
+        return copy.deepcopy(self._text_suggest)
 
     async def check_session(self, account: str) -> Dict[str, Any]:
         return {"ok": True, "detail": "simulada"}

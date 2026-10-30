@@ -12,6 +12,7 @@ endpoints:
   catalog: "/api/v2/catalog/{place_slug}?latitude={lat}&longitude={lon}&shippingType=delivery"
   menu: "/api/v2/menu/retrieve/{place_slug}?latitude={lat}&longitude={lon}&autoTranslate=false"
   finalsuggest: "/eats/v1/persuggest/v1/finalsuggest"
+  suggest: "/eats/v1/persuggest/v1/suggest"   # búsqueda por texto (verificado 2026-10-30, sin sesión)
   cart: "/api/v1/cart?longitude={lon}&latitude={lat}&screen=menu&shippingType=delivery&autoTranslate=false"
 
 session:

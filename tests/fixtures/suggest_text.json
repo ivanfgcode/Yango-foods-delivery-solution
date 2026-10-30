@@ -1,0 +1,249 @@
+{
+ "results": [
+  {
+   "id": "",
+   "lang": "spa",
+   "log": "{\"suggest_reqid\":\"1793322603124714-417719756-maps-geosuggest-yango-stable-app-94\",\"user_params\":{\"request\":\"Rafael Peña 100\",\"ll\":\"0.000000,0.000000\",\"spn\":\"0.1,0.1\",\"ull\":\"0.000000,0.000000\",\"lang\":\"es\"},\"server_reqid\":\"1793322603124714-417719756-maps-geosuggest-yango-stable-app-94\",\"pos\":0,\"type\":\"toponym\",\"where\":{\"name\":\"Bolivia, Santa Cruz de la Sierra, Distrito Municipal 11, Subdistrito CI, Rafael Peña, 100\",\"mutable_source_id\":\"4836844524\",\"title\":\"Rafael Peña, 100\"},\"uri\":\"ymapsbm1://geo?data=Cgo0ODM2ODQ0NTI0ElpCb2xpdmlhLCBTYW50YSBDcnV6IGRlIGxhIFNpZXJyYSwgRGlzdHJpdG8gTXVuaWNpcGFsIDExLCBTdWJkaXN0cml0byBDSSwgUmFmYWVsIFBlw7FhLCAxMDAiCg2ou3zCFaE4jsE,\",\"method\":\"suggest.geosuggest\"}",
+   "method": "geosuggest",
+   "position": [
+    -63.183258,
+    -17.777651
+   ],
+   "subtitle": {
+    "text": "Subdistrito CI, Distrito Municipal 11, Santa Cruz de la Sierra",
+    "hl": []
+   },
+   "text": "Santa Cruz de la Sierra, Distrito Municipal 11, Subdistrito CI, Rafael Peña, 100 ",
+   "title": {
+    "text": "Rafael Peña, 100",
+    "hl": [
+     [
+      0,
+      6
+     ],
+     [
+      7,
+      11
+     ],
+     [
+      13,
+      16
+     ]
+    ]
+   },
+   "uri": "ymapsbm1://geo?data=Cgo0ODM2ODQ0NTI0ElpCb2xpdmlhLCBTYW50YSBDcnV6IGRlIGxhIFNpZXJyYSwgRGlzdHJpdG8gTXVuaWNpcGFsIDExLCBTdWJkaXN0cml0byBDSSwgUmFmYWVsIFBlw7FhLCAxMDAiCg2ou3zCFaE4jsE,",
+   "type": "address",
+   "distance": {
+    "text": "7186.0 km",
+    "value": 7186046.892
+   },
+   "image_tag": "custom_list_shortcut_pin_medium_text_minor",
+   "action": "search",
+   "tags": [
+    "house"
+   ]
+  },
+  {
+   "id": "",
+   "lang": "spa",
+   "log": "{\"suggest_reqid\":\"1793322603124714-417719756-maps-geosuggest-yango-stable-app-94\",\"user_params\":{\"request\":\"Rafael Peña 100\",\"ll\":\"0.000000,0.000000\",\"spn\":\"0.1,0.1\",\"ull\":\"0.000000,0.000000\",\"lang\":\"es\"},\"server_reqid\":\"1793322603124714-417719756-maps-geosuggest-yango-stable-app-94\",\"pos\":1,\"type\":\"toponym\",\"where\":{\"name\":\"Bolivia, Santa Cruz de la Sierra, Distrito Municipal 11, Subdistrito CI, Rafael Peña\",\"mutable_source_id\":\"4831060894\",\"title\":\"Rafael Peña\"},\"uri\":\"ymapsbm1://geo?data=Cgo0ODMxMDYwODk0ElVCb2xpdmlhLCBTYW50YSBDcnV6IGRlIGxhIFNpZXJyYSwgRGlzdHJpdG8gTXVuaWNpcGFsIDExLCBTdWJkaXN0cml0byBDSSwgUmFmYWVsIFBlw7FhIgoNor18whUJOY7B\",\"method\":\"suggest.geosuggest\"}",
+   "method": "geosuggest",
+   "position": [
+    -63.185188,
+    -17.777849
+   ],
+   "subtitle": {
+    "text": "Subdistrito CI, Distrito Municipal 11, Santa Cruz de la Sierra",
+    "hl": []
+   },
+   "text": "Santa Cruz de la Sierra, Distrito Municipal 11, Subdistrito CI, Rafael Peña ",
+   "title": {
+    "text": "Rafael Peña",
+    "hl": [
+     [
+      0,
+      6
+     ],
+     [
+      7,
+      11
+     ]
+    ]
+   },
+   "uri": "ymapsbm1://geo?data=Cgo0ODMxMDYwODk0ElVCb2xpdmlhLCBTYW50YSBDcnV6IGRlIGxhIFNpZXJyYSwgRGlzdHJpdG8gTXVuaWNpcGFsIDExLCBTdWJkaXN0cml0byBDSSwgUmFmYWVsIFBlw7FhIgoNor18whUJOY7B",
+   "type": "address",
+   "distance": {
+    "text": "7186.3 km",
+    "value": 7186252.633
+   },
+   "image_tag": "custom_list_shortcut_pin_medium_text_minor",
+   "action": "substitute",
+   "tags": [
+    "street"
+   ]
+  },
+  {
+   "id": "",
+   "lang": "spa",
+   "log": "{\"suggest_reqid\":\"1793322603124714-417719756-maps-geosuggest-yango-stable-app-94\",\"user_params\":{\"request\":\"Rafael Peña 100\",\"ll\":\"0.000000,0.000000\",\"spn\":\"0.1,0.1\",\"ull\":\"0.000000,0.000000\",\"lang\":\"es\"},\"server_reqid\":\"1793322603124714-417719756-maps-geosuggest-yango-stable-app-94\",\"pos\":2,\"type\":\"toponym\",\"where\":{\"name\":\"México, México, Rafael de la Peña\",\"mutable_source_id\":\"2503451937\",\"title\":\"Rafael de la Peña\"},\"uri\":\"ymapsbm1://geo?data=CgoyNTAzNDUxOTM3EiRNw6l4aWNvLCBNw6l4aWNvLCBSYWZhZWwgZGUgbGEgUGXDsWEiCg2CI8bCFS53mkE,\",\"method\":\"suggest.geosuggest\"}",
+   "method": "geosuggest",
+   "position": [
+    -99.069351,
+    19.308193
+   ],
+   "subtitle": {
+    "text": "México",
+    "hl": []
+   },
+   "text": "México, Rafael de la Peña ",
+   "title": {
+    "text": "Rafael de la Peña",
+    "hl": [
+     [
+      0,
+      6
+     ],
+     [
+      13,
+      17
+     ]
+    ]
+   },
+   "uri": "ymapsbm1://geo?data=CgoyNTAzNDUxOTM3EiRNw6l4aWNvLCBNw6l4aWNvLCBSYWZhZWwgZGUgbGEgUGXDsWEiCg2CI8bCFS53mkE,",
+   "type": "address",
+   "distance": {
+    "text": "10972.0 km",
+    "value": 10971959.48
+   },
+   "image_tag": "custom_list_shortcut_pin_medium_text_minor",
+   "action": "substitute",
+   "tags": [
+    "street"
+   ]
+  },
+  {
+   "id": "",
+   "lang": "spa",
+   "log": "{\"suggest_reqid\":\"1793322603124714-417719756-maps-geosuggest-yango-stable-app-94\",\"user_params\":{\"request\":\"Rafael Peña 100\",\"ll\":\"0.000000,0.000000\",\"spn\":\"0.1,0.1\",\"ull\":\"0.000000,0.000000\",\"lang\":\"es\"},\"server_reqid\":\"1793322603124714-417719756-maps-geosuggest-yango-stable-app-94\",\"pos\":3,\"type\":\"toponym\",\"where\":{\"name\":\"Bolivia, Departamento de Cochabamba, Provincia de Cercado, Cochabamba, Calle Rafael Peña\",\"mutable_source_id\":\"5506198199\",\"title\":\"Calle Rafael Peña\"},\"uri\":\"ymapsbm1://geo?data=Cgo1NTA2MTk4MTk5EllCb2xpdmlhLCBEZXBhcnRhbWVudG8gZGUgQ29jaGFiYW1iYSwgUHJvdmluY2lhIGRlIENlcmNhZG8sIENvY2hhYmFtYmEsIENhbGxlIFJhZmFlbCBQZcOxYSIKDY1LhMIVGGmLwQ,,\",\"method\":\"suggest.geosuggest\"}",
+   "method": "geosuggest",
+   "position": [
+    -66.14756,
+    -17.426315
+   ],
+   "subtitle": {
+    "text": "Cochabamba, Provincia de Cercado, Departamento de Cochabamba",
+    "hl": []
+   },
+   "text": "Departamento de Cochabamba, Provincia de Cercado, Cochabamba, Calle Rafael Peña ",
+   "title": {
+    "text": "Calle Rafael Peña",
+    "hl": [
+     [
+      6,
+      12
+     ],
+     [
+      13,
+      17
+     ]
+    ]
+   },
+   "uri": "ymapsbm1://geo?data=Cgo1NTA2MTk4MTk5EllCb2xpdmlhLCBEZXBhcnRhbWVudG8gZGUgQ29jaGFiYW1iYSwgUHJvdmluY2lhIGRlIENlcmNhZG8sIENvY2hhYmFtYmEsIENhbGxlIFJhZmFlbCBQZcOxYSIKDY1LhMIVGGmLwQ,,",
+   "type": "address",
+   "distance": {
+    "text": "7492.1 km",
+    "value": 7492103.983
+   },
+   "image_tag": "custom_list_shortcut_pin_medium_text_minor",
+   "action": "substitute",
+   "tags": [
+    "street"
+   ]
+  },
+  {
+   "id": "",
+   "lang": "spa",
+   "log": "{\"suggest_reqid\":\"1793322603124714-417719756-maps-geosuggest-yango-stable-app-94\",\"user_params\":{\"request\":\"Rafael Peña 100\",\"ll\":\"0.000000,0.000000\",\"spn\":\"0.1,0.1\",\"ull\":\"0.000000,0.000000\",\"lang\":\"es\"},\"server_reqid\":\"1793322603124714-417719756-maps-geosuggest-yango-stable-app-94\",\"pos\":4,\"type\":\"toponym\",\"where\":{\"name\":\"México, Nuevo León, Monterrey, Rafael de La Peña Y Peña\",\"mutable_source_id\":\"2503339124\",\"title\":\"Rafael de La Peña Y Peña\"},\"uri\":\"ymapsbm1://geo?data=CgoyNTAzMzM5MTI0EjtNw6l4aWNvLCBOdWV2byBMZcOzbiwgTW9udGVycmV5LCBSYWZhZWwgZGUgTGEgUGXDsWEgWSBQZcOxYSIKDVmbyMIV9K3NQQ,,\",\"method\":\"suggest.geosuggest\"}",
+   "method": "geosuggest",
+   "position": [
+    -100.303413,
+    25.709938
+   ],
+   "subtitle": {
+    "text": "Monterrey, Nuevo León",
+    "hl": []
+   },
+   "text": "Nuevo León, Monterrey, Rafael de La Peña Y Peña ",
+   "title": {
+    "text": "Rafael de La Peña Y Peña",
+    "hl": [
+     [
+      0,
+      6
+     ],
+     [
+      13,
+      17
+     ],
+     [
+      20,
+      24
+     ]
+    ]
+   },
+   "uri": "ymapsbm1://geo?data=CgoyNTAzMzM5MTI0EjtNw6l4aWNvLCBOdWV2byBMZcOzbiwgTW9udGVycmV5LCBSYWZhZWwgZGUgTGEgUGXDsWEgWSBQZcOxYSIKDVmbyMIV9K3NQQ,,",
+   "type": "address",
+   "distance": {
+    "text": "11052.5 km",
+    "value": 11052513.98
+   },
+   "image_tag": "custom_list_shortcut_pin_medium_text_minor",
+   "action": "substitute",
+   "tags": [
+    "street"
+   ]
+  },
+  {
+   "id": "",
+   "lang": "spa",
+   "log": "{\"suggest_reqid\":\"1793322603124714-417719756-maps-geosuggest-yango-stable-app-94\",\"user_params\":{\"request\":\"Rafael Peña 100\",\"ll\":\"0.000000,0.000000\",\"spn\":\"0.1,0.1\",\"ull\":\"0.000000,0.000000\",\"lang\":\"es\"},\"server_reqid\":\"1793322603124714-417719756-maps-geosuggest-yango-stable-app-94\",\"pos\":5,\"type\":\"toponym\",\"where\":{\"name\":\"Bolivia, Departamento de La Paz, Provincia Murillo, La Paz, Periferica, Isla Colinas, Calle Rafael Peña\",\"mutable_source_id\":\"4654586693\",\"title\":\"Calle Rafael Peña\"},\"uri\":\"ymapsbm1://geo?data=Cgo0NjU0NTg2NjkzEmhCb2xpdmlhLCBEZXBhcnRhbWVudG8gZGUgTGEgUGF6LCBQcm92aW5jaWEgTXVyaWxsbywgTGEgUGF6LCBQZXJpZmVyaWNhLCBJc2xhIENvbGluYXMsIENhbGxlIFJhZmFlbCBQZcOxYSIKDSFMiMIVk7KDwQ,,\",\"method\":\"suggest.geosuggest\"}",
+   "method": "geosuggest",
+   "position": [
+    -68.148689,
+    -16.462194
+   ],
+   "subtitle": {
+    "text": "Isla Colinas, Periferica, La Paz, Provincia Murillo, Departamento de La Paz",
+    "hl": []
+   },
+   "text": "Departamento de La Paz, Provincia Murillo, La Paz, Periferica, Isla Colinas, Calle Rafael Peña ",
+   "title": {
+    "text": "Calle Rafael Peña",
+    "hl": [
+     [
+      6,
+      12
+     ],
+     [
+      13,
+      17
+     ]
+    ]
+   },
+   "uri": "ymapsbm1://geo?data=Cgo0NjU0NTg2NjkzEmhCb2xpdmlhLCBEZXBhcnRhbWVudG8gZGUgTGEgUGF6LCBQcm92aW5jaWEgTXVyaWxsbywgTGEgUGF6LCBQZXJpZmVyaWNhLCBJc2xhIENvbGluYXMsIENhbGxlIFJhZmFlbCBQZcOxYSIKDSFMiMIVk7KDwQ,,",
+   "type": "address",
+   "distance": {
+    "text": "7690.7 km",
+    "value": 7690666.943
+   },
+   "image_tag": "custom_list_shortcut_pin_medium_text_minor",
+   "action": "substitute",
+   "tags": [
+    "street"
+   ]
+  }
+ ],
+ "suggest_reqid": "1793322603124714-417719756-maps-geosuggest-yango-stable-app-94",
+ "part": "Rafael Peña 100",
+ "suggest_provider": "yamaps"
+}
