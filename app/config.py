@@ -64,6 +64,7 @@ class Settings:
         self.plan_price_bs = _float("PLAN_PRICE_BS", 150.0)
         self.plan_sponsored_months = _int("PLAN_SPONSORED_MONTHS", 3)
         self.plan_min_paid_months = _int("PLAN_MIN_PAID_MONTHS", 3)
+        self.sales_whatsapp = os.getenv("SALES_WHATSAPP", "")  # número de ventas para el botón de la landing (591...)
         self.plan_payment_info = os.getenv("PLAN_PAYMENT_INFO", "Te enviamos el QR de pago por WhatsApp al inicio de cada mes.")
         # Upselling: pedidos de los últimos N días, mínimo de veces juntos para sugerir, caché de las cuentas.
         self.upsell_days = _int("UPSELL_DAYS", 90)

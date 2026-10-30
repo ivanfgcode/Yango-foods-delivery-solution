@@ -1,0 +1,264 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Menu Deli Bo · Tu web de pedidos con el delivery de Yango</title>
+<meta name="description" content="Tu restaurante vendiendo por su propia web, sin contestar chats ni buscar moto. Menú y envío en vivo con Yango, 0 % de comisión. Los primeros meses los paga Yango.">
+<meta name="theme-color" content="#F7F5F0">
+<meta property="og:title" content="Menu Deli Bo · Tu web de pedidos con el delivery de Yango">
+<meta property="og:description" content="Vende por tu propia web. Yango entrega. 0 % de comisión por pedido.">
+<meta property="og:image" content="/static/landing/phone-store.jpg?v={{ v }}">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap">
+<link rel="stylesheet" href="/static/landing.css?v={{ v }}">
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="md-mark" viewBox="0 0 24 24"><path d="M3 12.5h18a9 9 0 0 1-18 0z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M8 9c0-1.6 1.2-2 1.2-3.6M12 9c0-1.6 1.2-2 1.2-3.6M16 9c0-1.6 1.2-2 1.2-3.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+</svg>
+{% macro ic(n) %}<svg class="ic" aria-hidden="true"><use href="/static/icons.svg?v={{ v }}#{{ n }}"></use></svg>{% endmacro %}
+{% set wa = ('https://wa.me/' ~ whatsapp ~ '?text=' ~ ('Hola, quiero mi web de pedidos con Menu Deli Bo' | urlencode)) if whatsapp else '#contacto' %}
+
+<header class="nav" id="nav">
+  <div class="wrap bar">
+    <a class="logo" href="#"><span class="logo-mark"><svg><use href="#md-mark"/></svg></span>Menu Deli <em>Bo</em></a>
+    <nav class="links"><a href="#problemas">Problemas</a><a href="#como">Cómo funciona</a><a href="#ahorro">Ahorro</a><a href="#precio">Precio</a><a href="#preguntas">Preguntas</a></nav>
+    <a class="btn pri sm" href="{{ wa }}">Quiero mi web</a>
+  </div>
+</header>
+
+<main>
+  <!-- HERO -->
+  <section class="hero">
+    <i class="blob a"></i><i class="blob b"></i>
+    <div class="wrap hero-grid">
+      <div>
+        <span class="pill rv"><b>Yango</b>Tus primeros {{ sponsored }} meses los paga Yango</span>
+        <h1 class="rv" style="--d:1">Tu restaurante vendiendo solo,<br><span class="rot" id="rot"><span class="on">sin contestar chats.</span><span>sin buscar moto.</span><span>sin errores de precio.</span><span>sin comisiones.</span></span></h1>
+        <p class="lead rv" style="--d:2">Una web de pedidos con tu marca. Tu cliente elige, ve el precio exacto y el envío a su puerta, y un mensajero de Yango se lo lleva. Tú solo cocinas.</p>
+        <div class="cta rv" style="--d:3">
+          <a class="btn pri" href="{{ wa }}">Quiero mi web{{ ic("arrow-right") }}</a>
+          {% if demo %}<a class="btn" href="/{{ demo }}" target="_blank" rel="noopener">{{ ic("external-link") }}Ver una tienda real</a>{% endif %}
+        </div>
+        <div class="trust rv" style="--d:4"><span>{{ ic("circle-check") }}0 % de comisión por pedido</span><span>{{ ic("circle-check") }}Delivery de Yango</span><span>{{ ic("circle-check") }}Sin instalación</span></div>
+      </div>
+      <div class="stage" id="stage">
+        <div class="phone b" aria-hidden="true"><img src="/static/landing/phone-checkout.jpg?v={{ v }}" alt=""></div>
+        <div class="phone" id="phoneMain"><img src="/static/landing/phone-store.jpg?v={{ v }}" alt="Tienda de un restaurante en Menu Deli Bo"></div>
+        <div class="toast t1"><i>{{ ic("receipt") }}</i><span>Nuevo pedido #A3F9 · Bs86<small>Efectivo al mensajero · hace 1 min</small></span></div>
+        <div class="toast t2"><i>{{ ic("bike") }}</i><span>Envío gratis · 10–20 min<small>Cotizado en vivo con Yango</small></span></div>
+        <div class="toast t3"><i>{{ ic("store") }}</i><span>Te atiende Sucursal Equipetrol<small>La más cercana al cliente</small></span></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="marquee" aria-hidden="true"><div class="track">
+    {% for _ in range(2) %}
+    <span>{{ ic("circle-check") }}Menú sincronizado con Yango</span><span>{{ ic("bike") }}Envío exacto a la puerta</span><span>{{ ic("store") }}Sucursal correcta, sola</span>
+    <span>{{ ic("play") }}TikTok que vende</span><span>{{ ic("sparkles") }}Recomendaciones automáticas</span><span>{{ ic("chart-line") }}Ventas claras</span>
+    <span>{{ ic("banknote") }}Efectivo o QR al mensajero</span><span>{{ ic("gift") }}{{ sponsored }} meses pagados por Yango</span>
+    {% endfor %}
+  </div></div>
+
+  <!-- PROBLEMAS -->
+  <section class="sec" id="problemas">
+    <div class="wrap">
+      <div class="sec-h rv"><span class="eyebrow">{{ ic("circle-alert") }}Lo que hoy cuesta vender por WhatsApp</span>
+        <h2 class="h2">Vender a domicilio no debería ser <em>un segundo trabajo.</em></h2>
+        <p class="lead">Si hoy recibes pedidos por chat o por teléfono, seguro conoces esto:</p></div>
+      <div class="pains">
+        <article class="pain rv"><span class="x">{{ ic("x") }}</span><span class="k">Bs2.750+</span><h3>Una persona solo para contestar</h3><p>Un sueldo cada mes (más cargas) para responder chats, pasar el menú, anotar pedidos y cobrar.</p></article>
+        <article class="pain rv" style="--d:1"><span class="x">{{ ic("x") }}</span><span class="k">5 min</span><h3>El cliente no espera</h3><p>Con hambre, escribe a tres lugares y pide al primero que contesta. Cada mensaje sin responder es una venta que se va.</p></article>
+        <article class="pain rv" style="--d:2"><span class="x">{{ ic("x") }}</span><span class="k">PDF</span><h3>Menú y precios viejos</h3><p>Fotos de carta desactualizadas, precios dichos mal y productos agotados que igual se piden.</p></article>
+        <article class="pain rv"><span class="x">{{ ic("x") }}</span><span class="k">¿Moto?</span><h3>Buscar mensajero y cotizar</h3><p>Llamar motos, negociar el envío, explicar la dirección y esperar a que alguien acepte.</p></article>
+        <article class="pain rv" style="--d:1"><span class="x">{{ ic("x") }}</span><span class="k">Ups</span><h3>Errores en el pedido</h3><p>Dirección mal escrita, el «sin cebolla» que se perdió, el cambio mal dado y el cliente molesto.</p></article>
+        <article class="pain rv" style="--d:2"><span class="x">{{ ic("x") }}</span><span class="k">20–30 %</span><h3>Comisiones de las apps</h3><p>Lo que suelen cobrar las apps de delivery sobre cada pedido. Con Menu Deli Bo, 0 %.</p></article>
+      </div>
+    </div>
+  </section>
+
+  <!-- ANTES / DESPUÉS -->
+  <section class="sec dark" id="como">
+    <div class="wrap">
+      <div class="sec-h rv"><span class="eyebrow">{{ ic("timer") }}Un pedido, de principio a fin</span>
+        <h2 class="h2" style="color:#fff">De 25 minutos de chat a <em>2 toques.</em></h2>
+        <p class="lead">Mira lo que pasa con un pedido por WhatsApp y con tu web de Menu Deli Bo.</p></div>
+      <div class="vs-toggle rv" role="tablist"><button class="on" data-vs="bad" role="tab">Por WhatsApp</button><button data-vs="good" class="good" role="tab">Con Menu Deli Bo</button></div>
+      <div class="flow" id="flowBad">
+        <div class="step"><span class="t">+0 min</span><b>«Hola, ¿tienen menú?»</b><p>El cliente escribe. Alguien tiene que estar mirando el celular.</p></div>
+        <div class="step"><span class="t">+6 min</span><b>Mandas fotos de la carta</b><p>Preguntas, precios, «¿y eso trae papas?».</p></div>
+        <div class="step"><span class="t">+12 min</span><b>«¿Cuánto es el envío?»</b><p>Buscas una moto, cotizas, vuelves a escribir.</p></div>
+        <div class="step"><span class="t">+18 min</span><b>Anotas pedido y dirección</b><p>Con capturas de ubicación y audios.</p></div>
+        <div class="step"><span class="t">+25 min</span><b>Recién sale el pedido</b><p>Si el cliente no se fue antes.</p></div>
+      </div>
+      <div class="flow good" id="flowGood" hidden>
+        <div class="step"><span class="t">Paso 1</span><b>Pone su dirección</b><p>Yango asigna tu sucursal más cercana.</p></div>
+        <div class="step"><span class="t">Paso 2</span><b>Elige del menú</b><p>Fotos, precios y opciones al día, sincronizados con Yango.</p></div>
+        <div class="step"><span class="t">Paso 3</span><b>Ve el total exacto</b><p>Envío y tiempo reales a su puerta, antes de pedir.</p></div>
+        <div class="step"><span class="t">Paso 4</span><b>Confirma</b><p>Paga en efectivo o QR al mensajero al recibir.</p></div>
+        <div class="step"><span class="t">Listo</span><b>Yango lo entrega</b><p>Tú solo cocinas. Nadie tuvo que contestar un chat.</p></div>
+      </div>
+      <div class="vs-total rv"><b id="vsTime">25 min</b><span id="vsText">y una persona pendiente del celular</span></div>
+    </div>
+  </section>
+
+  <!-- FUNCIONES -->
+  <section class="sec" id="funciones">
+    <div class="wrap">
+      <div class="sec-h center rv"><span class="eyebrow">{{ ic("sparkles") }}Todo lo que hace por ti</span>
+        <h2 class="h2">Tu web vende, cobra el envío justo <em>y te dice qué funciona.</em></h2></div>
+
+      <div class="feat">
+        <div class="rv"><span class="eyebrow">{{ ic("bike") }}Logística resuelta</span>
+          <h3>El envío exacto a la puerta, sin buscar moto.</h3>
+          <p>Tu cliente marca su ubicación en el mapa y ve el costo y el tiempo reales de Yango. Si una zona no está disponible, lo sabe antes de pedir, no después.</p>
+          <div class="ticks"><div>{{ ic("circle-check") }}Mensajeros de Yango en cada pedido</div><div>{{ ic("circle-check") }}Buscador de direcciones y «Mi ubicación»</div><div>{{ ic("circle-check") }}Pago en efectivo o QR al mensajero</div></div></div>
+        <div class="feat-media rv" style="--d:1"><div class="phone"><img src="/static/landing/phone-checkout.jpg?v={{ v }}" alt="Pago con mapa y envío cotizado"></div>
+          <span class="chip" style="left:8%;top:14%">{{ ic("timer") }}10–20 min</span><span class="chip" style="right:8%;bottom:18%">{{ ic("bike") }}Envío gratis</span></div>
+      </div>
+
+      <div class="feat rev">
+        <div class="rv"><span class="eyebrow">{{ ic("store") }}Menú y sucursales</span>
+          <h3>Tu menú siempre al día. En cada sucursal.</h3>
+          <p>Los productos, fotos, precios y agotados salen de tu restaurante en Yango: lo editas una vez y se actualiza solo. Si tienes varias sucursales, cada cliente ve la que le corresponde, con su menú y su envío.</p>
+          <div class="ticks"><div>{{ ic("circle-check") }}Sin PDFs ni fotos viejas</div><div>{{ ic("circle-check") }}La sucursal correcta según la dirección</div><div>{{ ic("circle-check") }}Tu logo, tus colores y tus fotos</div></div></div>
+        <div class="feat-media rv" style="--d:1"><div class="phone"><img src="/static/landing/phone-store.jpg?v={{ v }}" alt="Tienda con más vendidos"></div>
+          <span class="chip" style="right:8%;top:16%">{{ ic("store") }}Sucursal Paragua</span></div>
+      </div>
+
+      <div class="feat">
+        <div class="rv"><span class="eyebrow">{{ ic("play") }}Marketing que vende</span>
+          <h3>Tus TikToks, con un botón para pedir.</h3>
+          <p>Elige tus videos y el producto que aparece. Quien lo mira lo pide desde ahí, sin salir de tu web. Además, tu web recomienda lo que la gente suele pedir junto y ofrece bebidas al final: más venta por pedido.</p>
+          <div class="ticks"><div>{{ ic("circle-check") }}Carrusel de TikTok con producto</div><div>{{ ic("circle-check") }}«Otras personas lo combinaron con»</div><div>{{ ic("circle-check") }}«Más vendidos» automático o a tu gusto</div></div></div>
+        <div class="feat-media rv" style="--d:1"><div class="phone"><img src="/static/landing/phone-tiktok.jpg?v={{ v }}" alt="Video de TikTok con botón Pedir"></div>
+          <span class="chip" style="left:8%;bottom:20%">{{ ic("sparkles") }}Pedir desde el video</span></div>
+      </div>
+
+      <div class="feat rev">
+        <div class="rv"><span class="eyebrow">{{ ic("chart-line") }}Tu panel</span>
+          <h3>Tus números, claros. Sin hojas de cálculo.</h3>
+          <p>Ventas, pedidos, ticket medio, horas pico y lo más pedido. Pausas los pedidos con un toque y cambias el diseño de tu web viendo el resultado al instante.</p>
+          <div class="ticks"><div>{{ ic("circle-check") }}Pedidos en tiempo real</div><div>{{ ic("circle-check") }}Diseño con vista previa</div><div>{{ ic("circle-check") }}Soporte por WhatsApp</div></div></div>
+        <div class="feat-media rv" style="--d:1"><img class="shot" src="/static/landing/dashboard.jpg?v={{ v }}" alt="Panel de Menu Deli Bo"></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CÓMO EMPIEZAS -->
+  <section class="sec" style="padding-top:40px">
+    <div class="wrap">
+      <div class="sec-h rv"><span class="eyebrow">{{ ic("list") }}Así empiezas</span><h2 class="h2">Tres pasos y <em>estás vendiendo.</em></h2></div>
+      <div class="steps3">
+        <div class="s3 rv"><span class="n">1</span><h3>Nos pasas tu restaurante en Yango</h3><p>Tomamos tu menú, fotos, precios y sucursales de ahí. No tienes que cargar nada.</p></div>
+        <div class="s3 rv" style="--d:1"><span class="n">2</span><h3>Le das tu estilo</h3><p>Logo, colores, portada y textos desde tu panel, viendo cómo queda.</p></div>
+        <div class="s3 rv" style="--d:2"><span class="n">3</span><h3>Compartes tu enlace</h3><p>En Instagram, WhatsApp, TikTok o un QR en la mesa. Los pedidos entran y Yango entrega.</p></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- CALCULADORA -->
+  <section class="sec" id="ahorro" style="padding-top:40px">
+    <div class="wrap">
+      <div class="sec-h rv"><span class="eyebrow">{{ ic("wallet") }}Haz la cuenta</span><h2 class="h2">¿Cuánto te <em>ahorras?</em></h2>
+        <p class="lead">Mueve los valores con los números de tu restaurante.</p></div>
+      <div class="calc">
+        <div class="calc-in rv">
+          <div class="rng"><label>Pedidos a domicilio al mes <b id="vOrders">200</b></label><input type="range" id="cOrders" min="20" max="1500" step="10" value="200"></div>
+          <div class="rng"><label>Ticket medio (Bs) <b id="vTicket">80</b></label><input type="range" id="cTicket" min="20" max="300" step="5" value="80"></div>
+          <div class="rng"><label>Sucursales <b id="vBranches">1</b></label><input type="range" id="cBranches" min="1" max="10" step="1" value="1"></div>
+          <div class="rng"><label>Comisión de una app de delivery <b id="vCommission">25 %</b></label><input type="range" id="cCommission" min="10" max="35" step="1" value="25"></div>
+          <div class="rng"><label>Sueldo de quien atiende pedidos (Bs/mes) <input type="number" id="cSalary" min="0" step="50" value="2750"></label></div>
+          <p class="note">Valores de ejemplo: el sueldo mínimo en Bolivia y comisiones habituales de apps de delivery. Ajústalos a tu caso.</p>
+        </div>
+        <div class="calc-out rv" style="--d:1">
+          <span class="eyebrow">{{ ic("sparkles") }}Frente a vender por una app de delivery</span>
+          <div class="big" id="oSave">Bs0</div>
+          <div style="color:#A7A9B0">te quedas cada mes: la comisión que no pagas, menos el plan</div>
+          <div class="out-lines">
+            <div><span>Ventas por tu web</span><b id="oSales">—</b></div>
+            <div><span>Comisión que pagarías en una app</span><b id="oCommission">—</b></div>
+            <div><span>Menu Deli Bo (después de los {{ sponsored }} meses de Yango)</span><b id="oPlan">—</b></div>
+            <div><span><b style="font-family:var(--ui)">Frente a atender por WhatsApp</b><br>el sueldo que ya no necesitas, menos el plan</span><b id="oSalarySave">—</b></div>
+          </div>
+          <p class="note">Los primeros {{ sponsored }} meses el plan lo paga Yango: tu ahorro es aún mayor.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PRECIO -->
+  <section class="sec" id="precio" style="padding-top:40px">
+    <div class="wrap">
+      <div class="sec-h center rv"><span class="eyebrow">{{ ic("credit-card") }}Precio simple</span><h2 class="h2">Un plan. Por sucursal. <em>Sin comisiones.</em></h2></div>
+      <div class="price-wrap">
+        <div class="price-card rv">
+          <span class="tag">Plan Pro</span>
+          <div class="price-big"><b>{{ currency }}{{ price|int }}</b><span>por sucursal / mes</span></div>
+          <div style="color:#A7A9B0">0 % de comisión por pedido · sin costo de instalación</div>
+          <div class="ticks" style="margin-top:24px">
+            <div>{{ ic("circle-check") }}Web de pedidos con tu marca</div>
+            <div>{{ ic("circle-check") }}Menú y precios sincronizados con Yango, por sucursal</div>
+            <div>{{ ic("circle-check") }}Envío cotizado en vivo y mensajeros de Yango</div>
+            <div>{{ ic("circle-check") }}TikTok, más vendidos y recomendaciones automáticas</div>
+            <div>{{ ic("circle-check") }}Panel de pedidos y ventas · soporte por WhatsApp</div>
+          </div>
+          <a class="btn pri" style="margin-top:28px;width:100%" href="{{ wa }}">Quiero mi web</a>
+        </div>
+        <div class="yango-box rv" style="--d:1">
+          <div><span class="eyebrow" style="color:#fff">{{ ic("gift") }}Patrocinado por Yango</span>
+            <h3 style="margin-top:12px">Tus primeros {{ sponsored }} meses los paga Yango.</h3>
+            <p style="margin-top:10px;opacity:.9">Empiezas a vender desde el primer día sin pagar nada. Después, {{ currency }}{{ price|int }} por sucursal al mes, con una permanencia mínima de {{ min_paid }} meses y luego mes a mes.</p></div>
+          <div class="months">
+            {% for m in range(1, sponsored + 1) %}<div><small>Mes {{ m }}</small><b>{{ currency }}0</b> <s>{{ currency }}{{ price|int }}</s></div>{% endfor %}
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PREGUNTAS -->
+  <section class="sec" id="preguntas" style="padding-top:40px">
+    <div class="wrap">
+      <div class="sec-h center rv"><span class="eyebrow">{{ ic("circle-alert") }}Preguntas frecuentes</span><h2 class="h2">Lo que nos <em>preguntan.</em></h2></div>
+      <div class="faq">
+        <details class="rv"><summary>¿Necesito estar en Yango?{{ ic("plus") }}</summary><p>Sí. Tu menú, tus precios y el delivery salen de tu restaurante en Yango Comida. Si todavía no estás, te ayudamos a entrar.</p></details>
+        <details class="rv"><summary>¿Quién cobra al cliente?{{ ic("plus") }}</summary><p>El mensajero de Yango, en efectivo o QR, al entregar. El envío lo paga el cliente según lo que cotiza Yango para su dirección.</p></details>
+        <details class="rv"><summary>¿Cobran comisión por pedido?{{ ic("plus") }}</summary><p>No. Menu Deli Bo cobra solo el plan mensual por sucursal: {{ currency }}{{ price|int }}. Los primeros {{ sponsored }} meses los paga Yango.</p></details>
+        <details class="rv"><summary>Tengo varias sucursales, ¿cómo funciona?{{ ic("plus") }}</summary><p>Cada cliente pone su dirección y ve la sucursal que le corresponde (la misma que asigna Yango), con su menú, sus precios y su envío. Pagas el plan por cada sucursal.</p></details>
+        <details class="rv"><summary>¿Y si una zona está saturada o cerramos?{{ ic("plus") }}</summary><p>Tu web lo avisa antes de pedir: «Por alta demanda no llegamos a esta zona ahora» o «El restaurante está cerrado». Y puedes pausar los pedidos con un toque desde tu panel.</p></details>
+        <details class="rv"><summary>¿Cuándo empiezo a pagar y puedo darme de baja?{{ ic("plus") }}</summary><p>Pagas desde el mes {{ sponsored + 1 }}, por adelantado y por QR o transferencia. Hay una permanencia mínima de {{ min_paid }} meses pagados; después puedes dar de baja avisando con 30 días.</p></details>
+      </div>
+    </div>
+  </section>
+
+  <!-- CONTACTO -->
+  <section class="sec" id="contacto" style="padding-top:20px">
+    <div class="wrap">
+      <div class="cta-final">
+        <div class="rv"><span class="eyebrow">{{ ic("gift") }}{{ sponsored }} meses pagados por Yango</span>
+          <h2 class="h2">Deja de contestar chats. <em>Empieza a vender.</em></h2>
+          <p class="lead">Déjanos tus datos y te escribimos para armar tu web.</p>
+          {% if whatsapp %}<a class="btn pri" style="margin-top:24px" href="{{ wa }}">{{ ic("smartphone") }}Escríbenos por WhatsApp</a>{% endif %}</div>
+        <form class="form rv" id="leadForm" style="--d:1" novalidate>
+          <div class="two"><input name="name" placeholder="Tu nombre" autocomplete="name" required><input name="restaurant" placeholder="Restaurante" required></div>
+          <div class="two"><input name="phone" placeholder="Celular" inputmode="tel" autocomplete="tel" required>
+            <select name="branches"><option value="1">1 sucursal</option><option value="2">2 sucursales</option><option value="3">3 sucursales</option><option value="4">4 a 6 sucursales</option><option value="7">7 o más</option></select></div>
+          <textarea name="message" placeholder="¿Algo que debamos saber? (opcional)"></textarea>
+          <button class="btn pri" type="submit">Quiero mi web</button>
+          <div class="msg" id="leadMsg" role="status"></div>
+        </form>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer><div class="wrap"><a class="logo" href="#"><span class="logo-mark"><svg><use href="#md-mark"/></svg></span>Menu Deli <em>Bo</em></a>
+  <span>Pedidos propios con el delivery de Yango · Bolivia</span></div></footer>
+
+<script>
+window.MDB = {price: {{ price | tojson }}, sponsored: {{ sponsored | tojson }}, currency: {{ currency | tojson }}};
+</script>
+<script src="/static/landing.js?v={{ v }}"></script>
+</body>
+</html>

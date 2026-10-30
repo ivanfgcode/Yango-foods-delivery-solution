@@ -17,7 +17,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from app import (auth, billing, branches, dashboard, db, geo, menu as menu_mod, orders, partners, quotes, runtime as runtime_mod, themes,
+from app import (alerts, auth, billing, branches, dashboard, db, geo, menu as menu_mod, orders, partners, quotes, runtime as runtime_mod, themes,
                  tiktok, upsell)
 from app.config import ROOT, settings
 from bot import sessions
@@ -30,8 +30,9 @@ templates = Jinja2Templates(directory=str(ROOT / "app" / "templates"))
 def _asset_version() -> str:
     """Huella de app/static: va en las URLs (?v=) para que el navegador no use una versión vieja tras publicar."""
     h = hashlib.sha1()
-    for f in sorted((ROOT / "app" / "static").glob("*")):
-        h.update(f.name.encode()); h.update(f.read_bytes())
+    for f in sorted((ROOT / "app" / "static").rglob("*")):
+        if f.is_file():
+            h.update(f.name.encode()); h.update(f.read_bytes())
     return h.hexdigest()[:10]
 
 
@@ -118,7 +119,36 @@ async def health():
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
-    return templates.TemplateResponse(request, "home.html", {})
+    """Landing de Menu Deli Bo para vender el servicio a restaurantes."""
+    demo = next((p["slug"] for p in partners.all_partners() if p["enabled"]), None)
+    return templates.TemplateResponse(request, "landing.html", {
+        "price": settings.plan_price_bs, "sponsored": settings.plan_sponsored_months,
+        "min_paid": settings.plan_min_paid_months, "currency": settings.currency, "demo": demo,
+        "whatsapp": re.sub(r"\D", "", settings.sales_whatsapp)})
+
+
+_lead_hits: Dict[str, Deque[float]] = defaultdict(deque)
+
+
+@app.post("/api/leads")
+async def api_lead(request: Request, body: Dict[str, Any] = Body(...)):
+    """Formulario de la landing: queda en Eventos (admin) y se avisa por Telegram."""
+    ip = request.headers.get("x-forwarded-for", "").split(",")[0].strip() or (request.client.host if request.client else "")
+    now, dq = time.time(), _lead_hits[ip]
+    while dq and now - dq[0] > 3600:
+        dq.popleft()
+    if len(dq) >= 5:
+        raise HTTPException(429, "Ya recibimos tus datos, te escribimos pronto")
+    clean = lambda k, n: re.sub(r"[<>]", "", " ".join(str(body.get(k) or "").split()))[:n]  # noqa: E731
+    lead = {"nombre": clean("name", 80), "restaurante": clean("restaurant", 80), "telefono": clean("phone", 20),
+            "sucursales": clean("branches", 4), "mensaje": clean("message", 400)}
+    if len(lead["nombre"]) < 2 or len(lead["restaurante"]) < 2 or len(re.sub(r"\D", "", lead["telefono"])) < 7:
+        raise HTTPException(422, "Escribe tu nombre, tu restaurante y un celular de contacto")
+    dq.append(now)
+    db.event("lead", lead)
+    await alerts.alert("lead", f"Nuevo interesado en Menu Deli Bo: {lead['restaurante']} · {lead['nombre']} · "
+                               f"{lead['telefono']} · {lead['sucursales'] or '?'} sucursal(es). {lead['mensaje']}")
+    return {"ok": True}
 
 
 # ---------------------------------------------------------------------------------------------- tienda

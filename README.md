@@ -60,6 +60,13 @@ Cada partner tiene un **restaurante oculto** en Yango Foods, visible solo para u
 | `revision` | Yango cobra distinto de lo cotizado o el servicio se reinició a mitad: revisar |
 | `cancelado` | Cancelado por un operador |
 
+## Landing (`/`)
+
+Página de venta de Menu Deli Bo para restaurantes: qué resuelve (atender chats, tiempo de respuesta, menú viejo, buscar
+mensajero, errores, comisiones), antes/después de un pedido, funciones con capturas reales (`app/static/landing/`),
+calculadora de ahorro, precio con los meses pagados por Yango, preguntas y formulario. Cada interesado queda en
+Admin → Eventos (`lead`) y llega por Telegram. `SALES_WHATSAPP` (591…) agrega el botón de WhatsApp.
+
 ## Pantallas
 
 | Ruta | Para quién |

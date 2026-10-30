@@ -44,3 +44,14 @@ def test_portal_requires_login_and_admin_list_has_plan(client):  # noqa: F811
     assert ps[0]["billing"]["price_bs"] == 150 and ps[0]["billing"]["sponsored_months"] == 3
     page = client.get("/wrap-roll/portal").text
     assert "Menu Deli" in page and "3 meses los paga Yango" in page
+
+
+def test_landing_and_lead(client):  # noqa: F811
+    page = client.get("/").text
+    assert "Menu Deli" in page and "Bs150" in page and "los paga Yango" in page and 'href="/wrap-roll"' in page
+    bad = client.post("/api/leads", json={"name": "A", "restaurant": "", "phone": "1"})
+    assert bad.status_code == 422
+    ok = client.post("/api/leads", json={"name": "Ana Rojas", "restaurant": "Pollos <b>Ana</b>", "phone": "71234567", "branches": "2"})
+    assert ok.status_code == 200
+    ev = [e for e in client.get("/api/admin/events", headers=ADMIN).json() if e["kind"] == "lead"][0]
+    assert "Pollos bAna/b" in ev["detail"] and "71234567" in ev["detail"]
