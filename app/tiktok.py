@@ -61,8 +61,12 @@ async def resolve(url: str, slug: str) -> Dict[str, Any]:
             except ValueError:
                 meta = {}
         poster = await _save_poster(c, meta.get("thumbnail_url"), slug)
+    author = meta.get("author_unique_id") or meta.get("author_name") or ""
+    if not author:
+        am = re.search(r"/@([\w.-]{2,40})/", urlparse(url).path)
+        author = am.group(1) if am else ""
     return {"id": vid, "url": f"https://www.tiktok.com/video/{vid}" if "/video/" not in url else url.split("?")[0],
-            "title": str(meta.get("title") or "")[:150], "author": str(meta.get("author_name") or "")[:60],
+            "title": str(meta.get("title") or "")[:150], "author": str(author)[:60],
             "poster": poster}
 
 

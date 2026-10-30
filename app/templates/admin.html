@@ -29,7 +29,7 @@ document.getElementById("f").onsubmit = async (e) => { e.preventDefault();
 <header class="barra">
   <div class="in-ident"><span class="in-glifo" aria-hidden="true"><svg viewBox="0 0 32 32"><use href="#glifo"/></svg></span>
     <div><h1>Pedidos propios</h1><p class="in-sub" id="src">—</p></div></div>
-  <nav class="tabs" id="tabs" aria-label="Secciones"><i class="pildora" aria-hidden="true"></i><button class="on" data-t="summary">Resumen</button><button data-t="orders">Pedidos</button><button data-t="partners">Restaurantes</button><button data-t="accounts">Cuentas Yango</button><button data-t="events">Eventos</button></nav>
+  <nav class="tabs" id="tabs" aria-label="Secciones"><i class="pildora" aria-hidden="true"></i><button class="on" data-t="summary">Resumen</button><button data-t="orders">Pedidos</button><button data-t="store">Tienda</button><button data-t="partners">Restaurantes</button><button data-t="accounts">Cuentas Yango</button><button data-t="events">Eventos</button></nav>
   <div class="in-cab-der">
     <button class="in-chip" id="chipBot" type="button" aria-label="Estado de las cuentas Yango"><i class="in-punto" aria-hidden="true"></i><span id="chipTxt">Cuentas</span></button>
     <button class="in-redondo" type="button" id="btnTema" aria-label="Cambiar entre tema claro y oscuro">
@@ -96,6 +96,31 @@ document.getElementById("f").onsubmit = async (e) => { e.preventDefault();
       <div class="tw"><table><thead><tr><th>Hora</th><th>N°</th><th>Restaurante / cuenta</th><th>Cliente y dirección</th><th>Productos</th><th>Total</th><th>Estado</th><th></th></tr></thead><tbody id="ob"></tbody></table></div></div>
   </section>
 
+  <section id="t-store" class="sec" hidden>
+    <div class="card">
+      <div class="in-cab"><div><h2>Tienda</h2><p class="in-sub">lo que ve el cliente arriba del menú: «Más vendidos» y, debajo, los videos de TikTok</p></div>
+        <label class="campo"><select id="stPartner" aria-label="Restaurante"></select></label></div>
+    </div>
+
+    <div class="card">
+      <div class="in-cab"><div><h2>Más vendidos</h2><p class="in-sub" id="bsSub">—</p></div>
+        <div class="seg" id="bsMode" style="min-width:280px"><button type="button" data-mode="auto">Automático (pedidos)</button><button type="button" data-mode="manual">Elegidos a mano</button></div></div>
+      <div class="chosen" id="bsList"></div>
+      <div id="bsManual" class="row"><button class="btn sm" type="button" id="bsPick"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#plus"></use></svg>Elegir productos</button><span class="msg" id="bsMsg"></span></div>
+    </div>
+
+    <div class="card">
+      <div class="in-cab"><div><h2>Videos de TikTok</h2><p class="in-sub">pega el enlace (vt./vm.tiktok.com sirven) y etiqueta los productos que aparecen · máx. 12</p></div></div>
+      <div class="tt-new">
+        <label class="f" style="margin:0"><span>Enlace del video</span><input id="vUrl" type="url" placeholder="https://vt.tiktok.com/…"></label>
+        <div><span class="lbl">Productos que aparecen</span><div class="chosen sm" id="vItems"></div>
+          <button class="btn sm" type="button" id="vPick"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#plus"></use></svg>Elegir productos</button></div>
+        <div class="row"><button class="btn acc" type="button" id="vAdd">Agregar video</button><span class="msg" id="vMsg"></span></div>
+      </div>
+      <div class="vids" id="vList"></div>
+    </div>
+  </section>
+
   <section id="t-partners" class="sec" hidden>
     <div class="card"><h2>Nuevo restaurante</h2>
       <form id="np" class="row" style="align-items:flex-end">
@@ -148,6 +173,14 @@ document.getElementById("f").onsubmit = async (e) => { e.preventDefault();
 
   <section id="t-events" hidden><div class="card"><h2>Eventos</h2><div class="tw"><table><thead><tr><th>Hora</th><th>Tipo</th><th>Cuenta</th><th>Detalle</th></tr></thead><tbody id="eb"></tbody></table></div></div></section>
 </div>
+<div class="picker-fondo" id="pkFondo" hidden></div>
+<section class="picker" id="picker" role="dialog" aria-modal="true" aria-labelledby="pkTitle" hidden>
+  <header class="in-cab"><div><h2 id="pkTitle">Elegir productos</h2><p class="in-sub" id="pkSub">toca para marcar · el orden es el de selección</p></div>
+    <button class="in-cierra" type="button" id="pkClose" aria-label="Cerrar"><svg viewBox="0 0 24 24"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg></button></header>
+  <input id="pkQ" type="search" placeholder="Buscar producto…" autocomplete="off" aria-label="Buscar producto">
+  <div class="pk-grid" id="pkGrid"></div>
+  <div class="row" style="justify-content:flex-end"><span class="msg" id="pkCount"></span><button class="btn acc" type="button" id="pkOk">Listo</button></div>
+</section>
 <script src="/static/charts.js"></script>
 <script>
 (() => {
@@ -361,6 +394,118 @@ document.getElementById("f").onsubmit = async (e) => { e.preventDefault();
     }));
     $$("[data-copy]").forEach((b) => (b.onclick = () => { navigator.clipboard.writeText(b.dataset.copy); b.textContent = "Copiado"; }));
   }
+  // ---------------------------------------------------------------- Tienda: más vendidos y videos de TikTok
+  let st = {slug: null, menu: null, best: null, vids: [], newItems: []};
+  const prodChip = (id, removable) => {
+    const it = st.menu.items[id]; if (!it) return "";
+    return `<span class="pchip${it.available ? "" : " off"}" data-id="${esc(id)}">${it.image ? `<img src="${esc(it.image)}" alt="">` : `<i>${esc(it.name[0] || "")}</i>`}
+      <span><b>${esc(it.name)}</b><small>${CUR}${esc(it.promo_price ?? it.price)}${it.available ? "" : " · agotado"}</small></span>
+      ${removable ? `<button type="button" class="px" data-rm="${esc(id)}" aria-label="Quitar ${esc(it.name)}"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#x"></use></svg></button>` : ""}</span>`;
+  };
+  const portal = (p, opt) => fetch(`/api/${encodeURIComponent(st.slug)}/portal${p}`, opt).then(async (r) => { const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.detail || "Error"); return d; });
+  const pjson = (method, body) => ({method, headers: {"content-type": "application/json"}, body: JSON.stringify(body)});
+  async function storeTab() {
+    if (!$("#stPartner").options.length) {
+      const ps = await api("/partners");
+      $("#stPartner").innerHTML = ps.map((x) => `<option value="${esc(x.slug)}">${esc(x.name)}</option>`).join("");
+    }
+    st.slug = $("#stPartner").value; if (!st.slug) return;
+    st.menu = await fetch(`/api/${encodeURIComponent(st.slug)}/menu`).then((r) => r.ok ? r.json() : null).catch(() => null);
+    if (!st.menu) { $("#bsSub").textContent = "el menú todavía no se sincronizó desde Yango"; return; }
+    st.best = await portal("/bestsellers");
+    st.vids = (await portal("/me")).profile?.tiktok || [];
+    st.vids = st.vids.map((v) => ({...v, item_ids: v.item_ids || (v.item_id ? [v.item_id] : [])}));
+    renderBest(); renderVids(); renderNew();
+  }
+  $("#stPartner").onchange = storeTab;
+  function renderBest() {
+    const b = st.best, manual = b.mode === "manual";
+    $$("#bsMode button").forEach((x) => x.classList.toggle("on", x.dataset.mode === b.mode));
+    $("#bsManual").hidden = !manual;
+    $("#bsSub").textContent = manual ? "tú eliges qué sale y en qué orden" : `automático · fuente: ${b.auto.source || "sin datos todavía"}`;
+    const ids = manual ? b.items : b.auto.items;
+    $("#bsList").innerHTML = ids.map((id) => prodChip(id, manual)).join("") || `<p class="muted">${manual ? "Elige productos." : "Todavía no hay pedidos ni categoría «Populares»."}</p>`;
+    $$("[data-rm]", $("#bsList")).forEach((x) => (x.onclick = () => saveBest("manual", b.items.filter((i) => i !== x.dataset.rm))));
+  }
+  async function saveBest(mode, items) {
+    try { st.best = await portal("/bestsellers", pjson("PUT", {mode, items})); $("#bsMsg").className = "msg ok"; $("#bsMsg").textContent = "Guardado"; }
+    catch (e) { $("#bsMsg").className = "msg bad"; $("#bsMsg").textContent = e.message; }
+    renderBest();
+  }
+  $$("#bsMode button").forEach((x) => (x.onclick = () => saveBest(x.dataset.mode, st.best.items.length ? st.best.items : st.best.auto.items)));
+  $("#bsPick").onclick = () => pick(st.best.items, 12, (ids) => saveBest("manual", ids));
+
+  function renderNew() {
+    $("#vItems").innerHTML = st.newItems.map((id) => prodChip(id, true)).join("") || `<span class="muted">ninguno</span>`;
+    $$("[data-rm]", $("#vItems")).forEach((x) => (x.onclick = () => { st.newItems = st.newItems.filter((i) => i !== x.dataset.rm); renderNew(); }));
+  }
+  $("#vPick").onclick = () => pick(st.newItems, 6, (ids) => { st.newItems = ids; renderNew(); });
+  $("#vAdd").onclick = async () => {
+    const m = $("#vMsg"); m.className = "msg"; m.textContent = "Buscando el video en TikTok…"; $("#vAdd").disabled = true;
+    try { st.vids = await portal("/tiktok", pjson("POST", {url: $("#vUrl").value, item_ids: st.newItems})); $("#vUrl").value = ""; st.newItems = [];
+      m.className = "msg ok"; m.textContent = "Video agregado"; renderNew(); renderVids(); }
+    catch (e) { m.className = "msg bad"; m.textContent = e.message; }
+    $("#vAdd").disabled = false;
+  };
+  function renderVids() {
+    $("#vList").innerHTML = st.vids.map((v, i) => {
+      const first = st.menu.items[v.item_ids[0]], poster = v.poster || (first && first.image) || "";
+      return `<article class="vid">
+        <button type="button" class="vid-prev" data-play="${i}" aria-label="Ver video">${poster ? `<img src="${esc(poster)}" alt="">` : ""}<span class="vid-play"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#play"></use></svg></span></button>
+        <div class="vid-bd"><div class="vid-cab"><a href="${esc(v.url)}" target="_blank" rel="noopener" class="mono">${v.author ? "@" + esc(v.author) : "video"} · ${esc(v.id)}</a>
+          <div class="row"><button class="btn sm" data-up="${i}" ${i ? "" : "disabled"}>Subir</button><button class="btn sm" data-down="${i}" ${i < st.vids.length - 1 ? "" : "disabled"}>Bajar</button><button class="btn sm" data-del="${i}">Quitar</button></div></div>
+          ${v.title ? `<p class="muted">${esc(v.title)}</p>` : ""}
+          <div class="chosen sm">${v.item_ids.map((id) => prodChip(id, true)).join("") || `<span class="muted">sin productos</span>`}</div>
+          <button class="btn sm" type="button" data-edit="${i}"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#plus"></use></svg>Productos</button></div></article>`;
+    }).join("") || `<p class="muted">Todavía no hay videos.</p>`;
+    const mover = (i, j) => { [st.vids[i], st.vids[j]] = [st.vids[j], st.vids[i]]; saveVids(); };
+    $$("[data-up]", $("#vList")).forEach((x) => (x.onclick = () => mover(+x.dataset.up, +x.dataset.up - 1)));
+    $$("[data-down]", $("#vList")).forEach((x) => (x.onclick = () => mover(+x.dataset.down, +x.dataset.down + 1)));
+    $$("[data-del]", $("#vList")).forEach((x) => (x.onclick = () => { if (confirm("¿Quitar este video de la tienda?")) { st.vids.splice(+x.dataset.del, 1); saveVids(); } }));
+    $$("[data-edit]", $("#vList")).forEach((x) => (x.onclick = () => { const v = st.vids[+x.dataset.edit]; pick(v.item_ids, 6, (ids) => { v.item_ids = ids; saveVids(); }); }));
+    $$(".vid", $("#vList")).forEach((el, i) => $$("[data-rm]", el).forEach((x) => (x.onclick = () => { st.vids[i].item_ids = st.vids[i].item_ids.filter((id) => id !== x.dataset.rm); saveVids(); })));
+    $$("[data-play]", $("#vList")).forEach((x) => (x.onclick = () => {
+      const v = st.vids[+x.dataset.play];
+      x.outerHTML = `<div class="vid-prev"><iframe src="https://www.tiktok.com/player/v1/${encodeURIComponent(v.id)}?autoplay=1&description=0&music_info=0&rel=0" allow="autoplay; encrypted-media; fullscreen" allowfullscreen title="Vista previa"></iframe></div>`;
+    }));
+  }
+  async function saveVids() {
+    try { st.vids = await portal("/tiktok", pjson("PUT", {videos: st.vids.map((v) => ({id: v.id, item_ids: v.item_ids}))})); }
+    catch (e) { alert(e.message); }
+    renderVids();
+  }
+
+  // Selector de productos con foto, nombre y precio; devuelve los ids en el orden en que se marcaron.
+  let pk = null;
+  function pick(selected, max, done) {
+    pk = {sel: [...selected], max, done};
+    $("#pkQ").value = ""; $("#picker").hidden = false; $("#pkFondo").hidden = false; renderPick(); $("#pkQ").focus();
+  }
+  function cerrarPick() { $("#picker").hidden = true; $("#pkFondo").hidden = true; pk = null; }
+  const normal = (s) => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+  function renderPick() {
+    const q = normal($("#pkQ").value.trim());
+    const seen = new Set();  // un producto puede estar en varias categorías: se muestra en la primera
+    const cats = st.menu.categories.map((c) => ({...c, its: c.items.map((id) => st.menu.items[id])
+      .filter((it) => it && !seen.has(it.id) && (!q || normal(it.name + " " + it.description).includes(q)) && seen.add(it.id))})).filter((c) => c.its.length);
+    $("#pkGrid").innerHTML = cats.map((c) => `<h3>${esc(c.name)}</h3><div class="pk-row">${c.its.map((it) => {
+      const n = pk.sel.indexOf(it.id);
+      return `<button type="button" class="pk-it${n >= 0 ? " on" : ""}${it.available ? "" : " off"}" data-pk="${esc(it.id)}">
+        ${it.image ? `<img loading="lazy" src="${esc(it.image)}" alt="">` : `<i>${esc(it.name[0] || "")}</i>`}${n >= 0 ? `<em>${n + 1}</em>` : ""}
+        <b>${esc(it.name)}</b><small>${CUR}${esc(it.promo_price ?? it.price)}${it.available ? "" : " · agotado"}</small></button>`;
+    }).join("")}</div>`).join("") || `<p class="muted">Nada coincide.</p>`;
+    $("#pkCount").textContent = `${pk.sel.length} / ${pk.max}`;
+    $$("[data-pk]", $("#pkGrid")).forEach((x) => (x.onclick = () => {
+      const id = x.dataset.pk, n = pk.sel.indexOf(id);
+      if (n >= 0) pk.sel.splice(n, 1); else if (pk.sel.length < pk.max) pk.sel.push(id); else return;
+      renderPick();
+    }));
+  }
+  $("#pkQ").oninput = () => pk && renderPick();
+  $("#pkOk").onclick = () => { const p = pk; cerrarPick(); p.done(p.sel); };
+  $("#pkClose").onclick = cerrarPick; $("#pkFondo").onclick = cerrarPick;
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && pk) cerrarPick(); });
+
   async function partnersTab() {
     const rows = await api("/partners");
     $("#pb").innerHTML = rows.map((p) => `<tr>
@@ -439,7 +584,7 @@ document.getElementById("f").onsubmit = async (e) => { e.preventDefault();
     const rows = await api("/events?limit=300");
     $("#eb").innerHTML = rows.map((e) => `<tr><td>${esc(when(e.at))}</td><td class="mono">${esc(e.kind)}</td><td class="mono">${esc(e.account || "")}</td><td class="muted mono" style="max-width:600px;word-break:break-word">${esc((e.detail || "").slice(0, 400))}</td></tr>`).join("");
   }
-  const loaders = {summary, orders, partners: partnersTab, accounts, events};
+  const loaders = {summary, orders, store: storeTab, partners: partnersTab, accounts, events};
   function refresh() { stats(); loaders[tab](); }
   function irA(t) {
     tab = t; $$("#tabs button").forEach((x) => x.classList.toggle("on", x.dataset.t === t)); pildora($("#tabs"), "button.on");

@@ -118,7 +118,7 @@ def set_profile(slug: str, patch: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def set_tiktok(slug: str, videos: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
-    """Videos de TikTok de la tienda: [{id, url, title, author, poster, item_id}] (máx. 12)."""
+    """Videos de TikTok de la tienda: [{id, url, title, author, poster, item_ids}] (máx. 12)."""
     p = get(slug)
     profile = dict(p["profile"] or {})
     clean = []
@@ -129,11 +129,30 @@ def set_tiktok(slug: str, videos: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
                       "title": re.sub(r"[<>]", "", str(v.get("title") or ""))[:150],
                       "author": re.sub(r"[<>]", "", str(v.get("author") or ""))[:60],
                       "poster": v.get("poster") if re.fullmatch(r"/uploads/[\w.-]+", str(v.get("poster") or "")) else None,
-                      "item_id": str(v["item_id"])[:40] if v.get("item_id") else None})
+                      "item_ids": _ids(v.get("item_ids") or ([v["item_id"]] if v.get("item_id") else []), 6)})
     profile["tiktok"] = clean
     db.execute("UPDATE partners SET profile=?, updated_at=? WHERE slug=?",
                (json.dumps(profile, ensure_ascii=False), db.now_iso(), slug))
     return clean
+
+
+def _ids(values: Any, limit: int) -> List[str]:
+    out: List[str] = []
+    for v in values if isinstance(values, list) else []:
+        s = str(v)[:40]
+        if re.fullmatch(r"[\w-]+", s) and s not in out:
+            out.append(s)
+    return out[:limit]
+
+
+def set_bestsellers(slug: str, mode: str, items: List[Any]) -> Dict[str, Any]:
+    """«Más vendidos» de la tienda: automático (estadísticas de pedidos) o elegido a mano (máx. 12)."""
+    p = get(slug)
+    profile = dict(p["profile"] or {})
+    profile["bestsellers"] = {"mode": "manual" if mode == "manual" else "auto", "items": _ids(items, 12)}
+    db.execute("UPDATE partners SET profile=?, updated_at=? WHERE slug=?",
+               (json.dumps(profile, ensure_ascii=False), db.now_iso(), slug))
+    return profile["bestsellers"]
 
 
 def set_password(slug: str, password: str) -> None:

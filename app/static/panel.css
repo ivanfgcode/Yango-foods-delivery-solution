@@ -72,3 +72,5 @@ code,.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.85
 .tt-info{flex:1;min-width:0;display:grid;gap:4px}
 .tt-info a{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tt-act{display:flex;gap:6px;flex-wrap:wrap}
+.tt-items{display:flex;gap:6px;flex-wrap:wrap}
+.tt-items .pill button{border:0;background:none;cursor:pointer;color:inherit;font-weight:700;padding:0 0 0 4px}

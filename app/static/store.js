@@ -234,30 +234,48 @@
   }
 
   // ------------------------------------------------------------------ TikTok: videos elegidos por el restaurante con su producto
+  // «Más vendidos»: lo calcula el servidor (pedidos de la web o elegidos a mano en el admin).
+  function renderBest() {
+    const its = (S.bestsellers || []).map((id) => menu.items[id]).filter((it) => it && it.available);
+    if (its.length < 2) return;
+    $("#best").hidden = false;
+    $("#bestRail").innerHTML = its.map(card).join("");
+    $$(".card[data-id]", $("#bestRail")).forEach((el) => (el.onclick = () => openItem(el.dataset.id)));
+    reveal($("#best"));
+  }
+  const videoItems = (v) => (v.item_ids || []).map((id) => menu.items[id]).filter((it) => it && it.available);
   function renderTikTok() {
     const vids = (S.tiktok || []).filter((v) => /^\d+$/.test(v.id));
     if (!vids.length) return;
     $("#tt").hidden = false;
     $("#ttRail").innerHTML = vids.map((v, i) => {
-      const it = v.item_id && menu.items[v.item_id], poster = v.poster || (it && it.image) || "";
+      const its = videoItems(v), it = its[0], poster = v.poster || (it && it.image) || "";
       return `<div class="tt-card reveal" data-v="${i}" role="button" tabindex="0" aria-label="Ver video${it ? ` de ${esc(it.name)}` : ""}">
         ${poster ? `<img loading="lazy" src="${esc(poster)}" alt="">` : ""}<span class="tt-play">${icon("play")}</span>
         ${v.author ? `<span class="tt-au">@${esc(v.author)}</span>` : ""}
-        ${it && it.available ? `<button type="button" class="tt-chip" data-item="${esc(it.id)}"><span>${esc(it.name)}</span><b>${money(itemPrice(it))}</b></button>` : ""}</div>`;
+        ${it ? `<button type="button" class="tt-chip" data-item="${esc(it.id)}"><span>${esc(it.name)}</span><b>${money(itemPrice(it))}${its.length > 1 ? ` <small>+${its.length - 1} más</small>` : ""}</b></button>` : ""}</div>`;
     }).join("");
     $$(".tt-card", $("#ttRail")).forEach((c) => {
       const go = () => openVideo(vids[+c.dataset.v]);
       c.onclick = (e) => { if (!e.target.closest(".tt-chip")) go(); };
       c.onkeydown = (e) => { if (e.key === "Enter") go(); };
     });
-    $$(".tt-chip", $("#ttRail")).forEach((b) => (b.onclick = () => openItem(b.dataset.item)));
+    $$(".tt-chip", $("#ttRail")).forEach((b) => (b.onclick = () => { const v = vids[+b.closest(".tt-card").dataset.v]; videoItems(v).length > 1 ? openVideo(v) : openItem(b.dataset.item); }));
     reveal($("#tt"));
   }
   function openVideo(v) {
-    const it = v.item_id && menu.items[v.item_id];
+    const its = videoItems(v);
     $("#ttFrame").src = `https://www.tiktok.com/player/v1/${encodeURIComponent(v.id)}?autoplay=1&description=0&music_info=0&rel=0&native_context_menu=0`;
-    $("#ttFoot").innerHTML = it && it.available ? `<button class="btn" type="button" id="ttOrder">Pedir ${esc(it.name)} · ${money(itemPrice(it))}</button>` : "";
-    if (it && it.available) $("#ttOrder").onclick = () => { closeAll(); setTimeout(() => openItem(it.id), 220); };
+    const pedir = (id) => { closeAll(); setTimeout(() => openItem(id), 220); };
+    if (its.length === 1) {
+      $("#ttFoot").innerHTML = `<button class="btn" type="button" id="ttOrder">Pedir ${esc(its[0].name)} · ${money(itemPrice(its[0]))}</button>`;
+      $("#ttOrder").onclick = () => pedir(its[0].id);
+    } else {
+      $("#ttFoot").innerHTML = its.length ? `<div class="tt-prods">${its.map((it) => `<button type="button" class="ups-it" data-tt-it="${esc(it.id)}">
+        ${it.image ? `<img src="${esc(it.image)}" alt="">` : `<span class="noimg">${esc(it.name[0] || "")}</span>`}
+        <span class="nm">${esc(it.name)}<b>${money(itemPrice(it))}</b></span><span class="ups-add">${icon("plus")}</span></button>`).join("")}</div>` : "";
+      $$("[data-tt-it]", $("#ttFoot")).forEach((b) => (b.onclick = () => pedir(b.dataset.ttIt)));
+    }
     open($("#ttSheet"));
   }
 
@@ -436,6 +454,6 @@
   if (savedPoint) api("/quote", {lat: savedPoint.lat, lon: savedPoint.lon, subtotal: 0}).then((q) => {
     if (q.available && q.eta_min) $("#metaEta").innerHTML = `${icon("bike")}<b>${q.eta_min}–${q.eta_max} min</b>`;
   }).catch(() => {});
-  api("/menu").then((m) => { menu = m; renderMenu(); saveCart(); renderTikTok(); })
+  api("/menu").then((m) => { menu = m; renderMenu(); saveCart(); renderBest(); renderTikTok(); })
     .catch((e) => { $("#menu").innerHTML = `<p class="note" style="padding:40px 0">${esc(e.message)}</p>`; });
 })();

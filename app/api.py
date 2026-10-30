@@ -61,6 +61,19 @@ def script_json(data: Any) -> str:
     return json.dumps(data, ensure_ascii=False).replace("</", "<\\/")
 
 
+def _store_videos(p: Dict[str, Any]) -> list:
+    """Videos para la tienda; los guardados antes con un solo producto (item_id) pasan a item_ids."""
+    return [{**v, "item_ids": v.get("item_ids") or ([v["item_id"]] if v.get("item_id") else [])}
+            for v in (p["profile"] or {}).get("tiktok") or []]
+
+
+def _bestsellers(p: Dict[str, Any]) -> Dict[str, Any]:
+    m = menu_mod.load(p["id"])
+    if not m:
+        return {"items": [], "source": ""}
+    return upsell.bestsellers(p["id"], m, (p["profile"] or {}).get("bestsellers"))
+
+
 def rt() -> runtime_mod.Runtime:
     return runtime_mod.get_runtime()
 
@@ -103,7 +116,8 @@ def _store_ctx(p: Dict[str, Any]) -> Dict[str, Any]:
             "store_json": script_json({"slug": p["slug"], "name": p["name"], "currency": settings.currency,
                                       "center": [p.get("place_lat") or -17.7833, p.get("place_lon") or -63.1821],
                                       "accepting": bool(p["accepting_orders"]),
-                                      "tiktok": (p["profile"] or {}).get("tiktok") or [],
+                                      "tiktok": _store_videos(p),
+                                      "bestsellers": _bestsellers(p)["items"],
                                       "yandexKey": settings.yandex_maps_api_key,
                                       "mapLang": settings.yandex_maps_lang,
                                       "phonePrefix": settings.phone_prefix})}
@@ -308,14 +322,14 @@ async def portal_tiktok_add(request: Request, slug: str, body: Dict[str, Any] = 
     if len(videos) >= tiktok.MAX_VIDEOS:
         raise HTTPException(422, f"Máximo {tiktok.MAX_VIDEOS} videos")
     v = await tiktok.resolve(str(body.get("url") or ""), slug)
-    v["item_id"] = _item_or_none(p, body.get("item_id"))
+    v["item_ids"] = _valid_items(p, body.get("item_ids") or ([body["item_id"]] if body.get("item_id") else []))
     videos = [x for x in videos if x["id"] != v["id"]] + [v]
     return partners.set_tiktok(slug, videos)
 
 
 @app.put("/api/{slug}/portal/tiktok")
 async def portal_tiktok_update(request: Request, slug: str, body: Dict[str, Any] = Body(...)):
-    """Reordenar y cambiar el producto etiquetado: body {videos: [{id, item_id}]} en el orden nuevo."""
+    """Reordenar y cambiar los productos etiquetados: body {videos: [{id, item_ids}]} en el orden nuevo."""
     auth.require_portal(request, slug)
     p = _partner_or_404(slug, public=False)
     current = {v["id"]: v for v in _videos(p)}
@@ -323,13 +337,35 @@ async def portal_tiktok_update(request: Request, slug: str, body: Dict[str, Any]
     for x in body.get("videos") or []:
         v = current.get(str(x.get("id")))
         if v:
-            out.append({**v, "item_id": _item_or_none(p, x.get("item_id"))})
+            ids = x.get("item_ids") if "item_ids" in x else ([x["item_id"]] if x.get("item_id") else [])
+            out.append({**v, "item_ids": _valid_items(p, ids)})
     return partners.set_tiktok(slug, out)
 
 
-def _item_or_none(p: Dict[str, Any], item_id: Any) -> Optional[str]:
+def _valid_items(p: Dict[str, Any], ids: Any) -> list:
     m = menu_mod.load(p["id"])
-    return str(item_id) if item_id and m and str(item_id) in m["items"] else None
+    if not m or not isinstance(ids, list):
+        return []
+    return [str(i) for i in ids if str(i) in m["items"]]
+
+
+@app.get("/api/{slug}/portal/bestsellers")
+async def portal_bestsellers(request: Request, slug: str):
+    auth.require_portal(request, slug)
+    p = _partner_or_404(slug, public=False)
+    m = menu_mod.load(p["id"])
+    cfg = (p["profile"] or {}).get("bestsellers") or {"mode": "auto", "items": []}
+    auto = upsell.bestsellers(p["id"], m, None) if m else {"items": [], "source": ""}
+    return {**cfg, "auto": auto, "current": _bestsellers(p)}
+
+
+@app.put("/api/{slug}/portal/bestsellers")
+async def portal_bestsellers_set(request: Request, slug: str, body: Dict[str, Any] = Body(...)):
+    """«Más vendidos»: {mode: auto|manual, items: [ids en orden]}."""
+    auth.require_portal(request, slug)
+    p = _partner_or_404(slug, public=False)
+    partners.set_bestsellers(slug, str(body.get("mode") or "auto"), _valid_items(p, body.get("items") or []))
+    return await portal_bestsellers(request, slug)
 
 
 ALLOWED_IMAGES = {"image/png": "png", "image/jpeg": "jpg", "image/webp": "webp"}

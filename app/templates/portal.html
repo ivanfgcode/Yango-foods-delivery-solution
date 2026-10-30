@@ -176,27 +176,29 @@ document.getElementById("loginForm").onsubmit = async (e) => {
   };
   // ---------------------------------------------------------------- TikTok
   let ttMenu = null, ttVideos = [];
-  const itemOptions = (sel) => `<option value="">Sin producto</option>` + Object.values(ttMenu.items).filter((x) => x.available)
-    .sort((a, b) => a.name.localeCompare(b.name)).map((x) => `<option value="${esc(x.id)}"${x.id === sel ? " selected" : ""}>${esc(x.name)} · ${CUR}${x.promo_price ?? x.price}</option>`).join("");
+  const itemOptions = (first) => `<option value="">${first}</option>` + Object.values(ttMenu.items).filter((x) => x.available)
+    .sort((a, b) => a.name.localeCompare(b.name)).map((x) => `<option value="${esc(x.id)}">${esc(x.name)} · ${CUR}${x.promo_price ?? x.price}</option>`).join("");
   async function loadTikTok() {
     if (!ttMenu) ttMenu = await fetch(`/api/${SLUG}/menu`).then((r) => r.json()).catch(() => ({items: {}}));
-    $("#ttItem").innerHTML = itemOptions("");
-    ttVideos = (me.profile || {}).tiktok || [];
+    $("#ttItem").innerHTML = itemOptions("Sin producto");
+    ttVideos = ((me.profile || {}).tiktok || []).map((v) => ({...v, item_ids: v.item_ids || (v.item_id ? [v.item_id] : [])}));
     renderTikTok();
   }
   function renderTikTok() {
     $("#ttList").innerHTML = ttVideos.map((v, i) => `<div class="tt-row">
       ${v.poster ? `<img src="${esc(v.poster)}" alt="">` : `<span class="tt-ph"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#play"></use></svg></span>`}
       <div class="tt-info"><a href="${esc(v.url)}" target="_blank" rel="noopener">${esc(v.title || "Video " + v.id)}</a><span class="muted">${v.author ? "@" + esc(v.author) : ""}</span>
-        <select data-tt-item="${i}">${itemOptions(v.item_id)}</select></div>
+        <div class="tt-items">${v.item_ids.map((id) => ttMenu.items[id] ? `<span class="pill">${esc(ttMenu.items[id].name)} <button type="button" data-tt-rm="${i}:${esc(id)}" aria-label="Quitar">x</button></span>` : "").join("")}</div>
+        <select data-tt-item="${i}">${itemOptions("Agregar producto…")}</select></div>
       <div class="tt-act"><button class="btn ghost sm" data-tt-up="${i}" ${i ? "" : "disabled"} >Subir</button><button class="btn ghost sm" data-tt-del="${i}">Quitar</button></div></div>`).join("")
       || `<p class="muted">Todavía no hay videos.</p>`;
-    $$("[data-tt-item]").forEach((s) => (s.onchange = () => { ttVideos[+s.dataset.ttItem].item_id = s.value || null; saveTikTok(); }));
+    $$("[data-tt-item]").forEach((s) => (s.onchange = () => { const v = ttVideos[+s.dataset.ttItem]; if (s.value && !v.item_ids.includes(s.value)) { v.item_ids.push(s.value); saveTikTok(); } }));
+    $$("[data-tt-rm]").forEach((b) => (b.onclick = () => { const [i, id] = b.dataset.ttRm.split(":"); ttVideos[+i].item_ids = ttVideos[+i].item_ids.filter((x) => x !== id); saveTikTok(); }));
     $$("[data-tt-up]").forEach((b) => (b.onclick = () => { const i = +b.dataset.ttUp; [ttVideos[i - 1], ttVideos[i]] = [ttVideos[i], ttVideos[i - 1]]; saveTikTok(); }));
     $$("[data-tt-del]").forEach((b) => (b.onclick = () => { ttVideos.splice(+b.dataset.ttDel, 1); saveTikTok(); }));
   }
   async function saveTikTok() {
-    try { ttVideos = await API("/tiktok", json("PUT", {videos: ttVideos.map((v) => ({id: v.id, item_id: v.item_id}))})); me.profile.tiktok = ttVideos;
+    try { ttVideos = await API("/tiktok", json("PUT", {videos: ttVideos.map((v) => ({id: v.id, item_ids: v.item_ids}))})); me.profile.tiktok = ttVideos;
       ttMsg("ok", "Guardado"); $("#frame").contentWindow.location.reload(); }
     catch (e) { ttMsg("bad", e.message); }
     renderTikTok();
@@ -204,7 +206,7 @@ document.getElementById("loginForm").onsubmit = async (e) => {
   const ttMsg = (cls, txt) => { $("#ttMsg").className = `msg ${cls}`; $("#ttMsg").textContent = txt; };
   $("#ttAdd").onclick = async () => {
     ttMsg("", "Buscando el video en TikTok…"); $("#ttAdd").disabled = true;
-    try { ttVideos = await API("/tiktok", json("POST", {url: $("#ttUrl").value, item_id: $("#ttItem").value || null})); me.profile = me.profile || {}; me.profile.tiktok = ttVideos;
+    try { ttVideos = await API("/tiktok", json("POST", {url: $("#ttUrl").value, item_ids: $("#ttItem").value ? [$("#ttItem").value] : []})); me.profile = me.profile || {}; me.profile.tiktok = ttVideos;
       $("#ttUrl").value = ""; ttMsg("ok", "Video agregado"); renderTikTok(); $("#frame").contentWindow.location.reload(); }
     catch (e) { ttMsg("bad", e.message); }
     $("#ttAdd").disabled = false;

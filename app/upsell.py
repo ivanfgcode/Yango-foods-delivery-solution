@@ -121,3 +121,27 @@ def top_pairs(partner_id: int, menu: Dict[str, Any], limit: int = 8) -> List[Dic
             break
     return out
 
+
+
+POPULAR_RE = re.compile(r"popular|m[aá]s pedid|m[aá]s vendid|top|favorit", re.I)
+
+
+def bestsellers(partner_id: int, menu: Dict[str, Any], config: Optional[Dict[str, Any]] = None,
+                limit: int = 8) -> Dict[str, Any]:
+    """«Más vendidos» de la tienda. manual: lo que eligió el equipo, en ese orden. auto: los productos en más
+    pedidos de la web (sin bebidas); mientras haya pocos datos se completa con la categoría «Populares» de Yango."""
+    items = menu["items"]
+    ok = lambda i: i in items and items[i].get("available")  # noqa: E731
+    config = config or {}
+    if config.get("mode") == "manual" and config.get("items"):
+        return {"items": [i for i in config["items"] if ok(i)][:limit], "source": "manual"}
+    drinks = set(drink_ids(menu))
+    count = _stats(partner_id)["count"]
+    out = [i for i, n in count.most_common() if ok(i) and i not in drinks][:limit]
+    source = "pedidos"
+    if len(out) < 4:
+        for c in menu["categories"]:
+            if POPULAR_RE.search(c.get("name") or ""):
+                out += [i for i in c["items"] if ok(i) and i not in out and i not in drinks]
+        source = "pedidos + populares de Yango" if count else "populares de Yango"
+    return {"items": out[:limit], "source": source}

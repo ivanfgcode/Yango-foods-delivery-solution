@@ -55,6 +55,7 @@ def order_body_items(c, ids):
 
 def test_bought_together_wins_over_drinks(client, monkeypatch):  # noqa: F811
     monkeypatch.setattr(settings, "order_placement_enabled", False)
+    upsell.clear_cache()
     m = menu_mod.load(1)
     a, b, c3 = simple_items(m, 3)
     for ids in ([a, b], [a, b], [a, c3]):
@@ -78,15 +79,18 @@ def test_tiktok_videos_in_portal_and_store(client, monkeypatch):  # noqa: F811
     monkeypatch.setattr(tiktok, "resolve", fake_resolve)
     url = "https://www.tiktok.com/@wraproll/video/7301234567890123456"
     assert client.post("/api/wrap-roll/portal/tiktok", json={"url": url}).status_code == 401
-    item = next(iter(menu_mod.load(1)["items"]))
-    r = client.post("/api/wrap-roll/portal/tiktok", headers=ADMIN, json={"url": url, "item_id": item})
+    item, item2 = list(menu_mod.load(1)["items"])[:2]
+    r = client.post("/api/wrap-roll/portal/tiktok", headers=ADMIN, json={"url": url, "item_ids": [item, item2, "no-existe"]})
     assert r.status_code == 200, r.text
     v = r.json()[0]
-    assert v["item_id"] == item and v["title"] == "Wrap bnuevo/b" and v["poster"] == "/uploads/x.jpg"
+    assert v["item_ids"] == [item, item2] and v["title"] == "Wrap bnuevo/b" and v["poster"] == "/uploads/x.jpg"
+    # formato anterior (un solo item_id) sigue funcionando
+    r = client.post("/api/wrap-roll/portal/tiktok", headers=ADMIN, json={"url": url, "item_id": item})
+    assert r.json()[0]["item_ids"] == [item]
     bad = client.post("/api/wrap-roll/portal/tiktok", headers=ADMIN, json={"url": "https://evil.com/video/1"})
     assert bad.status_code == 422
-    r = client.put("/api/wrap-roll/portal/tiktok", headers=ADMIN, json={"videos": [{"id": v["id"], "item_id": "no-existe"}]})
-    assert r.json()[0]["item_id"] is None
+    r = client.put("/api/wrap-roll/portal/tiktok", headers=ADMIN, json={"videos": [{"id": v["id"], "item_ids": ["no-existe"]}]})
+    assert r.json()[0]["item_ids"] == []
     page = client.get("/wrap-roll").text
     assert "7301234567890123456" in page and "ttSheet" in page
     assert client.put("/api/wrap-roll/portal/tiktok", headers=ADMIN, json={"videos": []}).json() == []
@@ -98,3 +102,22 @@ def test_tiktok_rejects_bad_links(url):
     import asyncio
     with pytest.raises(tiktok.TikTokError):
         asyncio.run(tiktok.resolve(url, "x"))
+
+
+def test_bestsellers_auto_then_manual(client, monkeypatch):  # noqa: F811
+    monkeypatch.setattr(settings, "order_placement_enabled", False)
+    upsell.clear_cache()
+    m = menu_mod.load(1)
+    b = client.get("/api/wrap-roll/portal/bestsellers", headers=ADMIN).json()
+    assert b["mode"] == "auto" and b["auto"]["source"] == "populares de Yango"  # sin pedidos: categoría Populares
+    populares = next(c for c in m["categories"] if c["name"] == "Populares")["items"]
+    assert b["current"]["items"][0] in populares
+    a, x = simple_items(m, 2)
+    for ids in ([a], [a, x], [a]):
+        assert client.post("/api/wrap-roll/orders", json=order_body_items(client, ids)).status_code == 200
+    auto = client.get("/api/wrap-roll/portal/bestsellers", headers=ADMIN).json()["auto"]
+    assert auto["items"][:2] == [a, x] and "pedidos" in auto["source"]
+    r = client.put("/api/wrap-roll/portal/bestsellers", headers=ADMIN, json={"mode": "manual", "items": [x, "no-existe", a]})
+    assert r.json()["current"] == {"items": [x, a], "source": "manual"}
+    page = client.get("/wrap-roll").text
+    assert f'"bestsellers": ["{x}", "{a}"]' in page and 'id="best"' in page

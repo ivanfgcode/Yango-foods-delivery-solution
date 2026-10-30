@@ -33,8 +33,10 @@ Cada partner tiene un **restaurante oculto** en Yango Foods, visible solo para u
    web de ese restaurante (veces juntos / veces pedido, mínimo `UPSELL_MIN_PAIRS`, últimos `UPSELL_DAYS` días).
    Sin historial, y al cerrar el carrito si no lleva bebida, sugiere bebidas del menú (las más vendidas primero).
    Las combinaciones más frecuentes se ven en Admin → Resumen → Más vendido.
-7. **TikTok**: en el portal (pestaña TikTok) el partner pega enlaces de sus videos y etiqueta el producto que aparece.
-   En la tienda sale un carrusel; el video se reproduce con el reproductor de TikTok y trae «Pedir este producto».
+7. **Más vendidos y TikTok** (Admin → Tienda, o el portal del partner): arriba del menú, un carrusel «Más vendidos»
+   automático (productos en más pedidos de la web, sin bebidas; sin datos, la categoría «Populares» de Yango) o
+   elegido a mano, y debajo los videos de TikTok: se pega el enlace (vt./vm. sirven) y se etiquetan uno o varios
+   productos con el selector (foto, nombre, precio). El video se reproduce con el reproductor de TikTok y trae «Pedir».
    No hace falta app de desarrollador (oEmbed público); listar los videos de la cuenta solos sí la necesitaría.
 8. La vendor app del restaurante y los mensajeros siguen el flujo normal de Yango: no se toca nada ahí.
 
