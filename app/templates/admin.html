@@ -43,30 +43,39 @@ document.getElementById("f").onsubmit = async (e) => { e.preventDefault();
   </section>
 
   <section id="t-accounts" hidden>
-    <div class="card"><h2>Iniciar sesión con teléfono</h2>
-      <p class="muted">El bot abre Yango ID y pide el SMS al número de la cuenta. Escribe aquí el código que llegue. Si Yango muestra captcha, resuélvelo tocando la captura y escribiendo el texto: el bot no lo resuelve solo.</p>
+    <div class="card" id="enterCard"><h2>Entrar a una cuenta Yango</h2>
       <div class="row" style="align-items:flex-end">
-        <label class="f" style="flex:1 1 160px"><span>Cuenta</span><input id="lgName" placeholder="wrap_roll"></label>
-        <label class="f" style="flex:1 1 180px"><span>Celular de la cuenta</span><input id="lgPhone" inputmode="tel" placeholder="7XXXXXXX"></label>
-        <button class="btn acc" id="lgStart" style="margin-bottom:12px"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#log-in"></use></svg>Enviar SMS</button>
+        <label class="f" style="flex:1 1 200px"><span>Cuenta</span><input id="lgName" placeholder="wrap_roll"></label>
+        <div class="seg" id="enterMode" style="flex:1 1 260px;margin-bottom:12px"><button type="button" class="on" data-mode="sms"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#smartphone"></use></svg>Con SMS</button><button type="button" data-mode="cookie"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#copy"></use></svg>Con cookie</button></div>
       </div>
-      <div class="msg" id="lgMsg"></div>
-      <div id="lgBox" class="login-box" hidden>
-        <img id="lgShot" alt="Pantalla de Yango ID: toca para hacer clic">
-        <div class="login-ctl">
-          <label class="f"><span>Código del SMS</span><input id="lgCode" inputmode="numeric" autocomplete="one-time-code" maxlength="8"></label>
-          <button class="btn acc" id="lgSendCode"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#shield-check"></use></svg>Enviar código</button>
-          <label class="f" style="margin-top:14px"><span>Escribir texto (captcha u otro campo)</span><input id="lgText" maxlength="80"></label>
-          <div class="row"><button class="btn ghost sm" id="lgType">Escribir</button><button class="btn ghost sm" data-key="Enter">Enter</button><button class="btn ghost sm" data-key="Backspace">Borrar</button></div>
-          <div class="row" style="margin-top:14px"><button class="btn ghost sm" id="lgRefresh">Actualizar captura</button><button class="btn ghost sm" id="lgCancel">Cancelar</button></div>
+
+      <div id="mode-sms">
+        <p class="muted">El bot abre Yango ID y pide el SMS al celular de la cuenta. Escribe aquí el código que llegue. Si Yango muestra captcha, resuélvelo tocando la captura y escribiendo el texto: el bot no lo resuelve solo.</p>
+        <div class="row" style="align-items:flex-end">
+          <label class="f" style="flex:1 1 200px"><span>Celular de la cuenta</span><input id="lgPhone" inputmode="tel" placeholder="7XXXXXXX"></label>
+          <button class="btn acc" id="lgStart" style="margin-bottom:12px"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#log-in"></use></svg>Enviar SMS</button>
+        </div>
+        <div class="msg" id="lgMsg"></div>
+        <div id="lgBox" class="login-box" hidden>
+          <img id="lgShot" alt="Pantalla de Yango ID: toca para hacer clic">
+          <div class="login-ctl">
+            <label class="f"><span>Código del SMS</span><input id="lgCode" inputmode="numeric" autocomplete="one-time-code" maxlength="8"></label>
+            <button class="btn acc" id="lgSendCode"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#shield-check"></use></svg>Enviar código</button>
+            <label class="f" style="margin-top:14px"><span>Escribir texto (captcha u otro campo)</span><input id="lgText" maxlength="80"></label>
+            <div class="row"><button class="btn ghost sm" id="lgType">Escribir</button><button class="btn ghost sm" data-key="Enter">Enter</button><button class="btn ghost sm" data-key="Backspace">Borrar</button></div>
+            <div class="row" style="margin-top:14px"><button class="btn ghost sm" id="lgRefresh">Actualizar captura</button><button class="btn ghost sm" id="lgCancel">Cancelar</button></div>
+          </div>
         </div>
       </div>
+
+      <div id="mode-cookie" hidden>
+        <p class="muted">Entra a food.yango.com con la cuenta en tu navegador. Luego, una de dos: exporta con la extensión «Cookie-Editor» (Export → JSON) y pega o sube el archivo, o copia la línea <span class="mono">Cookie:</span> de una petición a food.yango.com (herramientas del navegador → Red). Después se prueba la sesión sola.</p>
+        <label class="f"><span>Cookies (JSON o línea Cookie:)</span><textarea id="acJson" style="min-height:120px" placeholder='[{"name":"Session_id","value":"...","domain":".yango.com",...}]   o   Session_id=...; yandexuid=...'></textarea></label>
+        <div class="row"><label class="btn ghost sm" style="cursor:pointer"><input type="file" id="acFile" accept=".json,.txt,application/json,text/plain" hidden>Subir archivo</label>
+          <button class="btn acc" id="acSave"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#log-in"></use></svg>Entrar con cookie</button></div>
+        <div class="msg" id="acMsg"></div>
+      </div>
     </div>
-    <div class="card"><h2>Cargar sesión (cookies JSON)</h2>
-      <p class="muted">Entra a food.yango.com con la cuenta en tu navegador (teléfono + SMS), exporta las cookies con la extensión «Cookie-Editor» (Export → JSON) y pégalas aquí. Una cuenta por restaurante.</p>
-      <label class="f"><span>Cuenta</span><input id="acName" placeholder="wrap_roll"></label>
-      <label class="f"><span>Cookies (JSON)</span><textarea id="acJson" style="min-height:120px" placeholder='[{"name":"Session_id","value":"...","domain":".yango.com",...}]'></textarea></label>
-      <button class="btn acc" id="acSave">Cargar sesión</button><div class="msg" id="acMsg"></div></div>
     <div class="card"><h2>Cuentas</h2><div class="tw"><table><thead><tr><th>Cuenta</th><th>Restaurantes</th><th>Estado</th><th>Detalle</th><th>Sesión cargada</th><th></th></tr></thead><tbody id="ab"></tbody></table></div></div>
   </section>
 
@@ -134,16 +143,31 @@ document.getElementById("f").onsubmit = async (e) => { e.preventDefault();
     const rows = await api("/accounts");
     $("#ab").innerHTML = rows.map((a) => `<tr><td class="mono">${esc(a.name)}</td><td>${a.partners.map(esc).join(", ")}</td><td><span class="pill ${esc(a.status)}">${esc(a.status)}</span></td>
       <td class="muted">${esc(a.detail || "")}<br>${esc(when(a.checked_at))}</td><td>${a.has_session ? esc(when(a.session_imported_at)) : `<span class="muted">no</span>`}</td>
-      <td><button class="btn sm" data-check="${esc(a.name)}">Probar</button> <button class="btn ghost sm" data-load="${esc(a.name)}">Cargar cookies</button> <button class="btn ghost sm" data-phone="${esc(a.name)}">Entrar con teléfono</button></td></tr>`).join("");
+      <td><button class="btn sm" data-check="${esc(a.name)}">Probar</button> <button class="btn ghost sm" data-enter="sms" data-acc="${esc(a.name)}">Entrar con SMS</button> <button class="btn ghost sm" data-enter="cookie" data-acc="${esc(a.name)}">Entrar con cookie</button></td></tr>`).join("");
     $$("[data-check]").forEach((b) => (b.onclick = async () => { b.textContent = "…"; try { const r = await post(`/accounts/${b.dataset.check}/check`, {}); alert(r.ok ? "Sesión activa" : `Sesión caída: ${r.detail}`); } catch (e) { alert(e.message); } accounts(); }));
-    $$("[data-load]").forEach((b) => (b.onclick = () => { $("#acName").value = b.dataset.load; $("#acJson").focus(); }));
-    $$("[data-phone]").forEach((b) => (b.onclick = () => { $("#lgName").value = b.dataset.phone; $("#lgPhone").focus(); }));
+    $$("[data-enter]").forEach((b) => (b.onclick = () => {
+      $("#lgName").value = b.dataset.acc; setMode(b.dataset.enter);
+      $("#enterCard").scrollIntoView({behavior: "smooth"}); (b.dataset.enter === "sms" ? $("#lgPhone") : $("#acJson")).focus({preventScroll: true});
+    }));
   }
+  function setMode(m) {
+    $$("#enterMode button").forEach((b) => b.classList.toggle("on", b.dataset.mode === m));
+    $("#mode-sms").hidden = m !== "sms"; $("#mode-cookie").hidden = m !== "cookie";
+  }
+  $$("#enterMode button").forEach((b) => (b.onclick = () => setMode(b.dataset.mode)));
+  $("#acFile").onchange = async (e) => { const f = e.target.files[0]; if (f) $("#acJson").value = await f.text(); e.target.value = ""; };
   $("#acSave").onclick = async () => {
-    const name = $("#acName").value.trim();
-    try { const r = await api(`/accounts/${encodeURIComponent(name)}/cookies`, {method: "POST", headers: {"content-type": "application/json"}, body: $("#acJson").value});
-      $("#acMsg").className = "msg ok"; $("#acMsg").textContent = `Sesión cargada (${r.cookies} cookies).`; $("#acJson").value = ""; accounts(); }
-    catch (e) { $("#acMsg").className = "msg bad"; $("#acMsg").textContent = e.message; }
+    const name = lgAcc(), msg = $("#acMsg");
+    if (!name) { msg.className = "msg bad"; msg.textContent = "Escribe el nombre de la cuenta"; return; }
+    msg.className = "msg"; msg.textContent = "Cargando y probando la sesión en Yango…";
+    try {
+      const r = await api(`/accounts/${encodeURIComponent(name)}/cookies`, {method: "POST", headers: {"content-type": "text/plain"}, body: $("#acJson").value});
+      $("#acJson").value = "";
+      const c = await post(`/accounts/${encodeURIComponent(name)}/check`, {});
+      msg.className = `msg ${c.ok ? "ok" : "bad"}`;
+      msg.textContent = c.ok ? `Listo: sesión activa (${r.cookies} cookies).` : `Cookies cargadas (${r.cookies}), pero Yango no reconoce la sesión: ${c.detail}`;
+    } catch (e) { msg.className = "msg bad"; msg.textContent = e.message; }
+    accounts();
   };
   // Login asistido: captura de la pantalla de Yango ID; un toque en la imagen es un clic en esa posición.
   const lgAcc = () => $("#lgName").value.trim();

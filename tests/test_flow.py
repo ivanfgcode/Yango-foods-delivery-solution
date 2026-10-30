@@ -164,6 +164,17 @@ def test_session_import(client):
     assert bad.status_code in (404, 422)
 
 
+def test_session_import_cookie_header(client):
+    r = client.post("/api/admin/accounts/cuenta_demo/cookies", headers=ADMIN,
+                    content="Cookie: Session_id=3:abc.def; yandexuid=123; i=x/y==")
+    assert r.status_code == 200 and r.json()["cookies"] == 3
+    state = json.loads((settings.sessions_dir / "cuenta_demo.json").read_text())
+    assert {c["name"]: c["value"] for c in state["cookies"]}["i"] == "x/y=="
+    assert all(c["domain"] == ".yango.com" for c in state["cookies"])
+    bad = client.post("/api/admin/accounts/cuenta_demo/cookies", headers=ADMIN, content="hola que tal")
+    assert bad.status_code == 422
+
+
 def test_quote_cache_and_dedupe():
     """Pico: 200 cotizaciones del mismo punto a la vez → 1 consulta a Yango."""
     from app.quotes import QuoteService

@@ -50,13 +50,15 @@ Cada partner tiene un **restaurante oculto** en Yango Foods, visible solo para u
 
 ## Sesiones de las cuentas
 
-El login de Yango ID es por teléfono + SMS y a veces pide captcha. Dos formas de cargar la sesión de una cuenta:
+El login de Yango ID es por teléfono + SMS y a veces pide captcha. Admin → Cuentas Yango → *Entrar a una cuenta*
+tiene dos modos (también desde cada fila de la tabla de cuentas):
 
-* **Con teléfono (asistido)**: Admin → Cuentas Yango → *Iniciar sesión con teléfono*. El bot abre Yango ID, escribe
+* **Con SMS (asistido)**: El bot abre Yango ID, escribe
   el número (+591) y pide el SMS. El operador escribe el código; si aparece captcha u otra pantalla, la resuelve él
   tocando la captura y escribiendo (el bot no resuelve captchas). Al volver a food.yango.com con sesión, se guarda sola.
-* **Cookies**: entrar con la cuenta en un navegador, exportar las cookies (Cookie-Editor → Export → JSON) y pegarlas
-  en Admin → Cuentas Yango.
+* **Con cookie**: entrar con la cuenta en un navegador y pegar (o subir) las cookies: JSON de Cookie-Editor
+  (Export → JSON), `storage_state` de Playwright o la línea `Cookie:` de una petición a food.yango.com. Después se
+  prueba la sesión sola.
 
 Cada 5 min se comprueba la sesión; si cae, alerta y los pedidos de esa cuenta pasan a manual.
 
