@@ -832,6 +832,24 @@ async def admin_order_status(request: Request, token: str, body: Dict[str, Any] 
     raise HTTPException(422, "Acción inválida")
 
 
+@app.post("/api/admin/orders/{token}/dry-run")
+async def admin_order_dry_run(request: Request, token: str):
+    """Probar en Yango sin pedir: carrito, dirección, comentarios, NIT y Efectivo comprobado, sin el botón final.
+    Usa el carrito de la cuenta: espera su turno en la cola de esa cuenta (un pedido a la vez)."""
+    auth.require_admin(request)
+    o = orders.get(token)
+    if not o:
+        raise HTTPException(404, "Pedido no encontrado")
+    partner = partners.get_by_id(o["partner_id"])
+    try:
+        res = await rt().source.place_order(o["account"], partner, o, dry_run=True)
+    except Exception as e:
+        db.event("prueba_yango_fallo", {"error": str(e)[:300]}, order_token=token, partner_id=o["partner_id"])
+        raise HTTPException(502, f"La prueba falló: {e}")
+    db.event("prueba_yango_ok", res, order_token=token, partner_id=o["partner_id"])
+    return res
+
+
 @app.get("/api/admin/events")
 async def admin_events(request: Request, order: Optional[str] = None, limit: int = 200):
     auth.require_admin(request)

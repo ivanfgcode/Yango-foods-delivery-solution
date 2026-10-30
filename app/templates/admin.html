@@ -386,7 +386,8 @@ document.getElementById("f").onsubmit = async (e) => { e.preventDefault();
       <td>${o.items.map((i) => `${i.quantity}× ${esc(i.name)}${i.options.length ? ` <span class="muted">(${esc(i.options.map((x) => x.name).join(", "))})</span>` : ""}`).join("<br>")}</td>
       <td>${CUR}${o.total}<br><span class="muted">envío ${CUR}${o.delivery_fee} · ${esc(o.payment.label)}</span></td>
       <td><span class="pill ${esc(o.status)}">${esc(o.status)}</span>${o.yango_order_nr ? `<br><span class="mono">${esc(o.yango_order_nr)}</span>` : ""}${o.error ? `<br><span class="muted">${esc(o.error)}</span>` : ""}</td>
-      <td style="white-space:nowrap">${["manual", "revision"].includes(o.status) ? `<button class="btn sm" data-a="colocado" data-t="${esc(o.token)}">Marcar colocado</button> <button class="btn ghost sm" data-a="reintentar" data-t="${esc(o.token)}">Reintentar bot</button><br>
+      <td style="white-space:nowrap">${["manual", "revision"].includes(o.status) ? `<button class="btn sm" data-a="colocado" data-t="${esc(o.token)}">Marcar colocado</button> <button class="btn ghost sm" data-a="reintentar" data-t="${esc(o.token)}">Reintentar bot</button>
+        <button class="btn ghost sm" data-dry="${esc(o.token)}" title="Hace todo en Yango menos el botón final">Probar en Yango</button><br>
         <button class="btn ghost sm" data-copy="${esc(o.yango_comment)}" style="margin-top:4px">Copiar comentario</button> ` : ""}
         ${o.status !== "cancelado" && o.status !== "colocado" ? `<button class="btn ghost sm" data-a="cancelar" data-t="${esc(o.token)}" style="margin-top:4px">Cancelar</button>` : ""}</td></tr>`).join("")
       || `<tr><td colspan="8" class="muted">Sin pedidos.</td></tr>`;
@@ -395,6 +396,12 @@ document.getElementById("f").onsubmit = async (e) => { e.preventDefault();
       if (body.action === "colocado") { body.yango_order_nr = prompt("N° de pedido en Yango (ej. 261029-BO1234567)"); if (!body.yango_order_nr) return; }
       if (body.action === "cancelar" && !confirm("¿Cancelar este pedido? (si ya está en Yango, cancélalo también allí)")) return;
       try { await post(`/orders/${b.dataset.t}/status`, body); refresh(); } catch (e) { alert(e.message); }
+    }));
+    $$("[data-dry]").forEach((b) => (b.onclick = async () => {
+      b.disabled = true; b.textContent = "Probando…";
+      try { const r = await post(`/orders/${b.dataset.dry}/dry-run`, {}); alert(`Prueba correcta, sin pedir. Total en Yango ${CUR}${r.yango_total}, envío ${CUR}${r.delivery_fee}.\n${r.yango_order_nr}`); }
+      catch (e) { alert(e.message); }
+      b.disabled = false; b.textContent = "Probar en Yango";
     }));
     $$("[data-copy]").forEach((b) => (b.onclick = () => { navigator.clipboard.writeText(b.dataset.copy); b.textContent = "Copiado"; }));
   }

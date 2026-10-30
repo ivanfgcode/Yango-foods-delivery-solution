@@ -47,8 +47,10 @@ class YangoSource:
         """{'ok': bool, 'detail': str}"""
         raise NotImplementedError
 
-    async def place_order(self, account: str, partner: Dict[str, Any], order: Dict[str, Any]) -> Dict[str, Any]:
-        """Crea el pedido en Yango con la cuenta. Devuelve {'yango_order_nr', 'yango_total', 'delivery_fee'}."""
+    async def place_order(self, account: str, partner: Dict[str, Any], order: Dict[str, Any],
+                          dry_run: bool = False) -> Dict[str, Any]:
+        """Crea el pedido en Yango con la cuenta. Devuelve {'yango_order_nr', 'yango_total', 'delivery_fee'}.
+        dry_run: todo menos el botón final; deja el carrito y el NIT de la cuenta vacíos."""
         raise NotImplementedError
 
     async def vendor_active(self, account: str) -> Dict[str, Any]:

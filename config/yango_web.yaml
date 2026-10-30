@@ -18,7 +18,9 @@ endpoints:
   suggest: "/eats/v1/persuggest/v1/suggest"   # búsqueda por texto (verificado 2026-10-30, sin sesión)
   # Seguimiento de los pedidos de la cuenta cliente. POR VERIFICAR con sesión (tools/record_traffic.py): el parser
   # busca el número de pedido en cualquier parte del JSON y toma su status (app/tracking.find_status).
-  order_tracking: "/api/v2/orders/tracking"
+  order_tracking: "/api/v2/orders/tracking"   # VERIFICADO 2026-10-30 con sesión: payload.trackedOrders
+  # NIT guardado en la cuenta (VERIFICADO 2026-10-30): queda para el pedido siguiente; DELETE lo borra (204).
+  profile_tin: "/api/v1/user/profile/tin?country_code=BO"
   cart: "/api/v1/cart?longitude={lon}&latitude={lat}&screen=menu&shippingType=delivery&autoTranslate=false"
 
 session:
@@ -39,11 +41,9 @@ login:
   session_cookies: ["Session_id", "sessionid2"]   # cookies de Yango ID tras entrar (por confirmar con una cuenta)
 
 order:
-  # Prueba en seco con la cuenta real (2026-10-30), sin pulsar «Pagar». Falta antes de encender ORDER_PLACEMENT_ENABLED:
-  #  * El carrito real va ligado al x-device-id de la web: el bot debe mandar las mismas cabeceras (si no, usa otro carrito).
-  #  * La dirección del cliente se fija con POST /api/v2/cart/go-checkout (la página usa la dirección guardada).
-  #  * Teléfono de contacto del checkout = el de la cuenta: el del cliente va en el comentario.
-  #  * El NIT queda en el navegador del bot: sin NIT hay que vaciarlo para que no pase al pedido siguiente.
+  # Hecho y probado en seco (2026-10-30): cabeceras de la web (carrito por x-device-id), punto del cliente, NIT borrado
+  # antes de cada pedido, comentarios, Efectivo comprobado. Falta: el primer pedido real (pulsar «Pagar» y leer el N°).
+  # Teléfono de contacto del checkout = el de la cuenta; el del cliente va en el comentario.
   verified: false                  # true cuando se grabe un pedido real y se ajusten los pasos
   # 1) Vaciar el carrito de la cuenta (cada cuenta = un restaurante, un pedido a la vez).
   #    VERIFICADO 2026-10-30: no hay «vaciar» (DELETE /api/v1/cart da 405); se borra cada línea del carrito.
@@ -61,28 +61,31 @@ order:
   # 4) Checkout en la web (UI). Cada paso: goto | click | fill | press | wait_text | capture.
   #    {address_text} {reference} {comment} {lat} {lon} {place_slug} {locale} se reemplazan.
   checkout_steps:
+    # Antes de abrir el checkout el bot pone el punto del cliente (cookie eda_web: la web lo geocodifica y lo manda a
+    # go-checkout) y borra el NIT guardado en la cuenta. Todo VERIFICADO en seco 2026-10-30 (sin pulsar «Pagar»).
     - {action: goto, path: "/{locale}/checkout"}
-    - {action: click, names: ["Dirección", "Address", "Cambiar dirección", "Change address"], optional: true}
-    - {action: fill, labels: ["Calle y número", "Street and house", "Dirección", "Address"], value: "{address_text}"}
-    - {action: click, names: ["{address_text}"], optional: true}
-    - {action: fill, labels: ["Departamento", "Apartment", "Depto"], value: "{reference}", optional: true}
-    - {action: fill, labels: ["Comentario para el mensajero", "Comment for courier", "Comentario", "Comment"], value: "{comment}"}
-    # Factura (VERIFICADO 2026-10-30): fila «NIT» → ventana «Enter tax number» con «Nombre y apellido» y «NIT» → «Listo».
-    # El local lo ve como «Usuario» / «NIT del usuario» (lo lee restotec-yango). También va en el comentario.
+    - {action: wait_text, text: "Método de pago", timeout: 45000}
+    # Comentario al mensajero (Yango deja la etiqueta en ruso): fila → «Instrucciones para el mensajero» → cerrar.
+    - {action: click, names: ["Комментарий курьеру", "Comentario para el mensajero", "Comment for courier"]}
+    - {action: fill, labels: ["Instrucciones para el mensajero"], value: "{comment}"}
+    - {action: click, names: ["Cerrar cuadro de diálogo"]}
+    - {action: fill, labels: ["Comentario para el restaurante"], value: "{comment}"}
+    # Factura: fila «NIT» → «Nombre y apellido» + «NIT» → «Listo». El local lo ve como «Usuario» / «NIT del usuario».
     - {action: click, if: nit, names: ["NIT"]}
     - {action: fill, if: nit, labels: ["Nombre y apellido"], value: "{razon_social}"}
     - {action: fill, if: nit, labels: ["NIT"], value: "{nit}"}
     - {action: click, if: nit, names: ["Listo"]}
-    # Pago (VERIFICADO 2026-10-30): la cuenta tiene tarjeta VISA y «Código QR» por defecto. Siempre se elige
-    # «Efectivo» y se comprueba antes de pulsar «Pagar»; si no se ve «Efectivo», el pedido va a revisión.
+    # Pago: la cuenta tiene tarjeta y «Código QR» por defecto. SOLO Efectivo: se elige y se comprueba antes de pagar.
     - {action: click, names: ["Editar"]}
     - {action: click, names: ["Efectivo"]}
     - {action: click, names: ["Seleccionar"]}
     - {action: require_after, label: "Método de pago", value: "Efectivo"}
-    - {action: click, names: ["Pagar"]}
+    # «final»: en modo prueba el bot se detiene aquí. Después de este paso nunca se reintenta (evita pedidos dobles).
+    - {action: click, final: true, names: ["Order", "Pagar", "Hacer pedido", "Realizar pedido"]}   # con Efectivo dice «Order»
     - {action: capture, response_regex: "/api/v1/orders|eats-orders|order_nr", json_paths: ["order_nr", "orderNr", "order.order_nr"]}
   # Botones que el bot NUNCA pulsa.
-  never_click: ["Cancelar pedido", "Cancel order", "Pagar con tarjeta", "Card", "Agregar tarjeta", "Vincular nueva tarjeta", "USDT"]
+  never_click: ["Cancelar pedido", "Cancel order", "Pagar con tarjeta", "Card", "Agregar tarjeta", "Vincular nueva tarjeta",
+                "USDT", "Código QR", "Prioridad"]
 
 # Vendor app del restaurante (cuenta del local, partners.vendor_account). VERIFICADO 2026-10-30 con una cuenta de
 # 57 locales: la sesión es el token de localStorage persist:auth (cabeceras x-oauth y x-partner-id). Igual que restotec-yango

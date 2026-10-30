@@ -130,8 +130,12 @@ class MockSource(YangoSource):
     async def check_session(self, account: str) -> Dict[str, Any]:
         return {"ok": True, "detail": "simulada"}
 
-    async def place_order(self, account: str, partner: Dict[str, Any], order: Dict[str, Any]) -> Dict[str, Any]:
+    async def place_order(self, account: str, partner: Dict[str, Any], order: Dict[str, Any],
+                          dry_run: bool = False) -> Dict[str, Any]:
         await asyncio.sleep(self.latency)
+        if dry_run:
+            return {"yango_order_nr": f"PRUEBA-{order['number']}", "yango_total": order["subtotal"] + order["delivery_fee"],
+                    "delivery_fee": order["delivery_fee"], "dry_run": True}
         if self.fail_next:
             self.fail_next -= 1
             raise RuntimeError("fallo simulado al colocar")

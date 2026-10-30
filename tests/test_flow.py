@@ -267,3 +267,13 @@ def test_extra_admin_key(client, monkeypatch):
     monkeypatch.setattr(settings, "admin_keys_extra", ["k" * 32])
     assert client.get("/api/admin/partners", headers={"x-admin-key": "k" * 32}).status_code == 200
     assert client.get("/api/admin/partners", headers={"x-admin-key": "k" * 31}).status_code == 401
+
+
+def test_admin_dry_run(client):
+    """«Probar en Yango»: corre el checkout sin el botón final y no cambia el estado del pedido."""
+    r = client.post("/api/wrap-roll/orders", json=order_body(client))
+    token = r.json()["token"]
+    res = client.post(f"/api/admin/orders/{token}/dry-run", headers=ADMIN).json()
+    assert res["dry_run"] is True and res["yango_order_nr"].startswith("PRUEBA-")
+    assert client.get(f"/api/wrap-roll/orders/{token}").json()["status"] in ("en_cola", "manual")
+    assert client.post(f"/api/admin/orders/{token}/dry-run").status_code == 401
