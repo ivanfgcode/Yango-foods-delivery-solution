@@ -267,15 +267,12 @@
     const its = videoItems(v);
     $("#ttFrame").src = `https://www.tiktok.com/player/v1/${encodeURIComponent(v.id)}?autoplay=1&description=0&music_info=0&rel=0&native_context_menu=0`;
     const pedir = (id) => { closeAll(); setTimeout(() => openItem(id), 220); };
-    if (its.length === 1) {
-      $("#ttFoot").innerHTML = `<button class="btn" type="button" id="ttOrder">Pedir ${esc(its[0].name)} · ${money(itemPrice(its[0]))}</button>`;
-      $("#ttOrder").onclick = () => pedir(its[0].id);
-    } else {
-      $("#ttFoot").innerHTML = its.length ? `<div class="tt-prods">${its.map((it) => `<button type="button" class="ups-it" data-tt-it="${esc(it.id)}">
+    // Tarjetas de vidrio flotando sobre el video (una por producto; con varios, se deslizan).
+    $("#ttFoot").className = `tt-glass${its.length > 1 ? " many" : ""}`;
+    $("#ttFoot").innerHTML = its.map((it) => `<button type="button" class="tt-glass-it" data-tt-it="${esc(it.id)}">
         ${it.image ? `<img src="${esc(it.image)}" alt="">` : `<span class="noimg">${esc(it.name[0] || "")}</span>`}
-        <span class="nm">${esc(it.name)}<b>${money(itemPrice(it))}</b></span><span class="ups-add">${icon("plus")}</span></button>`).join("")}</div>` : "";
-      $$("[data-tt-it]", $("#ttFoot")).forEach((b) => (b.onclick = () => pedir(b.dataset.ttIt)));
-    }
+        <span class="nm">${esc(it.name)}<b>${money(itemPrice(it))}</b></span><span class="tt-go">Pedir</span></button>`).join("");
+    $$("[data-tt-it]", $("#ttFoot")).forEach((b) => (b.onclick = () => pedir(b.dataset.ttIt)));
     open($("#ttSheet"));
   }
 
