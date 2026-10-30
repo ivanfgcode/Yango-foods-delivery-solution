@@ -41,10 +41,10 @@ login:
   session_cookies: ["Session_id", "sessionid2"]   # cookies de Yango ID tras entrar (por confirmar con una cuenta)
 
 order:
-  # Hecho y probado en seco (2026-10-30): cabeceras de la web (carrito por x-device-id), punto del cliente, NIT borrado
-  # antes de cada pedido, comentarios, Efectivo comprobado. Falta: el primer pedido real (pulsar «Pagar» y leer el N°).
+  # VERIFICADO con un pedido real (2026-10-30, web #XRFEMD → Yango 261031-BO8213937, Bs73 = Bs73): 2 productos, uno
+  # con 4 opciones, NIT nativo (eater_tin), Efectivo (payment_type cash), comentario completo; colocado en 11 s.
   # Teléfono de contacto del checkout = el de la cuenta; el del cliente va en el comentario.
-  verified: false                  # true cuando se grabe un pedido real y se ajusten los pasos
+  verified: true
   # 1) Vaciar el carrito de la cuenta (cada cuenta = un restaurante, un pedido a la vez).
   #    VERIFICADO 2026-10-30: no hay «vaciar» (DELETE /api/v1/cart da 405); se borra cada línea del carrito.
   clear_cart: {items_path: "items", id_path: "id", method: DELETE, path: "/api/v1/cart/{cart_item_id}?longitude={lon}&latitude={lat}&screen=menu&shippingType=delivery&autoTranslate=false"}
