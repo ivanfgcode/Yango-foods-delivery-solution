@@ -23,6 +23,20 @@ from bot.base import PlacementMismatch, SessionDown, YangoSource
 log = logging.getLogger("yango_web")
 CONFIG_PATH = ROOT / "config" / "yango_web.yaml"
 
+# Lo que el checkout no necesita para funcionar: se corta para que cargue antes.
+HEAVY_TYPES = {"image", "media", "font"}
+HEAVY_HOSTS = re.compile(r"mc\.yandex|yandex\.(ru|com)/(clck|metrika)|clck\.|google|doubleclick|facebook|tiktok|"
+                         r"snapchat|twitter|analytics|metrika|adfox|ads\.", re.I)
+
+
+async def _skip_heavy(route: Any) -> None:
+    req = route.request
+    if req.resource_type in HEAVY_TYPES or HEAVY_HOSTS.search(req.url):
+        await route.abort()
+    else:
+        await route.continue_()
+
+
 # Cabeceras de la web que no se reusan: dependen de cada petición.
 API_HEADER_SKIP = {"x-ya-client-time", "x-retpath-y", "x-idempotency-token", "x-yarequestid", "x-request-id"}
 
@@ -138,8 +152,10 @@ class AccountRuntime:
                 data = json.loads(unquote(c["value"]))
                 data.setdefault("app", {}).update({"lat": lat, "lon": lon})
                 c["value"] = quote(json.dumps(data, separators=(",", ":")), safe=":,")
-        return await self.source.browser.new_context(storage_state=state, locale="es-BO",
-                                                     timezone_id=settings.timezone, viewport={"width": 1280, "height": 900})
+        ctx = await self.source.browser.new_context(storage_state=state, locale="es-BO",
+                                                    timezone_id=settings.timezone, viewport={"width": 1280, "height": 900})
+        await ctx.route("**/*", _skip_heavy)  # el checkout carga en ~la mitad sin imágenes, fuentes ni analítica
+        return ctx
 
     def _headers_for(self, path: str) -> Dict[str, str]:
         h = dict(self.api_headers)
@@ -539,6 +555,7 @@ class YangoWebSource(YangoSource):
                                         v = dig(data, p)
                                         if v:
                                             captured["nr"] = str(v)
+                                            self._save_order_request(order["number"], resp)
                                             break
                             seen = len(responses)
                             await asyncio.sleep(0.3)
@@ -559,27 +576,49 @@ class YangoWebSource(YangoSource):
         finally:
             await cctx.close()
 
-    async def _click_any(self, page: Any, names: List[str]) -> None:
-        for n in names:
-            # Nombre exacto: «Pagar» nunca debe coincidir con «Pagar con tarjeta».
-            for loc in (page.get_by_role("button", name=n, exact=True),
-                        page.locator(f"label[aria-label={json.dumps(n)}]"),  # opciones tipo radio (método de pago)
-                        page.get_by_text(n, exact=True)):
-                if await loc.count():
-                    await loc.first.click(timeout=8000)
-                    await page.wait_for_timeout(600)
-                    return
-        raise RuntimeError(f"no aparece ninguno de {names}")
+    def _save_order_request(self, number: str, resp: Any) -> None:
+        """Guarda la petición con la que la web creó el pedido (POST /api/v1/orders): es la base para colocar por API
+        sin abrir la página (~2 s en vez de ~10 s). Va a data/debug, que nunca se sube al repositorio."""
+        try:
+            settings.debug_dir.mkdir(parents=True, exist_ok=True)
+            body = resp.request.post_data
+            (settings.debug_dir / f"order_request_{number}.json").write_text(json.dumps(
+                {"url": resp.request.url, "method": resp.request.method, "status": resp.status,
+                 "body": json.loads(body) if body else None}, ensure_ascii=False, indent=1))
+            log.info("pedido %s: petición de creación guardada (%s)", number, resp.request.url.split("?")[0])
+        except Exception as e:  # pragma: no cover - solo diagnóstico
+            log.info("no se pudo guardar la petición del pedido %s: %s", number, e)
 
-    async def _fill_any(self, page: Any, labels: List[str], value: str) -> None:
-        for lab in labels:
-            # Solo campos de texto: la fila «NIT» del checkout también es un botón con esa etiqueta.
-            for loc in (page.get_by_placeholder(lab, exact=True), page.get_by_role("textbox", name=lab, exact=True),
-                        page.locator("input:visible, textarea:visible").and_(page.get_by_label(lab))):
-                if await loc.count():
-                    await loc.first.fill(value, timeout=8000)
-                    return
-        raise RuntimeError(f"no aparece el campo {labels}")
+    async def _click_any(self, page: Any, names: List[str], wait_s: float = 6.0) -> None:
+        """Pulsa el primero que aparezca (espera hasta wait_s a que la web lo muestre, sin pausas fijas)."""
+        deadline = time.monotonic() + wait_s
+        while True:
+            for n in names:
+                # Nombre exacto: «Pagar» nunca debe coincidir con «Pagar con tarjeta».
+                for loc in (page.get_by_role("button", name=n, exact=True),
+                            page.locator(f"label[aria-label={json.dumps(n)}]"),  # opciones tipo radio (método de pago)
+                            page.get_by_text(n, exact=True)):
+                    if await loc.count():
+                        await loc.first.click(timeout=8000)
+                        await page.wait_for_timeout(120)
+                        return
+            if time.monotonic() > deadline:
+                raise RuntimeError(f"no aparece ninguno de {names}")
+            await page.wait_for_timeout(100)
+
+    async def _fill_any(self, page: Any, labels: List[str], value: str, wait_s: float = 6.0) -> None:
+        deadline = time.monotonic() + wait_s
+        while True:
+            for lab in labels:
+                # Solo campos de texto: la fila «NIT» del checkout también es un botón con esa etiqueta.
+                for loc in (page.get_by_placeholder(lab, exact=True), page.get_by_role("textbox", name=lab, exact=True),
+                            page.locator("input:visible, textarea:visible").and_(page.get_by_label(lab))):
+                    if await loc.count():
+                        await loc.first.fill(value, timeout=8000)
+                        return
+            if time.monotonic() > deadline:
+                raise RuntimeError(f"no aparece el campo {labels}")
+            await page.wait_for_timeout(100)
 
     def health(self) -> Dict[str, Any]:
         return {"source": self.name, "order_flow_verified": bool(self.cfg["order"].get("verified")),

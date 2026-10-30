@@ -82,6 +82,8 @@ order:
     - {action: require_after, label: "Método de pago", value: "Efectivo"}
     # «final»: en modo prueba el bot se detiene aquí. Después de este paso nunca se reintenta (evita pedidos dobles).
     - {action: click, final: true, names: ["Order", "Pagar", "Hacer pedido", "Realizar pedido"]}   # con Efectivo dice «Order»
+    # La web crea el pedido con POST /api/v1/orders (visto en su código: payment_method_id, change_on, phone,
+    # address{…comment}, place_slug, request_id). El bot guarda esa petición en data/debug para pasar a colocar por API.
     - {action: capture, response_regex: "/api/v1/orders|eats-orders|order_nr", json_paths: ["order_nr", "orderNr", "order.order_nr"]}
   # Botones que el bot NUNCA pulsa.
   never_click: ["Cancelar pedido", "Cancel order", "Pagar con tarjeta", "Card", "Agregar tarjeta", "Vincular nueva tarjeta",
