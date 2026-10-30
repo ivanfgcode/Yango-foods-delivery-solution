@@ -175,6 +175,21 @@ def test_session_import_cookie_header(client):
     assert bad.status_code == 422
 
 
+def test_dashboard_summary(client, monkeypatch):
+    monkeypatch.setattr(settings, "order_placement_enabled", False)
+    for _ in range(2):
+        assert client.post("/api/wrap-roll/orders", json=order_body(client)).status_code == 200
+    assert client.get("/api/admin/dashboard").status_code == 401
+    d = client.get("/api/admin/dashboard?days=7", headers=ADMIN).json()
+    assert d["orders"] == 2 and d["pending"] == 2 and d["status"] == {"manual": 2}
+    assert d["revenue"] == round(d["avg_ticket"] * 2, 2) and d["revenue"] > d["delivery"]
+    assert sum(d["hourly"]) == 2 and len(d["weekday"]) == 7 and d["daily"][0]["orders"] == 2
+    assert d["top"][0]["units"] == 2 and d["partners"][0]["name"] == "Wrap & Roll"
+    assert d["payments"] == {"qr": 2}
+    other = client.get("/api/admin/dashboard?partner=no-existe&days=0", headers=ADMIN).json()
+    assert other["orders"] == 2  # restaurante desconocido = todos
+
+
 def test_quote_cache_and_dedupe():
     """Pico: 200 cotizaciones del mismo punto a la vez → 1 consulta a Yango."""
     from app.quotes import QuoteService

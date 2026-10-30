@@ -3,33 +3,100 @@
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Admin · Pedidos propios</title>
-<link rel="stylesheet" href="/static/panel.css">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/static/admin.css">
+<script>try { if (localStorage.getItem("pp_tema") === "claro") document.documentElement.dataset.tema = "claro"; } catch (e) {}</script>
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="glifo" viewBox="0 0 32 32"><path d="M6 21.5h3.2l2.3-6.5h6.8l3.4 6.5H26" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/><circle cx="9.5" cy="22" r="3" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="22.5" cy="22" r="3" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M14 11h5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/><circle cx="24" cy="9.5" r="2.1" fill="var(--in-nar)"/></symbol>
+</svg>
+<main class="in-escena is-entra" id="escena">
+<div class="in-fondo" aria-hidden="true"><i class="in-resplandor"></i><i class="in-grano"></i></div>
 {% if not logged %}
-<div class="login card"><h2>Admin · Pedidos propios</h2>
-  <form id="f"><label class="f"><span>Clave de administrador</span><input type="password" id="k" required></label>
-  <button class="btn acc" style="width:100%">Entrar</button><div class="msg bad" id="m"></div></form></div>
+<section class="in-panel acceso">
+  <div class="in-ident"><span class="in-glifo" aria-hidden="true"><svg viewBox="0 0 32 32"><use href="#glifo"/></svg></span>
+    <div><h1>Pedidos propios</h1><p class="in-sub">Admin · delivery con Yango</p></div></div>
+  <form id="f"><input type="password" id="k" required placeholder="Clave de administrador" autocomplete="current-password" aria-label="Clave de administrador">
+  <button class="btn acc">Entrar</button><div class="msg bad" id="m"></div></form></section>
 <script>
 document.getElementById("f").onsubmit = async (e) => { e.preventDefault();
   const r = await fetch("/api/admin/login", {method: "POST", headers: {"content-type": "application/json"}, body: JSON.stringify({key: document.getElementById("k").value})});
   if (r.ok) location.reload(); else document.getElementById("m").textContent = "Clave incorrecta"; };
 </script>
 {% else %}
-<div class="bar"><b>Pedidos propios · Admin</b>
-  <div class="tabs" id="tabs"><button class="on" data-t="orders">Pedidos</button><button data-t="partners">Restaurantes</button><button data-t="accounts">Cuentas Yango</button><button data-t="events">Eventos</button></div>
-  <div class="sp"></div><span class="muted" id="src"></span></div>
-<div class="page">
-  <div class="stats" id="stats" style="margin-bottom:16px"></div>
+<header class="barra">
+  <div class="in-ident"><span class="in-glifo" aria-hidden="true"><svg viewBox="0 0 32 32"><use href="#glifo"/></svg></span>
+    <div><h1>Pedidos propios</h1><p class="in-sub" id="src">—</p></div></div>
+  <nav class="tabs" id="tabs" aria-label="Secciones"><i class="pildora" aria-hidden="true"></i><button class="on" data-t="summary">Resumen</button><button data-t="orders">Pedidos</button><button data-t="partners">Restaurantes</button><button data-t="accounts">Cuentas Yango</button><button data-t="events">Eventos</button></nav>
+  <div class="in-cab-der">
+    <button class="in-chip" id="chipBot" type="button" aria-label="Estado de las cuentas Yango"><i class="in-punto" aria-hidden="true"></i><span id="chipTxt">Cuentas</span></button>
+    <button class="in-redondo" type="button" id="btnTema" aria-label="Cambiar entre tema claro y oscuro">
+      <svg class="in-i-luna" viewBox="0 0 24 24"><path d="M19.5 14.2A7.8 7.8 0 0 1 9.8 4.5a7.8 7.8 0 1 0 9.7 9.7z"/></svg>
+      <svg class="in-i-sol" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6L7 7M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4"/></svg>
+    </button>
+  </div>
+</header>
+<div class="pila">
 
-  <section id="t-orders">
-    <div class="card"><div class="row" style="margin-bottom:10px"><h2 style="margin:0;flex:1">Pedidos</h2>
+  <section id="t-summary" class="in-panel" aria-labelledby="tRes">
+    <header class="in-cab">
+      <div><h2 id="tRes">Resumen</h2><p class="in-sub" id="resSub">—</p></div>
+      <div class="filtros">
+        <label class="campo"><select id="fPartner" aria-label="Restaurante"><option value="">Todos los restaurantes</option></select></label>
+        <div class="rango" role="radiogroup" aria-label="Periodo" id="rango">
+          <i class="pildora" aria-hidden="true"></i>
+          <button type="button" role="radio" data-d="1">Hoy</button>
+          <button type="button" role="radio" data-d="7">7 d</button>
+          <button type="button" role="radio" data-d="30">30 d</button>
+          <button type="button" role="radio" data-d="90">90 d</button>
+          <button type="button" role="radio" data-d="0">Todo</button>
+        </div>
+      </div>
+    </header>
+    <div class="in-rejilla" id="rejilla">
+      <button class="in-celda" type="button" data-m="ventas" style="--k:0"><span class="in-c-cab"><span class="in-c-nombre">Ventas</span><i class="in-c-abre"></i></span><span class="in-c-valor"><b data-v>—</b><small>Bs</small></span><span class="in-c-viz"><canvas></canvas></span></button>
+      <button class="in-celda" type="button" data-m="pedidos" style="--k:1"><span class="in-c-cab"><span class="in-c-nombre">Pedidos</span><i class="in-c-abre"></i></span><span class="in-c-valor"><b data-v>—</b><small data-s>pedidos</small></span><span class="in-c-viz"><canvas></canvas></span></button>
+      <button class="in-celda" type="button" data-m="atender" style="--k:2"><span class="in-c-cab"><span class="in-c-nombre">Por atender</span><i class="in-c-abre"></i></span><span class="in-c-valor"><b data-v>—</b><small data-s>manual + revisión</small></span><span class="in-c-viz"><canvas></canvas></span></button>
+      <button class="in-celda" type="button" data-m="ticket" style="--k:3"><span class="in-c-cab"><span class="in-c-nombre">Ticket medio</span><i class="in-c-abre"></i></span><span class="in-c-valor"><b data-v>—</b><small>Bs / pedido</small></span><span class="in-c-viz"><canvas></canvas></span></button>
+      <button class="in-celda" type="button" data-m="envio" style="--k:4"><span class="in-c-cab"><span class="in-c-nombre">Envío medio</span><i class="in-c-abre"></i></span><span class="in-c-valor"><b data-v>—</b><small>Bs (lo gana Yango)</small></span><span class="in-c-viz"><canvas></canvas></span></button>
+      <button class="in-celda" type="button" data-m="top" style="--k:5"><span class="in-c-cab"><span class="in-c-nombre">Más vendido</span><i class="in-c-abre"></i></span><span class="in-c-valor"><b data-v class="txt">—</b></span><span class="in-c-viz"><canvas></canvas></span></button>
+      <button class="in-celda" type="button" data-m="restaurantes" style="--k:6"><span class="in-c-cab"><span class="in-c-nombre">Restaurantes</span><i class="in-c-abre"></i></span><span class="in-c-valor"><b data-v>—</b><small data-s>con pedidos</small></span><span class="in-c-viz"><canvas></canvas></span></button>
+      <button class="in-celda" type="button" data-m="horas" style="--k:7"><span class="in-c-cab"><span class="in-c-nombre">Hora pico</span><i class="in-c-abre"></i></span><span class="in-c-valor"><b data-v>—</b><small data-s></small></span><span class="in-c-viz"><canvas></canvas></span></button>
+      <button class="in-celda" type="button" data-m="semana" style="--k:8"><span class="in-c-cab"><span class="in-c-nombre">Mejor día</span><i class="in-c-abre"></i></span><span class="in-c-valor"><b data-v class="txt">—</b><small data-s></small></span><span class="in-c-viz"><canvas></canvas></span></button>
+
+      <div class="in-det" id="det" role="region" aria-label="Detalle de la métrica">
+        <div class="in-det-clip" id="detClip">
+          <div class="in-det-cuerpo">
+            <header class="in-d-cab in-r" style="--r:0">
+              <div><h2 class="in-d-nombre" id="dNombre">—</h2><p class="in-d-desc" id="dDesc"></p></div>
+              <button class="in-cierra" type="button" id="dCierra" aria-label="Cerrar el detalle"><svg viewBox="0 0 24 24"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg></button>
+            </header>
+            <div class="in-d-cols">
+              <aside class="in-d-lect in-r" style="--r:1">
+                <p class="in-d-actual"><b id="dValor">—</b><small id="dUnidad"></small></p>
+                <p class="in-d-delta" id="dDelta"></p>
+                <dl class="in-lecturas" id="dLect"></dl>
+                <p class="in-d-pista"><kbd>Esc</kbd> cierra el detalle</p>
+              </aside>
+              <div class="in-d-graf in-r" style="--r:2" id="dGraf"><canvas id="dLienzo"></canvas></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="fila-sub"><span id="resPie">—</span><span id="resCot"></span></div>
+  </section>
+
+  <section id="t-orders" hidden>
+    <div class="card"><div class="row"><h2 style="flex:1">Pedidos</h2>
       <select id="fStatus" style="width:auto"><option value="">Todos</option><option>manual</option><option>revision</option><option>en_cola</option><option>colocando</option><option>colocado</option><option>cancelado</option></select>
       <button class="btn ghost sm" id="reload">Actualizar</button></div>
       <div class="tw"><table><thead><tr><th>Hora</th><th>N°</th><th>Restaurante / cuenta</th><th>Cliente y dirección</th><th>Productos</th><th>Total</th><th>Estado</th><th></th></tr></thead><tbody id="ob"></tbody></table></div></div>
   </section>
 
-  <section id="t-partners" hidden>
+  <section id="t-partners" class="sec" hidden>
     <div class="card"><h2>Nuevo restaurante</h2>
       <form id="np" class="row" style="align-items:flex-end">
         <label class="f" style="flex:1 1 160px"><span>Nombre</span><input name="name" required></label>
@@ -42,7 +109,7 @@ document.getElementById("f").onsubmit = async (e) => { e.preventDefault();
     <div class="card"><h2>Restaurantes</h2><div class="tw"><table><thead><tr><th>Restaurante</th><th>Cuenta</th><th>Local Yango</th><th>Menú</th><th>Estado</th><th></th></tr></thead><tbody id="pb"></tbody></table></div></div>
   </section>
 
-  <section id="t-accounts" hidden>
+  <section id="t-accounts" class="sec" hidden>
     <div class="card" id="enterCard"><h2>Entrar a una cuenta Yango</h2>
       <div class="row" style="align-items:flex-end">
         <label class="f" style="flex:1 1 200px"><span>Cuenta</span><input id="lgName" placeholder="wrap_roll"></label>
@@ -81,6 +148,7 @@ document.getElementById("f").onsubmit = async (e) => { e.preventDefault();
 
   <section id="t-events" hidden><div class="card"><h2>Eventos</h2><div class="tw"><table><thead><tr><th>Hora</th><th>Tipo</th><th>Cuenta</th><th>Detalle</th></tr></thead><tbody id="eb"></tbody></table></div></div></section>
 </div>
+<script src="/static/charts.js"></script>
 <script>
 (() => {
   const CUR = {{ currency | tojson }};
@@ -89,15 +157,186 @@ document.getElementById("f").onsubmit = async (e) => { e.preventDefault();
   const api = (p, opt) => fetch(`/api/admin${p}`, opt).then(async (r) => { const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.detail || "Error"); return d; });
   const post = (p, body, method = "POST") => api(p, {method, headers: {"content-type": "application/json"}, body: JSON.stringify(body)});
   const when = (s) => s ? new Date(s).toLocaleString("es-BO", {dateStyle: "short", timeStyle: "short"}) : "";
-  let tab = "orders";
+  let tab = "summary";
 
+  // ---------------------------------------------------------------- cabecera: fuente, cuentas, tema
+  const mem = {get: (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} }};
+  function pildora(grupo, sel) {
+    const on = grupo.querySelector(sel), pl = grupo.querySelector(".pildora"); if (!on || !pl) return;
+    pl.style.width = on.offsetWidth + "px"; pl.style.transform = `translateX(${on.offsetLeft - 3}px)`;
+  }
   async function stats() {
     const h = await api("/health");
-    $("#src").textContent = `fuente: ${h.source.source}${h.order_placement_enabled ? " · colocación automática ON" : " · colocación automática OFF (manual)"}`;
-    const o = h.orders;
-    $("#stats").innerHTML = [["Por cargar a mano", o.manual || 0], ["En revisión", o.revision || 0], ["En cola", (o.en_cola || 0) + (o.colocando || 0)], ["Colocados", o.colocado || 0],
-      ["Cotizaciones (caché / Yango)", `${h.quotes.hits} / ${h.quotes.misses}`]].map(([l, v]) => `<div class="stat"><b>${esc(v)}</b><span>${esc(l)}</span></div>`).join("");
+    $("#src").textContent = `${h.source.source === "mock" ? "Yango simulado" : "food.yango.com"} · colocación automática ${h.order_placement_enabled ? "ON" : "OFF (manual)"}`;
+    if (tab !== "summary") chipCuentas(await api("/accounts"));
   }
+  function chipCuentas(accs) {
+    const caidas = accs.filter((a) => a.status !== "ok");
+    $("#chipBot").classList.toggle("is-alerta", caidas.length > 0);
+    $("#chipTxt").textContent = !accs.length ? "Sin cuentas" : caidas.length ? `${caidas.length} cuenta${caidas.length > 1 ? "s" : ""} sin sesión` : "Cuentas activas";
+  }
+  $("#chipBot").onclick = () => irA("accounts");
+  $("#btnTema").onclick = () => {
+    const claro = document.documentElement.dataset.tema !== "claro";
+    if (claro) document.documentElement.dataset.tema = "claro"; else delete document.documentElement.dataset.tema;
+    mem.set("pp_tema", claro ? "claro" : "oscuro"); if (res) pintarTodo();
+  };
+
+  // ---------------------------------------------------------------- resumen
+  const F = IN.fmt, DIAS = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"], DCORTO = ["Do", "Lu", "Ma", "Mi", "Ju", "Vi", "Sá"];
+  const fechaL = (d) => d ? new Date(d + "T12:00:00").toLocaleDateString("es-BO", {day: "numeric", month: "short"}) : "—";
+  let res = null, dias = +(mem.get("pp_dias") || 30), abierta = null;
+  function serie(clave) {
+    const d = res.daily; if (!d.length) return [];
+    const fin = res.today, ini = res.days ? new Date(new Date(fin + "T12:00:00").getTime() - (res.days - 1) * 864e5).toISOString().slice(0, 10) : d[0].day;
+    const m = Object.fromEntries(d.map((x) => [x.day, x[clave] || 0])), out = [];
+    for (let t = new Date(ini + "T12:00:00"); out.length < 800; t.setDate(t.getDate() + 1)) {
+      const k = t.toISOString().slice(0, 10); if (k > fin) break; out.push({x: k, v: m[k] || 0});
+    }
+    return out;
+  }
+  const M = {
+    ventas: () => ({v: F(res.revenue), dibuja: (cv) => IN.linea(cv, serie("revenue"))}),
+    pedidos: () => ({v: F(res.orders), s: res.status.cancelado ? `+ ${res.status.cancelado} cancelados` : "pedidos", dibuja: (cv) => IN.barras(cv, serie("orders").slice(-45))}),
+    atender: () => ({v: F(res.pending), alerta: res.pending > 0, s: res.in_flight ? `${res.in_flight} en cola del bot` : "manual + revisión",
+      dibuja: (cv) => IN.tramos(cv, [res.status.manual || 0, res.status.revision || 0, res.in_flight, res.status.colocado || 0],
+        res.orders ? `${F(res.placed_rate, 1)}% ya colocados en Yango` : "")}),
+    ticket: () => { const tk = serie("revenue").map((p, i) => { const o = serie("orders")[i].v; return o ? p.v / o : 0; });
+      return {v: F(res.avg_ticket, 1), dibuja: (cv) => IN.dial(cv, res.avg_ticket / (Math.max(...tk, res.avg_ticket) || 1))}; },
+    envio: () => ({v: F(res.avg_delivery, 1), dibuja: (cv) => IN.linea(cv, serie("delivery"))}),
+    top: () => ({v: res.top[0]?.name || "—", dibuja: (cv) => IN.hbarras(cv, res.top.map((x) => ({l: x.name, v: x.revenue})))}),
+    restaurantes: () => ({v: F(res.partners.length), dibuja: (cv) => IN.tramos(cv, res.partners.map((x) => x.revenue))}),
+    horas: () => { const h = res.hourly, mx = Math.max(...h), pico = h.indexOf(mx);
+      return {v: mx ? String(pico).padStart(2, "0") + ":00" : "—", s: mx ? `${h[pico]} pedidos` : "", dibuja: (cv) => IN.calor(cv, h)}; },
+    semana: () => { const d = res.weekday, orden = [1, 2, 3, 4, 5, 6, 0], best = d.indexOf(Math.max(...d));
+      return {v: Math.max(...d) ? DIAS[best] : "—", s: Math.max(...d) ? F(d[best]) + " Bs" : "", dibuja: (cv) => IN.barras(cv, orden.map((i) => ({x: i, v: d[i]})))}; },
+  };
+  function pintarCeldas() {
+    $$(".in-celda").forEach((el) => {
+      const r = M[el.dataset.m]();
+      el.querySelector("[data-v]").textContent = r.v;
+      if (r.s != null && el.querySelector("[data-s]")) el.querySelector("[data-s]").textContent = r.s;
+      el.classList.toggle("is-alerta", !!r.alerta);
+      r.dibuja(el.querySelector("canvas"));
+    });
+  }
+  function pintarTodo() { if (!res) return; pintarCeldas(); if (abierta) llenarDet(abierta); }
+  let rz = null; window.addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(() => { pintarTodo(); pildora($("#tabs"), "button.on"); pildora($("#rango"), '[aria-checked="true"]'); }, 120); });
+
+  async function summary() {
+    const part = $("#fPartner").value;
+    res = await api(`/dashboard?days=${dias}${part ? `&partner=${encodeURIComponent(part)}` : ""}`);
+    chipCuentas(res.accounts);
+    const periodo = dias === 1 ? "hoy" : dias ? `últimos ${dias} días` : "todo el historial";
+    $("#resSub").textContent = `${periodo} · ${part ? $("#fPartner").selectedOptions[0].textContent : "todos los restaurantes"} · ventas = total cobrado (productos + envío)`;
+    $("#resPie").innerHTML = `<b>${F(res.revenue)} Bs</b> en <b>${F(res.orders)}</b> pedidos · efectivo ${F(res.payments.cash || 0)} · QR ${F(res.payments.qr || 0)}`;
+    $("#resCot").textContent = `cotizaciones: ${F(res.quotes.hits)} desde caché · ${F(res.quotes.misses)} a Yango`;
+    pintarTodo();
+  }
+  function iniciarRango() {
+    const g = $("#rango");
+    const marcar = () => { $$("#rango button").forEach((b) => b.setAttribute("aria-checked", String(+b.dataset.d === dias))); pildora(g, '[aria-checked="true"]'); };
+    $$("#rango button").forEach((b) => (b.onclick = () => { dias = +b.dataset.d; mem.set("pp_dias", dias); marcar(); summary(); }));
+    marcar();
+  }
+  async function cargarRestaurantes() {
+    const ps = await api("/partners");
+    $("#fPartner").innerHTML = `<option value="">Todos los restaurantes</option>` + ps.map((x) => `<option value="${esc(x.slug)}">${esc(x.name)}</option>`).join("");
+  }
+  $("#fPartner").onchange = summary;
+
+  // Detalle: crece desde la celda (clip-path) hasta cubrir la rejilla, como en el picker.
+  $$(".in-celda").forEach((el) => el.addEventListener("click", () => abrirDet(el)));
+  $("#dCierra").onclick = () => cerrarDet();
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") cerrarDet(); });
+  function abrirDet(el) {
+    if (!res) return;
+    const det = $("#det"), clip = $("#detClip"), rej = $("#rejilla");
+    abierta = el.dataset.m; llenarDet(abierta);
+    const C = el.getBoundingClientRect(), d = det.getBoundingClientRect();
+    const desde = window.innerWidth <= 860 || matchMedia("(prefers-reduced-motion: reduce)").matches ? null
+      : `inset(${C.top - d.top}px ${d.right - C.right}px ${d.bottom - C.bottom}px ${C.left - d.left}px round 18px)`;
+    det.classList.add("is-vivo"); rej.classList.add("is-abierta");
+    clip.style.transition = "none"; clip.style.clipPath = desde || "inset(0 round 24px)"; clip.style.opacity = desde ? 1 : 0;
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      clip.style.transition = "clip-path .75s cubic-bezier(.3,1.25,.4,1), opacity .3s";
+      clip.style.clipPath = "inset(14px round 24px)"; clip.style.opacity = 1;
+      det.classList.add("is-abierto"); setTimeout(() => abierta && llenarDet(abierta), 380);
+    }));
+    det._desde = desde;
+  }
+  function cerrarDet() {
+    const det = $("#det"), clip = $("#detClip"); if (!det.classList.contains("is-vivo")) return;
+    det.classList.remove("is-abierto"); $("#rejilla").classList.remove("is-abierta");
+    clip.style.transition = "clip-path .45s cubic-bezier(.22,1,.36,1), opacity .35s";
+    if (det._desde) clip.style.clipPath = det._desde; else clip.style.opacity = 0;
+    setTimeout(() => det.classList.remove("is-vivo"), 450); abierta = null;
+  }
+  function lecturas(pares) { $("#dLect").innerHTML = pares.map(([a, b]) => `<div><dt>${esc(a)}</dt><dd>${esc(b)}</dd></div>`).join(""); }
+  function lista(html) {
+    const g = $("#dGraf"); g.querySelector("canvas").classList.add("oculto");
+    let l = g.querySelector(".in-d-lista"); if (!l) { l = document.createElement("div"); l.className = "in-d-lista"; g.appendChild(l); }
+    l.innerHTML = html; l.classList.remove("oculto");
+  }
+  function grafico() { const g = $("#dGraf"); g.querySelector("canvas").classList.remove("oculto"); g.querySelector(".in-d-lista")?.classList.add("oculto"); return $("#dLienzo"); }
+  function ranking(items, val, sub, unidad = "Bs") {
+    const max = Math.max(...items.map(val)) || 1;
+    return items.map((it, i) => `<div class="rank"><span class="pos">${String(i + 1).padStart(2, "0")}</span>
+      <span class="nom">${esc(it.name)}<small>${esc(sub(it))}</small></span><span class="val">${F(val(it))}<small>${unidad}</small></span>
+      <span class="barra"><i style="width:${val(it) / max * 100}%; animation-delay:${i * 40}ms"></i></span></div>`).join("") || '<p class="vacio muted">sin datos</p>';
+  }
+  function stat(vals) { const v = vals.filter((x) => x != null); if (!v.length) return {}; return {prom: v.reduce((a, b) => a + b, 0) / v.length, min: Math.min(...v), max: Math.max(...v)}; }
+  function llenarDet(m) {
+    const periodo = dias === 1 ? "hoy" : dias ? `últimos ${dias} días` : "todo el historial";
+    const set = (n, d, v, u, delta) => { $("#dNombre").textContent = n; $("#dDesc").textContent = d; $("#dValor").textContent = v; $("#dUnidad").textContent = u; $("#dDelta").textContent = delta || ""; };
+    const fv0 = (v, ax) => ax && v >= 1000 ? F(v / 1000, 1) + "k" : F(v), fvBs = (v, ax) => fv0(v, ax) + (ax ? "" : " Bs");
+    if (m === "ventas" || m === "pedidos" || m === "envio") {
+      const c = {ventas: "revenue", pedidos: "orders", envio: "delivery"}[m], s = serie(c), st = stat(s.map((p) => p.v));
+      const mitad = Math.floor(s.length / 2), a = s.slice(0, mitad).reduce((x, p) => x + p.v, 0), b = s.slice(mitad).reduce((x, p) => x + p.v, 0);
+      const pico = s.reduce((x, p) => p.v > x.v ? p : x, {v: -1});
+      set({ventas: "Ventas por día", pedidos: "Pedidos por día", envio: "Envío cobrado por día"}[m],
+        `${periodo} · ${m === "envio" ? "lo que cobra Yango por el delivery" : "sin cancelados"}`,
+        m === "ventas" ? F(res.revenue) : m === "pedidos" ? F(res.orders) : F(res.delivery), m === "pedidos" ? "pedidos" : "Bs",
+        a ? `${b >= a ? "▲" : "▼"} ${F(Math.abs(b - a) / a * 100, 1)} % en la segunda mitad del periodo` : "");
+      lecturas([["Promedio diario", F(st.prom, 1)], ["Mínimo", F(st.min)], ["Máximo", F(st.max)], ["Día pico", pico.x ? fechaL(pico.x) : "—"]]);
+      (m === "pedidos" ? IN.barras : IN.linea)(grafico(), s, {ejes: true, fv: m === "pedidos" ? fv0 : fvBs, etq: fechaL});
+    } else if (m === "ticket") {
+      const o = serie("orders"), tk = serie("revenue").map((p, i) => ({x: p.x, v: o[i].v ? p.v / o[i].v : 0})).filter((p) => p.v), st = stat(tk.map((p) => p.v));
+      set("Ticket medio", `${periodo} · total cobrado entre pedidos`, F(res.avg_ticket, 1), "Bs / pedido", `${F(res.revenue)} Bs en ${F(res.orders)} pedidos`);
+      lecturas([["Promedio diario", F(st.prom, 1)], ["Mínimo", F(st.min, 1)], ["Máximo", F(st.max, 1)], ["Productos / pedido", F(res.orders ? res.units / res.orders : 0, 1)]]);
+      IN.linea(grafico(), tk, {ejes: true, fv: (v, ax) => F(v, ax ? 0 : 1) + (ax ? "" : " Bs"), etq: fechaL});
+    } else if (m === "atender") {
+      const s = res.status;
+      set("Estado de los pedidos", `${periodo} · «manual» y «revisión» los carga o revisa un operador en Yango`, F(res.pending), "por atender",
+        res.oldest_pending ? `el más antiguo: ${new Date(res.oldest_pending).toLocaleString("es-BO", {dateStyle: "short", timeStyle: "short"})}` : "nada pendiente");
+      lecturas([["Manual", F(s.manual || 0)], ["Revisión", F(s.revision || 0)], ["En cola / colocando", F(res.in_flight)], ["Colocados", F(s.colocado || 0)], ["Cancelados", F(s.cancelado || 0)]]);
+      const est = [["manual", "Manual: cargar a mano"], ["revision", "Revisión"], ["en_cola", "En cola del bot"], ["colocando", "Colocando"], ["colocado", "Colocado en Yango"], ["cancelado", "Cancelado"]];
+      lista(ranking(est.map(([k, n]) => ({name: n, v: s[k] || 0})), (x) => x.v, () => "", "pedidos") +
+        `<p style="margin-top:14px"><button class="btn sm" type="button" id="dVer">Ver pedidos por atender</button></p>`);
+      $("#dVer").onclick = () => { cerrarDet(); $("#fStatus").value = s.manual ? "manual" : "revision"; irA("orders"); };
+    } else if (m === "top") {
+      set("Lo más vendido", `${periodo} · por venta en Bs (productos, sin envío)`, F(res.top[0]?.revenue), "Bs · " + (res.top[0]?.name || ""), `${F(res.products)} productos distintos · ${F(res.units)} unidades`);
+      lecturas([["Unidades", F(res.units)], ["Productos", F(res.products)], ["Uds / pedido", F(res.orders ? res.units / res.orders : 0, 1)], ["Top 8", F(res.top.reduce((a, x) => a + x.revenue, 0)) + " Bs"]]);
+      lista(ranking(res.top, (x) => x.revenue, (x) => `${F(x.units)} uds · ${F(x.orders)} pedidos`));
+    } else if (m === "restaurantes") {
+      const ps = res.partners;
+      set("Ventas por restaurante", `${periodo} · total cobrado`, F(ps.length), "restaurantes", ps[0] ? `el mayor: ${ps[0].name}` : "");
+      lecturas([["Ventas", F(res.revenue) + " Bs"], ["Promedio / restaurante", F(res.revenue / (ps.length || 1)) + " Bs"], ["Pedidos", F(res.orders)], ["Envío", F(res.delivery) + " Bs"]]);
+      lista(ranking(ps, (x) => x.revenue, (x) => `${F(x.orders)} pedidos`));
+    } else if (m === "horas") {
+      const h = res.hourly, pico = h.indexOf(Math.max(...h)), suma = (a, b) => h.slice(a, b).reduce((x, y) => x + y, 0);
+      set("Pedidos por hora", `${periodo} · hora local (${"Bolivia"})`, Math.max(...h) ? String(pico).padStart(2, "0") + ":00" : "—", "hora pico", `${F(h[pico])} pedidos a esa hora`);
+      lecturas([["Mañana 6–12", F(suma(6, 12))], ["Mediodía 12–15", F(suma(12, 15))], ["Tarde 15–19", F(suma(15, 19))], ["Noche 19–6", F(suma(19, 24) + suma(0, 6))]]);
+      IN.barras(grafico(), h.map((x, i) => ({x: i, v: x})), {ejes: true, fv: fv0, etq: (x) => String(x).padStart(2, "0") + ":00", etqEje: (x) => String(x).padStart(2, "0")});
+    } else if (m === "semana") {
+      const d = res.weekday, orden = [1, 2, 3, 4, 5, 6, 0], best = d.indexOf(Math.max(...d));
+      set("Ventas por día de la semana", `${periodo} · total cobrado`, Math.max(...d) ? DIAS[best] : "—", Math.max(...d) ? F(d[best]) + " Bs" : "",
+        "");
+      lecturas(orden.slice(0, 4).map((i) => [DIAS[i], F(d[i]) + " Bs"]));
+      IN.barras(grafico(), orden.map((i) => ({x: i, v: d[i]})), {ejes: true, fv: fvBs, etq: (x) => DIAS[x], etqEje: (x) => DCORTO[x]});
+    }
+  }
+
   async function orders() {
     const rows = await api(`/orders${$("#fStatus").value ? `?status=${$("#fStatus").value}` : ""}`);
     $("#ob").innerHTML = rows.map((o) => `<tr>
@@ -198,13 +437,21 @@ document.getElementById("f").onsubmit = async (e) => { e.preventDefault();
     const rows = await api("/events?limit=300");
     $("#eb").innerHTML = rows.map((e) => `<tr><td>${esc(when(e.at))}</td><td class="mono">${esc(e.kind)}</td><td class="mono">${esc(e.account || "")}</td><td class="muted mono" style="max-width:600px;word-break:break-word">${esc((e.detail || "").slice(0, 400))}</td></tr>`).join("");
   }
-  const loaders = {orders, partners: partnersTab, accounts, events};
+  const loaders = {summary, orders, partners: partnersTab, accounts, events};
   function refresh() { stats(); loaders[tab](); }
-  $$("#tabs button").forEach((b) => (b.onclick = () => { tab = b.dataset.t; $$("#tabs button").forEach((x) => x.classList.toggle("on", x === b)); Object.keys(loaders).forEach((t) => ($(`#t-${t}`).hidden = t !== tab)); refresh(); }));
+  function irA(t) {
+    tab = t; $$("#tabs button").forEach((x) => x.classList.toggle("on", x.dataset.t === t)); pildora($("#tabs"), "button.on");
+    Object.keys(loaders).forEach((k) => ($(`#t-${k}`).hidden = k !== t)); refresh();
+  }
+  $$("#tabs button").forEach((b) => (b.onclick = () => irA(b.dataset.t)));
   $("#fStatus").onchange = orders; $("#reload").onclick = refresh;
-  refresh(); setInterval(() => { if (tab === "orders") refresh(); }, 15000);
+  pildora($("#tabs"), "button.on"); iniciarRango();
+  document.fonts?.ready.then(() => { pildora($("#tabs"), "button.on"); pildora($("#rango"), '[aria-checked="true"]'); pintarTodo(); });
+  cargarRestaurantes().catch(() => {}); refresh();
+  setInterval(() => { if (tab === "orders" || tab === "summary") refresh(); }, 30000);
 })();
 </script>
 {% endif %}
+</main>
 </body>
 </html>

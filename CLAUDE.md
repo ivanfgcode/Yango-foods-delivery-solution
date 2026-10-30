@@ -6,6 +6,7 @@ Lee [README.md](README.md) primero. Proyecto hermano: `ivanfgcode/restotec-yango
 * Los precios y el envío se calculan siempre en el servidor (menú sincronizado + cotización de Yango). Nunca confiar en el navegador.
 * El bot no resuelve captchas. Sesiones: login asistido por teléfono (el operador escribe el SMS y resuelve el captcha desde Admin → Cuentas) o cookies JSON.
 * Mapa: Yandex Maps (los datos de Yango Maps). Nunca reutilizar la clave de mapas de food.yango.com.
+* Admin: lenguaje «Instrumental» del picker de restotec-yango (`app/static/admin.css` + lienzos en `app/static/charts.js`). Los números del Resumen salen de `app/dashboard.py`.
 * Íconos: Lucide en `app/static/icons.svg` (`<use href="/static/icons.svg#nombre">`). Sin emojis en la interfaz ni en las alertas.
 * El bot nunca pulsa nada de `order.never_click` ni paga con tarjeta. Pago siempre efectivo/QR al mensajero.
 * Un pedido a la vez por cuenta (carrito único). Las consultas (catálogo, menú, geocodificación) sí en paralelo.

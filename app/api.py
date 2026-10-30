@@ -15,7 +15,7 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from app import auth, db, geo, menu as menu_mod, orders, partners, quotes, runtime as runtime_mod, themes
+from app import auth, dashboard, db, geo, menu as menu_mod, orders, partners, quotes, runtime as runtime_mod, themes
 from app.config import ROOT, settings
 from bot import sessions
 from bot.login import LoginError
@@ -332,6 +332,20 @@ async def admin_health(request: Request):
     counts = {r["status"]: r["n"] for r in db.query("SELECT status, COUNT(*) n FROM orders GROUP BY status")}
     return {"source": rt().source.health(), "queues": rt().dispatcher.health(), "quotes": rt().quotes.stats,
             "orders": counts, "order_placement_enabled": settings.order_placement_enabled}
+
+
+@app.get("/api/admin/dashboard")
+async def admin_dashboard(request: Request, days: int = 30, partner: Optional[str] = None):
+    auth.require_admin(request)
+    p = partners.get(partner) if partner else None
+    out = dashboard.summary(max(0, min(days, 3650)), p["id"] if p else None)
+    accounts = [dict(r) for r in db.query("SELECT name, status, detail, checked_at FROM accounts ORDER BY name")]
+    used = {x["account"] for x in partners.all_partners() if x["enabled"]}
+    out["accounts"] = [a for a in accounts if a["name"] in used] or accounts
+    out["quotes"] = rt().quotes.stats
+    out["source"] = rt().source.name
+    out["order_placement_enabled"] = settings.order_placement_enabled
+    return out
 
 
 @app.get("/api/admin/partners")

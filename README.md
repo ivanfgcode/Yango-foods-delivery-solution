@@ -46,7 +46,7 @@ Cada partner tiene un **restaurante oculto** en Yango Foods, visible solo para u
 | `/<slug>` | Cliente: menú, buscador, carrito, checkout con mapa |
 | `/<slug>/pedido/<token>` | Cliente: estado del pedido |
 | `/<slug>/portal` | Partner: diseño (logo, portada, colores, tipografías, tamaños, cuadrícula/lista), textos, pausar pedidos, ver pedidos |
-| `/admin` | Equipo: pedidos (marcar colocado, reintentar, copiar comentario), restaurantes, cuentas Yango (cookies), eventos |
+| `/admin` | Equipo: **Resumen** (ventas, pedidos, por atender, ticket y envío medio, lo más vendido, restaurantes, hora pico, mejor día; por periodo y restaurante), pedidos (marcar colocado, reintentar, copiar comentario), restaurantes, cuentas Yango (SMS o cookie), eventos |
 
 ## Sesiones de las cuentas
 
