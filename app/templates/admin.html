@@ -515,11 +515,12 @@ document.getElementById("f").onsubmit = async (e) => { e.preventDefault();
   $("#pkClose").onclick = cerrarPick; $("#pkFondo").onclick = cerrarPick;
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && pk) cerrarPick(); });
 
-  const PLAN = {patrocinado: ["ok", "pagado por Yango"], activo: ["ok", "activo"], pago_pendiente: ["manual", "pago pendiente"], sin_aceptar: ["revision", "sin aceptar"]};
+  const PLAN = {patrocinado: ["ok", "pagado por Yango"], activo: ["ok", "activo"], pago_pendiente: ["manual", "pago pendiente"], sin_aceptar: ["revision", "sin aceptar"], cortesia: ["ok", "gratis permanente"]};
   function planCell(b) {
     if (!b) return "—";
     const [cls, txt] = PLAN[b.state] || ["", b.state];
     return `<span class="pill ${cls}">${txt}</span><br><span class="muted">${b.branches} suc. · ${CUR}${b.monthly_bs}/mes · Yango hasta ${esc(b.sponsored_until)}</span>
+      ${b.free_forever ? `<br><span class="muted">cortesía${b.free_note ? `: ${esc(b.free_note)}` : ""}</span>` : ""}
       ${b.due_bs ? `<br><span class="pill manual">debe ${CUR}${b.due_bs}</span>` : ""}${b.accepted_name ? `<br><span class="muted">aceptó: ${esc(b.accepted_name)}</span>` : ""}`;
   }
   async function partnersTab() {
@@ -544,10 +545,24 @@ document.getElementById("f").onsubmit = async (e) => { e.preventDefault();
         <label class="f" style="width:130px;margin:0"><span>Permanencia (meses)</span><input name="min_paid_months" type="number" min="0" value="${pb.min_paid_months}"></label>
         <label class="f" style="width:150px;margin:0"><span>Inicio</span><input name="start_date" type="date" value="${pb.start_date}"></label>
         <label class="f" style="width:150px;margin:0"><span>Pagado hasta</span><input name="paid_until" type="date" value="${pb.paid_until || ""}"></label>
-        <button class="btn acc sm" data-save-plan="${esc(b.dataset.plan)}">Guardar</button><span class="msg"></span></div></td></tr>`);
+        <button class="btn acc sm" data-save-plan="${esc(b.dataset.plan)}">Guardar</button><span class="msg"></span></div>
+        <div class="row" style="margin-top:12px">
+          <span class="muted">Meses gratis (Yango hasta ${esc(pb.sponsored_until)}):</span>
+          <button class="btn sm" data-ext="1">+1 mes</button><button class="btn sm" data-ext="3">+3 meses</button><button class="btn sm" data-ext="6">+6 meses</button><button class="btn ghost sm" data-ext="-1">−1 mes</button>
+          <span style="width:16px"></span>
+          <input name="free_note" placeholder="Motivo de la cortesía (opcional)" value="${esc(pb.free_note || "")}" style="width:240px">
+          <button class="btn sm ${pb.free_forever ? "" : "acc"}" data-free="${pb.free_forever ? 0 : 1}">${pb.free_forever ? "Quitar gratis permanente" : "Gratis permanente"}</button>
+        </div></td></tr>`);
       const row = tr.nextElementSibling;
+      const quick = async (body) => { try { await post(`/partners/${b.dataset.plan}/billing`, body, "PUT"); partnersTab(); } catch (e) { const m = row.querySelector(".msg"); m.className = "msg bad"; m.textContent = e.message; } };
+      row.querySelectorAll("[data-ext]").forEach((x) => (x.onclick = () => quick({extend_months: +x.dataset.ext})));
+      row.querySelector("[data-free]").onclick = (e) => {
+        const on = e.currentTarget.dataset.free === "1";
+        if (on && !confirm("¿Dejar el plan de este restaurante gratis de forma permanente? No se le generarán cobros hasta que lo quites.")) return;
+        quick({free_forever: on, free_note: row.querySelector("input[name=free_note]").value});
+      };
       row.querySelector("[data-save-plan]").onclick = async () => {
-        const body = Object.fromEntries([...row.querySelectorAll("input")].map((i) => [i.name, i.value === "" ? null : (i.type === "number" ? +i.value : i.value)]));
+        const body = Object.fromEntries([...row.querySelectorAll("input:not([name=free_note])")].map((i) => [i.name, i.value === "" ? null : (i.type === "number" ? +i.value : i.value)]));
         try { await post(`/partners/${b.dataset.plan}/billing`, body, "PUT"); partnersTab(); }
         catch (e) { const m = row.querySelector(".msg"); m.className = "msg bad"; m.textContent = e.message; }
       };

@@ -64,6 +64,8 @@ CREATE TABLE IF NOT EXISTS billing (
     accepted_name TEXT,
     accepted_ip TEXT,
     terms_version TEXT,
+    free_forever INTEGER NOT NULL DEFAULT 0, -- cortesía: sin cobros mientras esté activo
+    free_note TEXT,                          -- motivo (lo ve solo el equipo)
     updated_at TEXT NOT NULL
 );
 
@@ -145,7 +147,8 @@ def connect() -> sqlite3.Connection:
 
 
 # Columnas agregadas después de crear la base en producción: (tabla, columna, tipo).
-ADDED_COLUMNS = [("partners", "place_name", "TEXT")]
+ADDED_COLUMNS = [("partners", "place_name", "TEXT"), ("billing", "free_forever", "INTEGER NOT NULL DEFAULT 0"),
+                 ("billing", "free_note", "TEXT")]
 
 
 def _migrate(conn: sqlite3.Connection) -> None:

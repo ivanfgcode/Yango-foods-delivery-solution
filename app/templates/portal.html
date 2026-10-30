@@ -436,34 +436,37 @@ document.getElementById("loginForm").onsubmit = async (e) => {
   };
 
   // ---------------------------------------------------------------- plan, sucursales y acuerdo
-  const STATE = {patrocinado: "Pagado por Yango", activo: "Activo", pago_pendiente: "Pago pendiente", sin_aceptar: "Falta aceptar el acuerdo"};
-  const SCHED = {patrocinado: ["patrocinado", "Pagado por Yango"], pagado: ["pagado", "Pagado"], por_pagar: ["por_pagar", "Por pagar"], proximo: ["", "Próximo"]};
+  const STATE = {patrocinado: "Pagado por Yango", activo: "Activo", pago_pendiente: "Pago pendiente", sin_aceptar: "Falta aceptar el acuerdo", cortesia: "Gratis · cortesía"};
+  const SCHED = {cortesia: ["patrocinado", "Gratis"], patrocinado: ["patrocinado", "Pagado por Yango"], pagado: ["pagado", "Pagado"], por_pagar: ["por_pagar", "Por pagar"], proximo: ["", "Próximo"]};
   function paintBilling() {
     const b = bill, pct = Math.min(100, Math.round((1 - b.days_left_sponsored / b.sponsored_total_days) * 100));
     // menú lateral y avisos
     $("#planMini").hidden = false;
     $("#planMiniT").textContent = b.state === "patrocinado" ? "Plan Pro · pagado por Yango" : `Plan Pro · ${STATE[b.state]}`;
-    $("#planMiniS").textContent = b.state === "patrocinado" ? `Quedan ${b.days_left_sponsored} días · hasta el ${fecha(b.sponsored_until)}` : `${money(b.monthly_bs)} al mes`;
+    $("#planMiniS").textContent = b.free_forever ? "Sin cobros mensuales" : b.state === "patrocinado" ? `Quedan ${b.days_left_sponsored} días · hasta el ${fecha(b.sponsored_until)}` : `${money(b.monthly_bs)} al mes`;
     $("#planMiniBar").style.width = `${b.state === "patrocinado" ? pct : 100}%`;
     const accepted = !!b.accepted_at && b.terms_current;
     $("#termsAlert").hidden = accepted; $("#navTerms").hidden = accepted;
-    $("#heroPlan").hidden = !(b.days_left_sponsored > 0);
+    $("#heroPlan").hidden = !(b.days_left_sponsored > 0) || b.free_forever;
     $("#heroTitle").textContent = `Yango te regala ${b.sponsored_months} meses de Menu Deli Bo`;
     $("#heroText").textContent = `Tu plan Pro (${money(b.sponsored_value_bs)}) está pagado hasta el ${fecha(b.sponsored_until)} · quedan ${b.days_left_sponsored} días`;
     $("#heroBar").style.width = `${pct}%`;
     // plan
     $("#planState").textContent = STATE[b.state]; $("#planState").className = `pill ${b.state}`;
     $("#pPrice").textContent = money(b.price_bs);
-    $("#pSince").textContent = `Desde el ${fecha(b.start_date)} · permanencia hasta el ${fecha(b.commitment_until)}`;
+    $("#pSince").textContent = b.free_forever ? `Desde el ${fecha(b.start_date)} · plan bonificado, sin permanencia` : `Desde el ${fecha(b.start_date)} · permanencia hasta el ${fecha(b.commitment_until)}`;
     $("#pBranches").textContent = b.branches; $("#pUnit").textContent = money(b.price_bs); $("#pMonthly").textContent = money(b.monthly_bs);
     $("#pSpM").textContent = b.sponsored_months; $("#pSpValue").textContent = money(b.sponsored_value_bs);
-    $("#pDue").textContent = money(b.due_bs); $("#payInfo").textContent = b.payment_info;
-    $("#timeline").innerHTML = `<div><small>Meses 1–${b.sponsored_months}</small><b>Pagado por Yango</b><p>${fecha(b.start_date)} – ${fecha(b.sponsored_until)}. No pagas nada.</p></div>
+    $("#pDue").textContent = money(b.due_bs);
+    $("#payInfo").textContent = b.free_forever ? "Tu plan está bonificado: no tienes cobros mensuales mientras dure la cortesía." : b.payment_info;
+    $("#timeline").innerHTML = b.free_forever ? `<div><small>Meses 1–${b.sponsored_months}</small><b>Pagado por Yango</b><p>${fecha(b.start_date)} – ${fecha(b.sponsored_until)}.</p></div>
+      <div><small>Después</small><b>Gratis · cortesía</b><p>Sin cobros mensuales ni permanencia mientras dure.</p></div>
+      <div><small>Precio normal</small><b>${money(b.monthly_bs)}/mes</b><p>Te avisamos con 30 días si la cortesía termina.</p></div>` : `<div><small>Meses 1–${b.sponsored_months}</small><b>Pagado por Yango</b><p>${fecha(b.start_date)} – ${fecha(b.sponsored_until)}. No pagas nada.</p></div>
       <div><small>Meses ${b.sponsored_months + 1}–${b.sponsored_months + b.min_paid_months}</small><b>Permanencia mínima · ${money(b.monthly_bs)}/mes</b><p>Hasta el ${fecha(b.commitment_until)}.</p></div>
       <div><small>Después</small><b>Mes a mes</b><p>Puedes dar de baja con 30 días de aviso.</p></div>`;
     $("#schedBody").innerHTML = b.schedule.map((s) => { const [cls, txt] = SCHED[s.status];
       return `<tr><td><b>Mes ${s.month}</b>${s.committed ? ` <span class="pill">Permanencia</span>` : ""}</td><td>${fecha(s.from)} – ${fecha(s.to)}</td>
-        <td class="mono">${s.sponsored ? `<span class="strike">${money(s.list_amount)}</span>${money(0)}` : money(s.amount)}</td><td><span class="pill ${cls}">${txt}</span></td></tr>`; }).join("");
+        <td class="mono">${s.sponsored || s.free ? `<span class="strike">${money(s.list_amount)}</span>${money(0)}` : money(s.amount)}</td><td><span class="pill ${cls}">${txt}</span></td></tr>`; }).join("");
     // sucursales
     $("#brCount").textContent = `${b.branches} en tu plan · ${money(b.monthly_bs)}/mes`;
     $("#brList").innerHTML = b.known_branches.map((x) => `<div class="li"><span class="ph">${icon("store")}</span><div class="bd"><b>${esc(x.name)}</b><span class="muted">${esc(x.address || "")}</span></div>

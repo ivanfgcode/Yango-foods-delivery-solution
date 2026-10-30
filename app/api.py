@@ -613,7 +613,7 @@ async def admin_partners(request: Request):
         b = billing.summary(p)
         p["billing"] = {k: b[k] for k in ("state", "branches", "monthly_bs", "price_bs", "sponsored_months", "min_paid_months",
                                           "start_date", "sponsored_until", "commitment_until", "paid_until", "due_bs",
-                                          "accepted_at", "accepted_name", "branches_contracted")}
+                                          "accepted_at", "accepted_name", "branches_contracted", "free_forever", "free_note")}
         out.append(p)
     return out
 

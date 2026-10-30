@@ -56,13 +56,16 @@ def summary(p: Dict[str, Any]) -> Dict[str, Any]:
     sponsored_end = add_months(start, b["sponsored_months"])            # primer día que paga el partner
     commitment_end = add_months(sponsored_end, b["min_paid_months"])     # desde aquí puede dar de baja
     paid_until = date.fromisoformat(b["paid_until"]) if b["paid_until"] else None
+    free = bool(b.get("free_forever"))
     now = today()
 
     schedule = []
     for i in range(b["sponsored_months"] + b["min_paid_months"] + 3):
         p_start, p_end = add_months(start, i), add_months(start, i + 1)
         sponsored = i < b["sponsored_months"]
-        if sponsored:
+        if free and not sponsored:
+            status = "cortesia"
+        elif sponsored:
             status = "patrocinado"
         elif paid_until and paid_until >= p_end:
             status = "pagado"
@@ -71,12 +74,15 @@ def summary(p: Dict[str, Any]) -> Dict[str, Any]:
         else:
             status = "proximo"
         schedule.append({"month": i + 1, "from": p_start.isoformat(), "to": p_end.isoformat(),
-                         "amount": 0 if sponsored else monthly, "list_amount": monthly, "status": status,
-                         "sponsored": sponsored, "committed": not sponsored and p_start < commitment_end})
+                         "amount": 0 if sponsored or free else monthly, "list_amount": monthly, "status": status,
+                         "sponsored": sponsored, "free": free and not sponsored,
+                         "committed": not sponsored and not free and p_start < commitment_end})
 
     due = [s for s in schedule if s["status"] == "por_pagar"]
     if not b["accepted_at"]:
         state = "sin_aceptar"
+    elif free:
+        state = "cortesia"
     elif now < sponsored_end:
         state = "patrocinado"
     elif due:
@@ -94,6 +100,7 @@ def summary(p: Dict[str, Any]) -> Dict[str, Any]:
         "state": state, "due_bs": round(sum(s["amount"] for s in due), 2), "schedule": schedule,
         "accepted_at": b["accepted_at"], "accepted_name": b["accepted_name"], "terms_version": TERMS_VERSION,
         "terms_current": b["terms_version"] == TERMS_VERSION,
+        "free_forever": free, "free_note": b.get("free_note") or "",
     }
 
 
@@ -117,9 +124,16 @@ def update(p: Dict[str, Any], fields: Dict[str, Any]) -> Dict[str, Any]:
     if "branches" in fields:
         n = fields["branches"]
         sets.append("branches=?"); vals.append(None if n in (None, "", 0) else max(1, min(200, int(n))))
-    for k, hi in (("sponsored_months", 24), ("min_paid_months", 36)):
+    for k, hi in (("sponsored_months", 60), ("min_paid_months", 36)):
         if k in fields:
             sets.append(f"{k}=?"); vals.append(max(0, min(hi, int(fields[k]))))
+    if "extend_months" in fields:  # alarga los meses gratis: el primer cobro se corre esos meses
+        n = max(-24, min(24, int(fields["extend_months"])))
+        sets.append("sponsored_months=MAX(0, MIN(60, sponsored_months + ?))"); vals.append(n)
+    if "free_forever" in fields:
+        sets.append("free_forever=?"); vals.append(1 if fields["free_forever"] else 0)
+    if "free_note" in fields:
+        sets.append("free_note=?"); vals.append(" ".join(str(fields["free_note"] or "").split())[:200] or None)
     for k in ("start_date", "paid_until"):
         if k in fields:
             v = fields[k] or None

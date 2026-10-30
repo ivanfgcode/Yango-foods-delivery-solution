@@ -55,3 +55,22 @@ def test_landing_and_lead(client):  # noqa: F811
     assert ok.status_code == 200
     ev = [e for e in client.get("/api/admin/events", headers=ADMIN).json() if e["kind"] == "lead"][0]
     assert "Pollos bAna/b" in ev["detail"] and "71234567" in ev["detail"]
+
+
+def test_extend_free_months_and_free_forever(client, monkeypatch):  # noqa: F811
+    monkeypatch.setattr(billing, "today", lambda: date(2027, 2, 5))
+    client.put("/api/admin/partners/wrap-roll/billing", headers=ADMIN, json={"start_date": "2026-10-30", "branches": 1})
+    client.post("/api/wrap-roll/portal/billing/accept", headers=ADMIN, json={"name": "Ana Rojas Suárez", "accept": True})
+    b = client.get("/api/wrap-roll/portal/billing", headers=ADMIN).json()
+    assert b["state"] == "pago_pendiente" and b["due_bs"] == 150
+    # +2 meses gratis: el primer cobro se corre a abril
+    b = client.put("/api/admin/partners/wrap-roll/billing", headers=ADMIN, json={"extend_months": 2}).json()
+    assert b["sponsored_months"] == 5 and b["sponsored_until"] == "2027-03-30" and b["state"] == "patrocinado" and b["due_bs"] == 0
+    assert b["commitment_until"] == "2027-06-30"
+    # gratis permanente: sin cobros ni permanencia
+    monkeypatch.setattr(billing, "today", lambda: date(2027, 8, 1))
+    b = client.put("/api/admin/partners/wrap-roll/billing", headers=ADMIN, json={"free_forever": True, "free_note": "socio fundador"}).json()
+    assert b["state"] == "cortesia" and b["due_bs"] == 0 and b["free_note"] == "socio fundador"
+    assert all(s["amount"] == 0 for s in b["schedule"]) and not any(s["committed"] for s in b["schedule"])
+    b = client.put("/api/admin/partners/wrap-roll/billing", headers=ADMIN, json={"free_forever": False}).json()
+    assert b["state"] == "pago_pendiente" and b["due_bs"] > 0
