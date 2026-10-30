@@ -119,7 +119,7 @@ async def health():
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
-    """Landing de Menu Deli Bo para vender el servicio a restaurantes."""
+    """Landing de carta.bo para vender el servicio a restaurantes."""
     demo = next((p["slug"] for p in partners.all_partners() if p["enabled"]), None)
     return templates.TemplateResponse(request, "landing.html", {
         "price": settings.plan_price_bs, "sponsored": settings.plan_sponsored_months,
@@ -146,7 +146,7 @@ async def api_lead(request: Request, body: Dict[str, Any] = Body(...)):
         raise HTTPException(422, "Escribe tu nombre, tu restaurante y un celular de contacto")
     dq.append(now)
     db.event("lead", lead)
-    await alerts.alert("lead", f"Nuevo interesado en Menu Deli Bo: {lead['restaurante']} · {lead['nombre']} · "
+    await alerts.alert("lead", f"Nuevo interesado en carta.bo: {lead['restaurante']} · {lead['nombre']} · "
                                f"{lead['telefono']} · {lead['sucursales'] or '?'} sucursal(es). {lead['mensaje']}")
     return {"ok": True}
 

@@ -1,4 +1,4 @@
-/* Menu Deli Bo · panel del restaurante. Claro, sobrio y con un solo acento (naranja deli).
+/* carta.bo · panel del restaurante. Claro, sobrio y con un solo acento (lima).
    charts.js lee las variables --in-* para pintar los gráficos con estos mismos colores. */
 :root {
   --bg: #0A0A0B; --panel: #141416; --panel-2: #1B1B1E; --ink: #F4F4F1; --ink-2: #C9C9C4; --muted: #8E8E8A; --line: rgba(255,255,255,.09); --soft: #1D1D20;

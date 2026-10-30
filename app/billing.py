@@ -1,4 +1,4 @@
-"""Plan de Menu Deli Bo: un precio mensual por sucursal, los primeros meses pagados por Yango y una permanencia
+"""Plan de carta.bo: un precio mensual por sucursal, los primeros meses pagados por Yango y una permanencia
 mínima después. El cobro es manual (QR o transferencia): el equipo marca hasta qué día está pagado.
 
 Ejemplo por defecto: Bs150 por sucursal al mes; meses 1-3 los paga Yango; meses 4-6 de permanencia mínima.
@@ -90,7 +90,7 @@ def summary(p: Dict[str, Any]) -> Dict[str, Any]:
     else:
         state = "activo"
     return {
-        "plan": "Menu Deli Bo · Pro", "price_bs": b["price_bs"], "branches": count, "branches_contracted": b["branches"],
+        "plan": "carta.bo · Pro", "price_bs": b["price_bs"], "branches": count, "branches_contracted": b["branches"],
         "known_branches": known, "monthly_bs": monthly, "currency": settings.currency,
         "sponsored_months": b["sponsored_months"], "min_paid_months": b["min_paid_months"],
         "start_date": start.isoformat(), "sponsored_until": sponsored_end.isoformat(),

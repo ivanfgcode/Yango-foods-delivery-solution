@@ -1,4 +1,4 @@
-# Menu Deli Bo · Pedidos propios con delivery de Yango
+# carta.bo · Pedidos propios con delivery de Yango
 
 Web de pedidos propia para cada partner (`dominio.com/<restaurante>`) con el delivery hecho por Yango.
 Cada partner tiene un **restaurante oculto** en Yango Foods, visible solo para una cuenta cliente nuestra
@@ -62,7 +62,7 @@ Cada partner tiene un **restaurante oculto** en Yango Foods, visible solo para u
 
 ## Landing (`/`)
 
-Página de venta de Menu Deli Bo para restaurantes: qué resuelve (atender chats, tiempo de respuesta, menú viejo, buscar
+Página de venta de carta.bo para restaurantes: qué resuelve (atender chats, tiempo de respuesta, menú viejo, buscar
 mensajero, errores, comisiones), antes/después de un pedido, funciones con capturas reales (`app/static/landing/`),
 calculadora de ahorro, precio con los meses pagados por Yango, preguntas y formulario. Cada interesado queda en
 Admin → Eventos (`lead`) y llega por Telegram. `SALES_WHATSAPP` (591…) agrega el botón de WhatsApp.
@@ -76,7 +76,7 @@ Admin → Eventos (`lead`) y llega por Telegram. `SALES_WHATSAPP` (591…) agreg
 | `/<slug>/portal` | Partner: diseño (logo, portada, colores, tipografías, tamaños, cuadrícula/lista), textos, videos de TikTok con su producto, pausar pedidos, ver pedidos |
 | `/admin` | Equipo: **Resumen** (ventas, pedidos, por atender, ticket y envío medio, lo más vendido, restaurantes, hora pico, mejor día; por periodo y restaurante), pedidos (marcar colocado, reintentar, copiar comentario), restaurantes, cuentas Yango (SMS o cookie), eventos |
 
-## Plan Menu Deli Bo (monetización)
+## Plan carta.bo (monetización)
 
 * **Precio**: `PLAN_PRICE_BS` (Bs150) por sucursal y por mes; 0 % de comisión por pedido.
 * **Meses pagados por Yango**: `PLAN_SPONSORED_MONTHS` (3) al empezar. **Permanencia**: `PLAN_MIN_PAID_MONTHS` (3) meses

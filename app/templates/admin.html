@@ -2,7 +2,8 @@
 <html lang="es">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Admin · Menu Deli Bo</title>
+<title>Admin · carta.bo</title>
+<link rel="icon" href="/static/favicon.svg?v={{ v }}" type="image/svg+xml">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
 <link rel="stylesheet" href="/static/admin.css?v={{ v }}">
@@ -17,7 +18,7 @@
 {% if not logged %}
 <section class="in-panel acceso">
   <div class="in-ident"><span class="in-glifo" aria-hidden="true"><svg viewBox="0 0 32 32"><use href="#glifo"/></svg></span>
-    <div><h1>Menu Deli Bo</h1><p class="in-sub">Admin · delivery con Yango</p></div></div>
+    <div><h1>carta.bo</h1><p class="in-sub">Admin · delivery con Yango</p></div></div>
   <form id="f"><input type="password" id="k" required placeholder="Clave de administrador" autocomplete="current-password" aria-label="Clave de administrador">
   <button class="btn acc">Entrar</button><div class="msg bad" id="m"></div></form></section>
 <script>
@@ -28,7 +29,7 @@ document.getElementById("f").onsubmit = async (e) => { e.preventDefault();
 {% else %}
 <header class="barra">
   <div class="in-ident"><span class="in-glifo" aria-hidden="true"><svg viewBox="0 0 32 32"><use href="#glifo"/></svg></span>
-    <div><h1>Menu Deli Bo</h1><p class="in-sub" id="src">—</p></div></div>
+    <div><h1>carta.bo</h1><p class="in-sub" id="src">—</p></div></div>
   <nav class="tabs" id="tabs" aria-label="Secciones"><i class="pildora" aria-hidden="true"></i><button class="on" data-t="summary">Resumen</button><button data-t="orders">Pedidos</button><button data-t="store">Tienda</button><button data-t="partners">Restaurantes</button><button data-t="accounts">Cuentas Yango</button><button data-t="events">Eventos</button></nav>
   <div class="in-cab-der">
     <button class="in-chip" id="chipBot" type="button" aria-label="Estado de las cuentas Yango"><i class="in-punto" aria-hidden="true"></i><span id="chipTxt">Cuentas</span></button>
@@ -134,7 +135,7 @@ document.getElementById("f").onsubmit = async (e) => { e.preventDefault();
         <label class="f" style="flex:1 1 140px"><span>Contraseña portal</span><input name="password" type="password" minlength="8"></label>
         <button class="btn acc" style="margin-bottom:12px">Crear</button>
       </form><div class="msg" id="npMsg"></div></div>
-    <div class="card"><h2>Restaurantes</h2><div class="tw"><table><thead><tr><th>Restaurante</th><th>Cuenta</th><th>Local Yango</th><th>Menú</th><th>Plan Menu Deli Bo</th><th>Estado</th><th></th></tr></thead><tbody id="pb"></tbody></table></div></div>
+    <div class="card"><h2>Restaurantes</h2><div class="tw"><table><thead><tr><th>Restaurante</th><th>Cuenta</th><th>Local Yango</th><th>Menú</th><th>Plan carta.bo</th><th>Estado</th><th></th></tr></thead><tbody id="pb"></tbody></table></div></div>
   </section>
 
   <section id="t-accounts" class="sec" hidden>

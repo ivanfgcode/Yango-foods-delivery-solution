@@ -60,7 +60,7 @@ class Settings:
         self.quote_cache_seconds = _int("QUOTE_CACHE_SECONDS", 90)
         self.quote_precision = _int("QUOTE_PRECISION", 4)  # decimales de lat/lon para la caché (~11 m)
         self.menu_sync_minutes = _int("MENU_SYNC_MINUTES", 15)
-        # Plan de Menu Deli Bo (valores por defecto para cada partner nuevo; el equipo los ajusta en el admin).
+        # Plan de carta.bo (valores por defecto para cada partner nuevo; el equipo los ajusta en el admin).
         self.plan_price_bs = _float("PLAN_PRICE_BS", 150.0)
         self.plan_sponsored_months = _int("PLAN_SPONSORED_MONTHS", 3)
         self.plan_min_paid_months = _int("PLAN_MIN_PAID_MONTHS", 3)

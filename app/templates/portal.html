@@ -2,7 +2,8 @@
 <html lang="es">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Menu Deli Bo · {{ p.name }}</title>
+<title>carta.bo · {{ p.name }}</title>
+<link rel="icon" href="/static/favicon.svg?v={{ v }}" type="image/svg+xml">
 <meta name="theme-color" content="#0F1013">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap">
@@ -10,10 +11,10 @@
 </head>
 <body>
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
-  <symbol id="md-mark" viewBox="0 0 24 24"><path d="M3 12.5h18a9 9 0 0 1-18 0z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M8 9c0-1.6 1.2-2 1.2-3.6M12 9c0-1.6 1.2-2 1.2-3.6M16 9c0-1.6 1.2-2 1.2-3.6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></symbol>
+  <symbol id="cb-mark" viewBox="0 0 24 24"><path d="M6.5 3h7.5l5 5v10.5a2.5 2.5 0 0 1-2.5 2.5h-10A2.5 2.5 0 0 1 4 18.5v-13A2.5 2.5 0 0 1 6.5 3z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M14 3v5h5M8 12h5M8 16h3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="16" cy="16" r="1.8" fill="currentColor"/></symbol>
 </svg>
 {% macro ic(n) %}<svg class="ic" aria-hidden="true"><use href="/static/icons.svg?v={{ v }}#{{ n }}"></use></svg>{% endmacro %}
-{% macro logo() %}<span class="logo"><span class="logo-mark"><svg><use href="#md-mark"/></svg></span><span class="logo-word">Menu Deli <em>Bo</em><small>Pedidos propios</small></span></span>{% endmacro %}
+{% macro logo() %}<span class="logo"><span class="logo-mark"><svg><use href="#cb-mark"/></svg></span><span class="logo-word">carta<em>.bo</em><small>Pedidos propios</small></span></span>{% endmacro %}
 
 {% if not logged %}
 <main class="auth">
@@ -85,7 +86,7 @@ document.getElementById("loginForm").onsubmit = async (e) => {
     <div class="content">
       <!-- inicio -->
       <section data-sec="home" class="grid">
-        <div class="alert" id="termsAlert" hidden>{{ ic("circle-alert") }}<span>Acepta el acuerdo de Menu Deli Bo para activar tu plan.</span><span class="sp"></span><button class="btn sm pri" data-go="terms">Ver acuerdo</button></div>
+        <div class="alert" id="termsAlert" hidden>{{ ic("circle-alert") }}<span>Acepta el acuerdo de carta.bo para activar tu plan.</span><span class="sp"></span><button class="btn sm pri" data-go="terms">Ver acuerdo</button></div>
         <div class="hero-plan" id="heroPlan" hidden>
           <div><span class="eyebrow">{{ ic("gift") }}Plan Pro · pagado por Yango</span>
             <h2 id="heroTitle">—</h2><p id="heroText"></p><div class="bar"><i id="heroBar" style="width:0"></i></div></div>
@@ -191,7 +192,7 @@ document.getElementById("loginForm").onsubmit = async (e) => {
       <section data-sec="plan" class="grid" hidden>
         <div class="grid g2">
           <div class="price-card">
-            <div class="plan-name"><span>Menu Deli Bo · Pro</span><span class="pill patrocinado" id="planState">—</span></div>
+            <div class="plan-name"><span>carta.bo · Pro</span><span class="pill patrocinado" id="planState">—</span></div>
             <div class="price"><b id="pPrice">—</b><span>por sucursal / mes</span></div>
             <div style="color:var(--side-muted)">0 % de comisión por pedido · sin costo de instalación</div>
             <div class="incl">
@@ -221,10 +222,10 @@ document.getElementById("loginForm").onsubmit = async (e) => {
       <!-- acuerdo -->
       <section data-sec="terms" hidden>
         <div class="card doc">
-          <h2>Acuerdo de servicio · Menu Deli Bo</h2>
+          <h2>Acuerdo de servicio · carta.bo</h2>
           <div class="meta">Versión <span id="tVersion">—</span> · {{ p.name }}</div>
           <ol>
-            <li><b>El servicio</b><p>Menu Deli Bo te da una web de pedidos con tu marca. El menú y los precios se toman de tu restaurante en Yango, y el delivery lo hacen los mensajeros de Yango. Menu Deli Bo no cobra comisión por pedido.</p></li>
+            <li><b>El servicio</b><p>carta.bo te da una web de pedidos con tu marca. El menú y los precios se toman de tu restaurante en Yango, y el delivery lo hacen los mensajeros de Yango. carta.bo no cobra comisión por pedido.</p></li>
             <li><b>Precio</b><p>El plan Pro cuesta <span class="t-price">—</span> por sucursal y por mes. Tu plan incluye <span class="t-branches">—</span>, en total <span class="t-monthly">—</span> al mes. Los precios no incluyen impuestos si correspondieran.</p></li>
             <li><b>Meses pagados por Yango</b><p>Los primeros <span class="t-sp">—</span> meses (del <span class="t-start">—</span> al <span class="t-spend">—</span>) los paga Yango como apoyo a tu restaurante. No pagas nada en ese periodo.</p></li>
             <li><b>Permanencia mínima</b><p>Al terminar los meses pagados por Yango, el plan tiene una permanencia mínima de <span class="t-min">—</span> meses pagados (hasta el <span class="t-commit">—</span>). Después continúa mes a mes.</p></li>
@@ -262,7 +263,7 @@ document.getElementById("loginForm").onsubmit = async (e) => {
   // ---------------------------------------------------------------- navegación
   const TITLES = {home: ["Inicio", "Resumen de tu web de pedidos"], orders: ["Pedidos", "Lo que entra por tu web"], design: ["Diseño", "Así se ve tu web"],
     texts: ["Textos", "Frases, horario y contacto"], tiktok: ["TikTok", "Videos con el producto que aparece"], branches: ["Sucursales", "Dónde entregas"],
-    plan: ["Plan y facturación", "Menu Deli Bo · Pro"], terms: ["Acuerdo", "Condiciones del servicio"]};
+    plan: ["Plan y facturación", "carta.bo · Pro"], terms: ["Acuerdo", "Condiciones del servicio"]};
   function go(s) {
     sec = s; $$("#nav button[data-s]").forEach((b) => b.classList.toggle("on", b.dataset.s === s));
     $$("[data-sec]").forEach((el) => (el.hidden = el.dataset.sec !== s));
@@ -448,7 +449,7 @@ document.getElementById("loginForm").onsubmit = async (e) => {
     const accepted = !!b.accepted_at && b.terms_current;
     $("#termsAlert").hidden = accepted; $("#navTerms").hidden = accepted;
     $("#heroPlan").hidden = !(b.days_left_sponsored > 0) || b.free_forever;
-    $("#heroTitle").textContent = `Yango te regala ${b.sponsored_months} meses de Menu Deli Bo`;
+    $("#heroTitle").textContent = `Yango te regala ${b.sponsored_months} meses de carta.bo`;
     $("#heroText").textContent = `Tu plan Pro (${money(b.sponsored_value_bs)}) está pagado hasta el ${fecha(b.sponsored_until)} · quedan ${b.days_left_sponsored} días`;
     $("#heroBar").style.width = `${pct}%`;
     // plan

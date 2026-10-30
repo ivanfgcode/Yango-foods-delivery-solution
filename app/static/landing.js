@@ -1,9 +1,9 @@
-/* Menu Deli Bo · landing: aparición al hacer scroll, palabra que rota, avisos sobre el teléfono, inclinación con el
+/* carta.bo · landing: aparición al hacer scroll, palabra que rota, avisos sobre el teléfono, inclinación con el
    ratón, antes/después animado, calculadora de ahorro y formulario de contacto. Respeta «reducir movimiento». */
 (() => {
   const $ = (s, el = document) => el.querySelector(s), $$ = (s, el = document) => [...el.querySelectorAll(s)];
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const C = window.MDB, nf = new Intl.NumberFormat("es-BO", {maximumFractionDigits: 0});
+  const C = window.CARTA, nf = new Intl.NumberFormat("es-BO", {maximumFractionDigits: 0});
   const money = (n) => `${C.currency}${nf.format(Math.max(0, Math.round(n)))}`;
 
   // Aparición al hacer scroll.
@@ -43,7 +43,7 @@
   $("#menuBtn").onclick = () => setMenu(true); $("#menuClose").onclick = () => setMenu(false);
   $$("a", drawer).forEach((a) => a.addEventListener("click", () => setMenu(false)));
 
-  // Antes / con Menu Deli Bo: los pasos aparecen uno a uno.
+  // Antes / con carta.bo: los pasos aparecen uno a uno.
   const TOTAL = {bad: ["25 min", "y una persona pendiente del celular"], good: ["2 min", "y nadie tuvo que contestar un chat"]};
   function play(which) {
     $$(".vs-toggle button").forEach((b) => b.classList.toggle("on", b.dataset.vs === which));

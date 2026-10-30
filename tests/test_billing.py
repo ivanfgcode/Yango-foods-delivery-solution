@@ -1,4 +1,4 @@
-"""Plan de Menu Deli Bo: precio por sucursal, meses pagados por Yango, permanencia y acuerdo."""
+"""Plan de carta.bo: precio por sucursal, meses pagados por Yango, permanencia y acuerdo."""
 from datetime import date
 
 from app import billing
@@ -43,12 +43,12 @@ def test_portal_requires_login_and_admin_list_has_plan(client):  # noqa: F811
     ps = client.get("/api/admin/partners", headers=ADMIN).json()
     assert ps[0]["billing"]["price_bs"] == 150 and ps[0]["billing"]["sponsored_months"] == 3
     page = client.get("/wrap-roll/portal").text
-    assert "Menu Deli" in page and "3 meses los paga Yango" in page
+    assert "carta.bo" in page and "3 meses los paga Yango" in page
 
 
 def test_landing_and_lead(client):  # noqa: F811
     page = client.get("/").text
-    assert "Menu Deli" in page and "Bs150" in page and "los paga Yango" in page and 'href="/wrap-roll"' in page
+    assert "carta.bo" in page and "Bs150" in page and "los paga Yango" in page and 'href="/wrap-roll"' in page
     bad = client.post("/api/leads", json={"name": "A", "restaurant": "", "phone": "1"})
     assert bad.status_code == 422
     ok = client.post("/api/leads", json={"name": "Ana Rojas", "restaurant": "Pollos <b>Ana</b>", "phone": "71234567", "branches": "2"})
