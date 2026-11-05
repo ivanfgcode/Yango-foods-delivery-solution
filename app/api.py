@@ -637,7 +637,8 @@ async def admin_health(request: Request):
     auth.require_admin(request)
     counts = {r["status"]: r["n"] for r in db.query("SELECT status, COUNT(*) n FROM orders GROUP BY status")}
     return {"source": rt().source.health(), "queues": rt().dispatcher.health(), "quotes": rt().quotes.stats,
-            "orders": counts, "order_placement_enabled": settings.order_placement_enabled}
+            "orders": counts, "order_placement_enabled": settings.order_placement_enabled,
+            "placement": {p["slug"]: partners.placement_enabled(p) for p in partners.all_partners() if p["enabled"]}}
 
 
 @app.get("/api/admin/dashboard")
@@ -668,6 +669,7 @@ async def admin_partners(request: Request):
         m = db.one("SELECT synced_at, error, length(data) n FROM menus WHERE partner_id=?", (p["id"],))
         p.pop("portal_password_hash", None)
         p["menu"] = dict(m) if m else None
+        p["placement_enabled"] = partners.placement_enabled(p)
         b = billing.summary(p)
         p["billing"] = {k: b[k] for k in ("state", "branches", "monthly_bs", "price_bs", "sponsored_months", "min_paid_months",
                                           "start_date", "sponsored_until", "commitment_until", "paid_until", "due_bs",
@@ -697,7 +699,9 @@ async def admin_update_partner(request: Request, slug: str, body: Dict[str, Any]
         p = partners.update(slug, **body)
     except ValueError as e:
         raise HTTPException(422, str(e))
+    db.event("restaurante_editado", {k: body[k] for k in sorted(body) if k != "password"}, partner_id=p["id"])
     p.pop("portal_password_hash", None)
+    p["placement_enabled"] = partners.placement_enabled(p)
     return p
 
 

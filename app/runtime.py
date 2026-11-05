@@ -62,7 +62,7 @@ class Dispatcher:
             return
         partner = partners.get_by_id(o["partner_id"])
         label = f"#{o['number']} {partner['name']} {settings.currency}{o['total']:g}"
-        if not settings.order_placement_enabled:
+        if not partners.placement_enabled(partner):
             orders.set_status(token, "manual", error="Colocación automática apagada")
             await alerts.alert("pedido_manual", f"[MANUAL] Pedido nuevo {label}: cargar a mano en Yango con la cuenta "
                                                 f"{o['account']}.\nComentario: {o['yango_comment']}")

@@ -161,7 +161,9 @@ ADDED_COLUMNS = [("partners", "place_name", "TEXT"), ("billing", "free_forever",
                  ("billing", "free_note", "TEXT"),
                  # Seguimiento: cuenta de la vendor app del local y etapa del pedido leída de Yango.
                  ("partners", "vendor_account", "TEXT"), ("orders", "track_stage", "TEXT"),
-                 ("orders", "track_raw", "TEXT"), ("orders", "track_at", "TEXT"), ("orders", "track_eta", "TEXT")]
+                 ("orders", "track_raw", "TEXT"), ("orders", "track_at", "TEXT"), ("orders", "track_eta", "TEXT"),
+                 # Colocación por restaurante: NULL = la general (ORDER_PLACEMENT_ENABLED), 1 = bot, 0 = manual.
+                 ("partners", "auto_place", "INTEGER")]
 
 
 def _migrate(conn: sqlite3.Connection) -> None:

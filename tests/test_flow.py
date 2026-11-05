@@ -277,3 +277,26 @@ def test_admin_dry_run(client):
     assert res["dry_run"] is True and res["yango_order_nr"].startswith("PRUEBA-")
     assert client.get(f"/api/wrap-roll/orders/{token}").json()["status"] in ("en_cola", "manual")
     assert client.post(f"/api/admin/orders/{token}/dry-run").status_code == 401
+
+
+def test_admin_edits_partner_and_placement(client, monkeypatch):
+    """Admin → Restaurantes → Editar: datos del restaurante y si el bot coloca sus pedidos (aunque el general esté apagado)."""
+    monkeypatch.setattr(settings, "order_placement_enabled", False)
+    r = client.put("/api/admin/partners/wrap-roll", headers=ADMIN,
+                   json={"name": "Wrap & Roll SC", "min_order": "30", "accepting_orders": "1", "auto_place": "1",
+                         "account": "cuenta_demo", "vendor_account": ""})
+    assert r.status_code == 200, r.text
+    p = r.json()
+    assert p["name"] == "Wrap & Roll SC" and p["min_order"] == 30 and p["auto_place"] == 1 and p["placement_enabled"]
+    assert client.get("/api/admin/health", headers=ADMIN).json()["placement"]["wrap-roll"] is True
+    from app import runtime
+    src = runtime.get_runtime().source
+    r = client.post("/api/wrap-roll/orders", json=order_body(client))
+    assert wait_status(client, r.json()["token"], {"colocado"})["status"] == "colocado"
+    assert src.placed[-1]["account"] == "cuenta_demo"
+    # Vuelve al ajuste general (apagado): manual.
+    assert client.put("/api/admin/partners/wrap-roll", headers=ADMIN, json={"auto_place": ""}).json()["placement_enabled"] is False
+    r = client.post("/api/wrap-roll/orders", json=order_body(client))
+    assert wait_status(client, r.json()["token"], {"manual"})["status"] == "manual"
+    for bad in ({"account": "con espacio"}, {"min_order": "abc"}, {"name": " "}, {"yango_url": "http://x"}):
+        assert client.put("/api/admin/partners/wrap-roll", headers=ADMIN, json=bad).status_code == 422

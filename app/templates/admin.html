@@ -194,7 +194,7 @@ document.getElementById("f").onsubmit = async (e) => { e.preventDefault();
   const api = (p, opt) => fetch(`/api/admin${p}`, opt).then(async (r) => { const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.detail || "Error"); return d; });
   const post = (p, body, method = "POST") => api(p, {method, headers: {"content-type": "application/json"}, body: JSON.stringify(body)});
   const when = (s) => s ? new Date(s).toLocaleString("es-BO", {dateStyle: "short", timeStyle: "short"}) : "";
-  let tab = "summary";
+  let tab = "summary", H = {};
 
   // ---------------------------------------------------------------- cabecera: fuente, cuentas, tema
   const mem = {get: (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} }};
@@ -203,8 +203,11 @@ document.getElementById("f").onsubmit = async (e) => { e.preventDefault();
     pl.style.width = on.offsetWidth + "px"; pl.style.transform = `translateX(${on.offsetLeft - 3}px)`;
   }
   async function stats() {
-    const h = await api("/health");
-    $("#src").textContent = `${h.source.source === "mock" ? "Yango simulado" : "food.yango.com"} · colocación automática ${h.order_placement_enabled ? "ON" : "OFF (manual)"}`;
+    const h = await api("/health"); H = h;
+    const pl = Object.values(h.placement || {}), on = pl.filter(Boolean).length;
+    const modo = !pl.length ? (h.order_placement_enabled ? "ON" : "OFF (manual)") : on === pl.length ? "ON" : on ? `ON en ${on} de ${pl.length}` : "OFF (manual)";
+    const pend = (h.orders.manual || 0) + (h.orders.revision || 0);
+    $("#src").textContent = `${h.source.source === "mock" ? "Yango simulado" : "food.yango.com"} · colocación automática ${modo}${pend ? ` · ${pend} pedido${pend > 1 ? "s" : ""} por cargar a mano` : ""}`;
     if (tab !== "summary") chipCuentas(await api("/accounts"));
   }
   function chipCuentas(accs) {
@@ -539,11 +542,44 @@ document.getElementById("f").onsubmit = async (e) => { e.preventDefault();
       <td>${p.place_slug ? `<span class="mono">${esc(p.place_slug)}</span><br><span class="muted">${esc(p.place_address || "")}</span>` : `<span class="muted">sin resolver</span>`}<br><a class="muted" href="${esc(p.yango_url || "#")}" target="_blank" rel="noopener">${esc((p.yango_url || "").slice(0, 60))}</a></td>
       <td>${p.menu ? `${esc(when(p.menu.synced_at))}${p.menu.error ? `<br><span class="pill error">${esc(p.menu.error)}</span>` : ""}` : `<span class="muted">—</span>`}</td>
       <td>${planCell(p.billing)}</td>
-      <td><span class="pill ${p.enabled ? "ok" : "cancelado"}">${p.enabled ? "activo" : "inactivo"}</span> ${p.accepting_orders ? "" : `<span class="pill manual">pausado</span>`}</td>
-      <td style="white-space:nowrap"><button class="btn sm" data-plan="${esc(p.slug)}">Plan</button> <button class="btn sm" data-sync="${esc(p.slug)}">Sincronizar</button> <button class="btn ghost sm" data-pw="${esc(p.slug)}">Contraseña</button> <button class="btn ghost sm" data-toggle="${esc(p.slug)}" data-on="${p.enabled ? 1 : 0}">${p.enabled ? "Desactivar" : "Activar"}</button></td></tr>`).join("")
+      <td><span class="pill ${p.enabled ? "ok" : "cancelado"}">${p.enabled ? "activo" : "inactivo"}</span> ${p.accepting_orders ? "" : `<span class="pill manual">pausado</span>`}
+        <br><span class="pill ${p.placement_enabled ? "ok" : "manual"}" title="${p.auto_place === null ? "Sigue el ajuste general" : "Ajuste propio del restaurante"}">${p.placement_enabled ? "bot coloca" : "carga manual"}</span></td>
+      <td style="white-space:nowrap"><button class="btn sm acc" data-editp="${esc(p.slug)}">Editar</button> <button class="btn sm" data-plan="${esc(p.slug)}">Plan</button> <button class="btn sm" data-sync="${esc(p.slug)}">Sincronizar</button> <button class="btn ghost sm" data-pw="${esc(p.slug)}">Contraseña</button> <button class="btn ghost sm" data-toggle="${esc(p.slug)}" data-on="${p.enabled ? 1 : 0}">${p.enabled ? "Desactivar" : "Activar"}</button></td></tr>`).join("")
       || `<tr><td colspan="7" class="muted">Sin restaurantes.</td></tr>`;
+    $$("[data-editp]").forEach((b) => (b.onclick = () => {
+      const tr = b.closest("tr"), next = tr.nextElementSibling;
+      if (next && next.classList.contains("edit-row")) return next.remove();
+      if (next && next.classList.contains("plan-row")) next.remove();
+      const p = rows.find((x) => x.slug === b.dataset.editp);
+      const ap = p.auto_place === null || p.auto_place === undefined ? "" : String(p.auto_place);
+      tr.insertAdjacentHTML("afterend", `<tr class="edit-row"><td colspan="7"><form class="row" style="align-items:flex-end">
+        <label class="f" style="flex:1 1 180px;margin:0"><span>Nombre</span><input name="name" required maxlength="80" value="${esc(p.name)}"></label>
+        <label class="f" style="flex:1 1 150px;margin:0"><span>Cuenta Yango (coloca)</span><input name="account" required maxlength="40" value="${esc(p.account)}"></label>
+        <label class="f" style="flex:1 1 150px;margin:0"><span>Cuenta vendor app</span><input name="vendor_account" maxlength="40" value="${esc(p.vendor_account || "")}" placeholder="vacío = cuenta cliente"></label>
+        <label class="f" style="flex:3 1 320px;margin:0"><span>URL en food.yango.com</span><input name="yango_url" type="url" value="${esc(p.yango_url || "")}"></label>
+        <label class="f" style="width:130px;margin:0"><span>Pedido mínimo (Bs)</span><input name="min_order" type="number" min="0" step="0.5" value="${p.min_order ?? ""}" placeholder="el de Yango"></label>
+        <label class="f" style="width:190px;margin:0"><span>Pedidos a Yango</span><select name="auto_place">
+          <option value="" ${ap === "" ? "selected" : ""}>General (${H.order_placement_enabled ? "bot" : "manual"})</option>
+          <option value="1" ${ap === "1" ? "selected" : ""}>Bot automático</option>
+          <option value="0" ${ap === "0" ? "selected" : ""}>Carga manual</option></select></label>
+        <label class="f" style="width:150px;margin:0"><span>Tienda</span><select name="accepting_orders">
+          <option value="1" ${p.accepting_orders ? "selected" : ""}>Recibe pedidos</option>
+          <option value="0" ${p.accepting_orders ? "" : "selected"}>Pausada</option></select></label>
+        <button class="btn acc sm">Guardar</button><span class="msg"></span></form>
+        <p class="muted" style="margin:8px 0 0">«Bot automático» crea el pedido en Yango con la cuenta de arriba apenas llega. «Carga manual» lo deja en Pedidos para cargarlo a mano.
+        Si cambias la URL, pulsa Sincronizar para resolver el local y el menú nuevos.</p></td></tr>`);
+      const form = tr.nextElementSibling.querySelector("form");
+      form.onsubmit = async (e) => {
+        e.preventDefault();
+        const body = Object.fromEntries(new FormData(form));
+        if (body.auto_place === "1" && p.auto_place !== 1 && !confirm("Con «Bot automático» los pedidos se crean de verdad en Yango con la cuenta " + body.account + ". ¿Seguir?")) return;
+        try { await post(`/partners/${p.slug}`, body, "PUT"); partnersTab(); stats(); }
+        catch (err) { const m = form.querySelector(".msg"); m.className = "msg bad"; m.textContent = err.message; }
+      };
+    }));
     $$("[data-plan]").forEach((b) => (b.onclick = () => {
       const tr = b.closest("tr"), next = tr.nextElementSibling;
+      if (next && next.classList.contains("edit-row")) next.remove();
       if (next && next.classList.contains("plan-row")) return next.remove();
       const pb = rows.find((x) => x.slug === b.dataset.plan).billing;
       tr.insertAdjacentHTML("afterend", `<tr class="plan-row"><td colspan="7"><div class="row" style="align-items:flex-end">

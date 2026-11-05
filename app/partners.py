@@ -73,18 +73,58 @@ def create(slug: str, name: str, account: str, yango_url: str = "", place_slug: 
     return get(slug)
 
 
+def placement_enabled(p: Dict[str, Any]) -> bool:
+    """¿El bot coloca los pedidos de este restaurante? Su ajuste propio o, si no tiene, el general."""
+    from app.config import settings
+    v = p.get("auto_place")
+    return settings.order_placement_enabled if v is None else bool(v)
+
+
+def _flag(v: Any) -> int:
+    if isinstance(v, str):
+        return 1 if v.strip().lower() in ("1", "true", "si", "sí", "on", "yes") else 0
+    return 1 if v else 0
+
+
 def update(slug: str, **fields: Any) -> Dict[str, Any]:
     allowed = {"name", "yango_url", "place_slug", "place_id", "place_lat", "place_lon", "place_address", "place_name",
-               "account", "enabled", "accepting_orders", "min_order", "brand_slug", "vendor_account"}
+               "account", "enabled", "accepting_orders", "min_order", "brand_slug", "vendor_account", "auto_place"}
     sets, vals = [], []
     for k, v in fields.items():
         if k not in allowed:
             continue
+        if k == "name":
+            v = re.sub(r"[<>]", "", str(v or "")).strip()[:80]
+            if not v:
+                raise ValueError("Falta el nombre")
+        if k == "account":
+            v = str(v or "").strip()
+            if not re.match(r"^[A-Za-z0-9_-]{1,40}$", v):
+                raise ValueError("Cuenta Yango inválida: solo letras, números, _ y -")
+        if k in ("enabled", "accepting_orders"):
+            v = _flag(v)
+        if k == "auto_place":
+            v = None if v in (None, "", "general") else _flag(v)
+        if k == "min_order":
+            try:
+                v = None if v in (None, "") else round(float(v), 2)
+            except (TypeError, ValueError):
+                raise ValueError("Pedido mínimo inválido")
+            if v is not None and not 0 <= v <= 10000:
+                raise ValueError("Pedido mínimo inválido")
         if k == "vendor_account":
             v = str(v or "").strip() or None
             if v and not re.match(r"^[A-Za-z0-9_-]{1,40}$", v):
                 raise ValueError("Cuenta vendor inválida: solo letras, números, _ y -")
         if k == "yango_url":
+            v = str(v or "").strip()
+            if v and not v.startswith("https://"):
+                raise ValueError("La URL de Yango debe empezar con https://")
+            cur = get(slug) or {}
+            if v != (cur.get("yango_url") or "") and "place_slug" not in fields:
+                # Otro restaurante en Yango: el bot vuelve a resolver el local al sincronizar.
+                sets += ["place_slug=?", "place_id=?", "place_lat=?", "place_lon=?", "place_address=?", "place_name=?"]
+                vals += [None] * 6
             sets.append("brand_slug=?")
             vals.append(parse_yango_url(v)["brand_slug"])
         sets.append(f"{k}=?")
