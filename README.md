@@ -127,20 +127,13 @@ Admin → Funciones → Menú PDF: plantilla (clásico, moderno, minimal, pizarr
 vivo; «Descargar PDF» lo genera en el servidor con Chromium (Playwright de la imagen) y «Imprimir» sirve como
 respaldo desde el navegador. Usa los precios del menú sincronizado.
 
-## Plan carta.bo (modelo anterior, se reemplaza por la comisión del 3 %)
+## Comisión en el portal del restaurante
 
-> El equipo decidió pasar a **comisión del 3 % por pedido, sin cobros fijos** (ver *Modelo comercial*). El plan por sucursal sigue en el código (Admin → Plan, acuerdo del portal) hasta que se retire.
-
-
-* **Precio**: `PLAN_PRICE_BS` (Bs150) por sucursal y por mes; 0 % de comisión por pedido.
-* **Meses pagados por Yango**: `PLAN_SPONSORED_MONTHS` (3) al empezar. **Permanencia**: `PLAN_MIN_PAID_MONTHS` (3) meses
-  pagados después del patrocinio; luego mes a mes.
-* El partner ve en su panel (`/<slug>/portal`) el plan, el calendario de cobros, sus sucursales y el **acuerdo**, que acepta
-  con su nombre (se guarda fecha, IP y versión). Cobro manual por QR o transferencia (`PLAN_PAYMENT_INFO`).
-* El equipo ajusta cada plan en Admin → Restaurantes → **Plan** (precio, sucursales, meses de Yango, permanencia, inicio y
-  «pagado hasta»). Estados: pagado por Yango, activo, pago pendiente, sin aceptar.
-* El texto del acuerdo está en `app/templates/portal.html` (versión `billing.TERMS_VERSION`): revisarlo con un abogado
-  antes de usarlo con clientes; si cambia, subir la versión para que se vuelva a aceptar.
+Sin plan mensual: el restaurante paga solo la comisión por pedido (`COMMISSION_RATE`, 3 %), sin instalación ni
+permanencia. En su portal, **Comisiones** muestra la del mes en curso y el historial por mes (pedidos cancelados no
+cuentan), y el **Acuerdo** de servicio con esas condiciones, que acepta con su nombre (se guarda fecha, IP y versión,
+`billing.TERMS_VERSION`; si cambia el texto se sube la versión y se vuelve a pedir). Revisar el texto con un abogado
+antes de usarlo con clientes. Cómo se liquida: `COMMISSION_PAYMENT_INFO`.
 
 ## Sesiones de las cuentas
 

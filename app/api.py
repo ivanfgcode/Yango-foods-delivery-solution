@@ -128,7 +128,7 @@ async def home(request: Request):
     demo = next((p["slug"] for p in partners.all_partners() if p["enabled"]), None)
     return templates.TemplateResponse(request, "landing.html", {
         "commission": f"{settings.commission_rate * 100:g}".replace(".", ","), "tiers": pricing.public_tiers(),
-        "price": settings.plan_price_bs, "currency": settings.currency, "demo": demo,
+        "currency": settings.currency, "demo": demo,
         "whatsapp": re.sub(r"\D", "", settings.sales_whatsapp)})
 
 
@@ -407,7 +407,8 @@ async def portal_page(request: Request, slug: str):
     logged = auth.can_portal(request, slug)
     return templates.TemplateResponse(request, "portal.html", {
         "p": p, "logged": logged, "fonts": list(themes.FONTS), "choices": themes.CHOICES,
-        "defaults": themes.DEFAULTS, "currency": settings.currency})
+        "defaults": themes.DEFAULTS, "currency": settings.currency,
+        "commission": f"{pricing.commission_rate(p) * 100:g}".replace(".", ",")})
 
 
 @app.post("/api/{slug}/portal/login")
@@ -469,7 +470,7 @@ async def portal_summary(request: Request, slug: str, days: int = 30):
 async def portal_billing(request: Request, slug: str):
     auth.require_portal(request, slug)
     p = _partner_or_404(slug, public=False)
-    return {**billing.summary(p), "payment_info": settings.plan_payment_info}
+    return billing.summary(p)
 
 
 @app.post("/api/{slug}/portal/billing/accept")
@@ -481,7 +482,7 @@ async def portal_billing_accept(request: Request, slug: str, body: Dict[str, Any
         raise HTTPException(422, "Marca la casilla para aceptar el acuerdo")
     ip = request.headers.get("x-forwarded-for", "").split(",")[0].strip() or (request.client.host if request.client else "")
     try:
-        return {**billing.accept(p, str(body.get("name") or ""), ip), "payment_info": settings.plan_payment_info}
+        return billing.accept(p, str(body.get("name") or ""), ip)
     except ValueError as e:
         raise HTTPException(422, str(e))
 
@@ -651,9 +652,7 @@ async def admin_partners(request: Request):
         p["menu"] = dict(m) if m else None
         p["placement_enabled"] = partners.placement_enabled(p)
         b = billing.summary(p)
-        p["billing"] = {k: b[k] for k in ("state", "branches", "monthly_bs", "price_bs", "sponsored_months", "min_paid_months",
-                                          "start_date", "sponsored_until", "commitment_until", "paid_until", "due_bs",
-                                          "accepted_at", "accepted_name", "branches_contracted", "free_forever", "free_note")}
+        p["billing"] = {k: b[k] for k in ("state", "accepted_at", "accepted_name", "commission_rate", "month_commission")}
         out.append(p)
     return out
 
@@ -683,17 +682,6 @@ async def admin_update_partner(request: Request, slug: str, body: Dict[str, Any]
     p.pop("portal_password_hash", None)
     p["placement_enabled"] = partners.placement_enabled(p)
     return p
-
-
-@app.put("/api/admin/partners/{slug}/billing")
-async def admin_partner_billing(request: Request, slug: str, body: Dict[str, Any] = Body(...)):
-    """Plan del partner: precio por sucursal, sucursales, meses que paga Yango, permanencia, inicio, pagado hasta."""
-    auth.require_admin(request)
-    p = _partner_or_404(slug, public=False)
-    try:
-        return billing.update(p, body)
-    except (ValueError, TypeError) as e:
-        raise HTTPException(422, f"Dato inválido: {e}")
 
 
 @app.post("/api/admin/partners/{slug}/password")

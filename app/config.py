@@ -72,12 +72,11 @@ class Settings:
         self.quote_cache_seconds = _int("QUOTE_CACHE_SECONDS", 90)
         self.quote_precision = _int("QUOTE_PRECISION", 4)  # decimales de lat/lon para la caché (~11 m)
         self.menu_sync_minutes = _int("MENU_SYNC_MINUTES", 15)
-        # Plan de carta.bo (valores por defecto para cada partner nuevo; el equipo los ajusta en el admin).
-        self.plan_price_bs = _float("PLAN_PRICE_BS", 150.0)
-        self.plan_sponsored_months = _int("PLAN_SPONSORED_MONTHS", 3)
-        self.plan_min_paid_months = _int("PLAN_MIN_PAID_MONTHS", 3)
         self.sales_whatsapp = os.getenv("SALES_WHATSAPP", "")  # número de ventas para el botón de la landing (591...)
-        self.plan_payment_info = os.getenv("PLAN_PAYMENT_INFO", "Te enviamos el QR de pago por WhatsApp al inicio de cada mes.")
+        # Cómo se liquida la comisión (lo ve el restaurante en su portal).
+        self.commission_payment_info = os.getenv(
+            "COMMISSION_PAYMENT_INFO",
+            "La comisión se liquida con Yango a fin de mes. En Pedidos ves la comisión de cada pedido.")
         # Upselling: pedidos de los últimos N días, mínimo de veces juntos para sugerir, caché de las cuentas.
         self.upsell_days = _int("UPSELL_DAYS", 90)
         self.upsell_min_pairs = _int("UPSELL_MIN_PAIRS", 2)

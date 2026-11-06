@@ -137,7 +137,7 @@ document.getElementById("f").onsubmit = async (e) => { e.preventDefault();
         <label class="f" style="flex:1 1 140px"><span>Contraseña portal</span><input name="password" type="password" minlength="8"></label>
         <button class="btn acc" style="margin-bottom:12px">Crear</button>
       </form><div class="msg" id="npMsg"></div></div>
-    <div class="card"><h2>Restaurantes</h2><div class="tw"><table><thead><tr><th>Restaurante</th><th>Cadena / cuenta (bot)</th><th>Local Yango</th><th>Menú</th><th>Plan / comisión</th><th>Estado</th><th></th></tr></thead><tbody id="pb"></tbody></table></div></div>
+    <div class="card"><h2>Restaurantes</h2><div class="tw"><table><thead><tr><th>Restaurante</th><th>Cadena / cuenta (bot)</th><th>Local Yango</th><th>Menú</th><th>Comisión</th><th>Estado</th><th></th></tr></thead><tbody id="pb"></tbody></table></div></div>
   </section>
 
   <section id="t-accounts" class="sec" hidden>
@@ -614,13 +614,11 @@ document.getElementById("f").onsubmit = async (e) => { e.preventDefault();
   $("#pkClose").onclick = cerrarPick; $("#pkFondo").onclick = cerrarPick;
   document.addEventListener("keydown", (e) => { if (e.key === "Escape" && pk) cerrarPick(); });
 
-  const PLAN = {patrocinado: ["ok", "pagado por Yango"], activo: ["ok", "activo"], pago_pendiente: ["manual", "pago pendiente"], sin_aceptar: ["revision", "sin aceptar"], cortesia: ["ok", "gratis permanente"]};
-  function planCell(b) {
+  // Acuerdo de carta.bo (comisión por pedido): si el restaurante ya lo aceptó y quién.
+  function termsCell(b) {
     if (!b) return "—";
-    const [cls, txt] = PLAN[b.state] || ["", b.state];
-    return `<span class="pill ${cls}">${txt}</span><br><span class="muted">${b.branches} suc. · ${CUR}${b.monthly_bs}/mes · Yango hasta ${esc(b.sponsored_until)}</span>
-      ${b.free_forever ? `<br><span class="muted">cortesía${b.free_note ? `: ${esc(b.free_note)}` : ""}</span>` : ""}
-      ${b.due_bs ? `<br><span class="pill manual">debe ${CUR}${b.due_bs}</span>` : ""}${b.accepted_name ? `<br><span class="muted">aceptó: ${esc(b.accepted_name)}</span>` : ""}`;
+    return b.state === "activo" ? `<span class="pill ok">acuerdo aceptado</span>${b.accepted_name ? `<br><span class="muted">${esc(b.accepted_name)}</span>` : ""}`
+      : `<span class="pill revision">acuerdo sin aceptar</span>`;
   }
   let CHAINS = [], COMM = 0.03;
   const chainName = (id) => (CHAINS.find((c) => c.id === id) || {}).name || `#${id}`;
@@ -637,15 +635,14 @@ document.getElementById("f").onsubmit = async (e) => { e.preventDefault();
       <td>${p.chain_id ? `<b>${esc(chainName(p.chain_id))}</b><br>` : ""}<span class="mono">${esc(p.account)}</span><br><button class="btn ghost sm" data-vendor="${esc(p.slug)}" data-cur="${esc(p.vendor_account || "")}" title="Cuenta de la vendor app del local: de ahí se lee el estado de los pedidos">${p.vendor_account ? `vendor: ${esc(p.vendor_account)}` : "+ vendor app"}</button></td>
       <td>${p.place_slug ? `<span class="mono">${esc(p.place_slug)}</span><br><span class="muted">${esc(p.place_address || "")}</span>` : `<span class="muted">sin resolver</span>`}<br><a class="muted" href="${esc(p.yango_url || "#")}" target="_blank" rel="noopener">${esc((p.yango_url || "").slice(0, 60))}</a></td>
       <td>${p.menu ? `${esc(when(p.menu.synced_at))}${p.menu.error ? `<br><span class="pill error">${esc(p.menu.error)}</span>` : ""}` : `<span class="muted">—</span>`}</td>
-      <td>${planCell(p.billing)}<div class="muted" style="margin-top:4px">Comisión ${p.commission_rate != null ? `${(p.commission_rate * 100).toLocaleString("es-BO")} %` : `${(COMM * 100).toLocaleString("es-BO")} % (general)`} <button class="btn ghost sm" data-comm="${esc(p.slug)}">Cambiar</button></div></td>
+      <td>${termsCell(p.billing)}<div class="muted" style="margin-top:4px">Comisión ${p.commission_rate != null ? `${(p.commission_rate * 100).toLocaleString("es-BO")} %` : `${(COMM * 100).toLocaleString("es-BO")} % (general)`} <button class="btn ghost sm" data-comm="${esc(p.slug)}">Cambiar</button></div></td>
       <td><span class="pill ${p.enabled ? "ok" : "cancelado"}">${p.enabled ? "activo" : "inactivo"}</span> ${p.accepting_orders ? "" : `<span class="pill manual">pausado</span>`}
         <br><span class="pill ${p.placement_enabled ? "ok" : "manual"}" title="${p.auto_place === null ? "Sigue el ajuste general" : "Ajuste propio del restaurante"}">${p.placement_enabled ? "bot coloca" : "carga manual"}</span></td>
-      <td style="white-space:nowrap"><button class="btn sm acc" data-editp="${esc(p.slug)}">Editar</button> <button class="btn sm" data-plan="${esc(p.slug)}">Plan</button> <button class="btn sm" data-sync="${esc(p.slug)}">Sincronizar</button> <button class="btn ghost sm" data-pw="${esc(p.slug)}">Contraseña</button> <button class="btn ghost sm" data-toggle="${esc(p.slug)}" data-on="${p.enabled ? 1 : 0}">${p.enabled ? "Desactivar" : "Activar"}</button></td></tr>`).join("")
+      <td style="white-space:nowrap"><button class="btn sm acc" data-editp="${esc(p.slug)}">Editar</button> <button class="btn sm" data-sync="${esc(p.slug)}">Sincronizar</button> <button class="btn ghost sm" data-pw="${esc(p.slug)}">Contraseña</button> <button class="btn ghost sm" data-toggle="${esc(p.slug)}" data-on="${p.enabled ? 1 : 0}">${p.enabled ? "Desactivar" : "Activar"}</button></td></tr>`).join("")
       || `<tr><td colspan="7" class="muted">Sin restaurantes.</td></tr>`;
     $$("[data-editp]").forEach((b) => (b.onclick = () => {
       const tr = b.closest("tr"), next = tr.nextElementSibling;
       if (next && next.classList.contains("edit-row")) return next.remove();
-      if (next && next.classList.contains("plan-row")) next.remove();
       const p = rows.find((x) => x.slug === b.dataset.editp);
       const ap = p.auto_place === null || p.auto_place === undefined ? "" : String(p.auto_place);
       tr.insertAdjacentHTML("afterend", `<tr class="edit-row"><td colspan="7"><form class="row" style="align-items:flex-end">
@@ -671,40 +668,6 @@ document.getElementById("f").onsubmit = async (e) => { e.preventDefault();
         if (body.auto_place === "1" && p.auto_place !== 1 && !confirm("Con «Bot automático» los pedidos se crean de verdad en Yango con la cuenta " + body.account + ". ¿Seguir?")) return;
         try { await post(`/partners/${p.slug}`, body, "PUT"); partnersTab(); stats(); }
         catch (err) { const m = form.querySelector(".msg"); m.className = "msg bad"; m.textContent = err.message; }
-      };
-    }));
-    $$("[data-plan]").forEach((b) => (b.onclick = () => {
-      const tr = b.closest("tr"), next = tr.nextElementSibling;
-      if (next && next.classList.contains("edit-row")) next.remove();
-      if (next && next.classList.contains("plan-row")) return next.remove();
-      const pb = rows.find((x) => x.slug === b.dataset.plan).billing;
-      tr.insertAdjacentHTML("afterend", `<tr class="plan-row"><td colspan="7"><div class="row" style="align-items:flex-end">
-        <label class="f" style="width:130px;margin:0"><span>Bs por sucursal</span><input name="price_bs" type="number" min="0" step="1" value="${pb.price_bs}"></label>
-        <label class="f" style="width:130px;margin:0"><span>Sucursales (vacío = auto)</span><input name="branches" type="number" min="1" value="${pb.branches_contracted ?? ""}" placeholder="${pb.branches}"></label>
-        <label class="f" style="width:130px;margin:0"><span>Meses pagados por Yango</span><input name="sponsored_months" type="number" min="0" value="${pb.sponsored_months}"></label>
-        <label class="f" style="width:130px;margin:0"><span>Permanencia (meses)</span><input name="min_paid_months" type="number" min="0" value="${pb.min_paid_months}"></label>
-        <label class="f" style="width:150px;margin:0"><span>Inicio</span><input name="start_date" type="date" value="${pb.start_date}"></label>
-        <label class="f" style="width:150px;margin:0"><span>Pagado hasta</span><input name="paid_until" type="date" value="${pb.paid_until || ""}"></label>
-        <button class="btn acc sm" data-save-plan="${esc(b.dataset.plan)}">Guardar</button><span class="msg"></span></div>
-        <div class="row" style="margin-top:12px">
-          <span class="muted">Meses gratis (Yango hasta ${esc(pb.sponsored_until)}):</span>
-          <button class="btn sm" data-ext="1">+1 mes</button><button class="btn sm" data-ext="3">+3 meses</button><button class="btn sm" data-ext="6">+6 meses</button><button class="btn ghost sm" data-ext="-1">−1 mes</button>
-          <span style="width:16px"></span>
-          <input name="free_note" placeholder="Motivo de la cortesía (opcional)" value="${esc(pb.free_note || "")}" style="width:240px">
-          <button class="btn sm ${pb.free_forever ? "" : "acc"}" data-free="${pb.free_forever ? 0 : 1}">${pb.free_forever ? "Quitar gratis permanente" : "Gratis permanente"}</button>
-        </div></td></tr>`);
-      const row = tr.nextElementSibling;
-      const quick = async (body) => { try { await post(`/partners/${b.dataset.plan}/billing`, body, "PUT"); partnersTab(); } catch (e) { const m = row.querySelector(".msg"); m.className = "msg bad"; m.textContent = e.message; } };
-      row.querySelectorAll("[data-ext]").forEach((x) => (x.onclick = () => quick({extend_months: +x.dataset.ext})));
-      row.querySelector("[data-free]").onclick = (e) => {
-        const on = e.currentTarget.dataset.free === "1";
-        if (on && !confirm("¿Dejar el plan de este restaurante gratis de forma permanente? No se le generarán cobros hasta que lo quites.")) return;
-        quick({free_forever: on, free_note: row.querySelector("input[name=free_note]").value});
-      };
-      row.querySelector("[data-save-plan]").onclick = async () => {
-        const body = Object.fromEntries([...row.querySelectorAll("input:not([name=free_note])")].map((i) => [i.name, i.value === "" ? null : (i.type === "number" ? +i.value : i.value)]));
-        try { await post(`/partners/${b.dataset.plan}/billing`, body, "PUT"); partnersTab(); }
-        catch (e) { const m = row.querySelector(".msg"); m.className = "msg bad"; m.textContent = e.message; }
       };
     }));
     $$("[data-comm]").forEach((b) => (b.onclick = async () => {

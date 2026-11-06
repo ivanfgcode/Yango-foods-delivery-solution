@@ -23,14 +23,14 @@
     {{ logo() }}
     <div>
       <h1>Tu web de pedidos, <em>con el delivery de Yango.</em></h1>
-      <p class="lead">Menú sincronizado con Yango, envío cotizado en vivo y 0 % de comisión por pedido. Tú cocinas; los mensajeros de Yango entregan.</p>
+      <p class="lead">Menú sincronizado con Yango, envío cotizado en vivo y solo {{ commission }} % por pedido, sin cuotas fijas. Tú cocinas; los mensajeros de Yango entregan.</p>
       <div class="feats">
         <div class="feat">{{ ic("store") }}<span>Tu marca, tu web<small>Logo, colores, fotos, TikTok y más vendidos.</small></span></div>
         <div class="feat">{{ ic("bike") }}<span>Delivery de Yango en cada sucursal<small>El cliente ve el precio y el tiempo reales de su dirección.</small></span></div>
         <div class="feat">{{ ic("chart-line") }}<span>Ventas claras<small>Pedidos, ticket medio, horas pico y lo que se pide junto.</small></span></div>
       </div>
     </div>
-    <span class="sponsor">{{ ic("gift") }}<span>Tus primeros <b>3 meses los paga Yango</b></span></span>
+    <span class="sponsor">{{ ic("wallet") }}<span>Solo <b>{{ commission }} % por pedido</b> · sin cuotas fijas</span></span>
   </section>
   <section class="auth-form">
     <div class="auth-card">
@@ -65,11 +65,11 @@ document.getElementById("loginForm").onsubmit = async (e) => {
       <button data-s="tiktok">{{ ic("play") }}TikTok</button>
       <div class="nav-h">Cuenta</div>
       <button data-s="branches">{{ ic("store") }}Sucursales</button>
-      <button data-s="plan">{{ ic("credit-card") }}Plan y facturación</button>
+      <button data-s="plan">{{ ic("wallet") }}Comisiones</button>
       <button data-s="terms">{{ ic("file-text") }}Acuerdo<span class="tag" id="navTerms" hidden>1</span></button>
     </nav>
     <div class="side-foot">
-      <div class="plan-mini" id="planMini" hidden><b id="planMiniT">—</b><small id="planMiniS"></small><div class="bar-mini"><i id="planMiniBar" style="width:0"></i></div></div>
+      <div class="plan-mini" id="planMini" hidden><b id="planMiniT">—</b><small id="planMiniS"></small></div>
       <div class="nav"><a class="btn sm" id="chainLink" href="/cadena" hidden>← Mis locales</a><button id="logout">{{ ic("log-out") }}Salir</button></div>
     </div>
   </aside>
@@ -88,12 +88,7 @@ document.getElementById("loginForm").onsubmit = async (e) => {
     <div class="content">
       <!-- inicio -->
       <section data-sec="home" class="grid">
-        <div class="alert" id="termsAlert" hidden>{{ ic("circle-alert") }}<span>Acepta el acuerdo de carta.bo para activar tu plan.</span><span class="sp"></span><button class="btn sm pri" data-go="terms">Ver acuerdo</button></div>
-        <div class="hero-plan" id="heroPlan" hidden>
-          <div><span class="eyebrow">{{ ic("gift") }}Plan Pro · pagado por Yango</span>
-            <h2 id="heroTitle">—</h2><p id="heroText"></p><div class="bar"><i id="heroBar" style="width:0"></i></div></div>
-          <button class="btn" data-go="plan">Ver mi plan</button>
-        </div>
+        <div class="alert" id="termsAlert" hidden>{{ ic("circle-alert") }}<span>Acepta el acuerdo de carta.bo: {{ commission }} % por pedido, sin cuotas fijas.</span><span class="sp"></span><button class="btn sm pri" data-go="terms">Ver acuerdo</button></div>
         <div class="row" style="justify-content:space-between">
           <div class="seg" id="range"><button data-d="7">7 días</button><button data-d="30" class="on">30 días</button><button data-d="90">90 días</button></div>
           <span class="muted" id="rangeNote"></span>
@@ -188,38 +183,36 @@ document.getElementById("loginForm").onsubmit = async (e) => {
       <section data-sec="branches" hidden>
         <div class="card"><div class="card-h"><div><h2>Tus sucursales</h2><p>Cada cliente ve la sucursal que Yango asigna a su dirección, con su menú y su envío</p></div><span class="pill" id="brCount">—</span></div>
           <div class="list" id="brList"></div>
-          <p class="muted" style="margin-top:14px">Si falta alguna sucursal o tienes una nueva, escríbenos y la agregamos a tu plan.</p></div>
+          <p class="muted" style="margin-top:14px">Si falta alguna sucursal o tienes una nueva, escríbenos y la agregamos.</p></div>
       </section>
 
-      <!-- plan -->
+      <!-- comisiones -->
       <section data-sec="plan" class="grid" hidden>
         <div class="grid g2">
           <div class="price-card">
-            <div class="plan-name"><span>carta.bo · Pro</span><span class="pill patrocinado" id="planState">—</span></div>
-            <div class="price"><b id="pPrice">—</b><span>por sucursal / mes</span></div>
-            <div style="color:var(--side-muted)">0 % de comisión por pedido · sin costo de instalación</div>
+            <div class="plan-name"><span>carta.bo</span><span class="pill" id="planState">—</span></div>
+            <div class="price"><b id="pPrice">{{ commission }} %</b><span>por pedido</span></div>
+            <div style="color:var(--side-muted)">Sin cuota mensual · sin instalación · sin permanencia</div>
             <div class="incl">
               <div>{{ ic("circle-check") }}<span>Web de pedidos con tu marca y tu dominio</span></div>
               <div>{{ ic("circle-check") }}<span>Menú y precios sincronizados con Yango, por sucursal</span></div>
-              <div>{{ ic("circle-check") }}<span>Envío cotizado en vivo y mensajeros de Yango</span></div>
+              <div>{{ ic("circle-check") }}<span>Envío por distancia cotizado en vivo y mensajeros de Yango</span></div>
               <div>{{ ic("circle-check") }}<span>Más vendidos, TikTok y recomendaciones automáticas</span></div>
               <div>{{ ic("circle-check") }}<span>Panel de pedidos y ventas, soporte por WhatsApp</span></div>
             </div>
           </div>
-          <div class="card"><div class="card-h"><div><h2>Tu plan</h2><p id="pSince">—</p></div></div>
+          <div class="card"><div class="card-h"><div><h2>Este mes</h2><p id="pSince">—</p></div></div>
             <div class="calc">
-              <div class="line"><span>Sucursales</span><b id="pBranches">—</b></div>
-              <div class="line"><span>Precio por sucursal</span><b id="pUnit">—</b></div>
-              <div class="line"><span>Mensual</span><b id="pMonthly">—</b></div>
-              <div class="line"><span>Primeros <span id="pSpM">3</span> meses</span><b><span class="strike" id="pSpValue">—</span><span class="pill yango">Pagado por Yango</span></b></div>
-              <div class="line total"><span>Pagas hoy</span><b id="pDue">—</b></div>
+              <div class="line"><span>Pedidos</span><b id="pOrders">—</b></div>
+              <div class="line"><span>Ventas (productos)</span><b id="pSales">—</b></div>
+              <div class="line"><span>Comisión</span><b id="pRate">—</b></div>
+              <div class="line total"><span>Comisión del mes</span><b id="pDue">—</b></div>
             </div>
             <p class="muted" id="payInfo" style="margin-top:12px"></p>
           </div>
         </div>
-        <div class="timeline" id="timeline"></div>
-        <div class="card"><div class="card-h"><div><h2>Calendario de cobros</h2><p>Mes a mes, por adelantado</p></div></div>
-          <div class="tw"><table><thead><tr><th>Mes</th><th>Periodo</th><th>Importe</th><th>Estado</th></tr></thead><tbody id="schedBody"></tbody></table></div></div>
+        <div class="card"><div class="card-h"><div><h2>Comisión por mes</h2><p>Pedidos cancelados no cuentan. El envío no lleva comisión.</p></div></div>
+          <div class="tw"><table><thead><tr><th>Mes</th><th>Pedidos</th><th>Ventas</th><th>Comisión</th></tr></thead><tbody id="schedBody"></tbody></table></div></div>
       </section>
 
       <!-- acuerdo -->
@@ -228,15 +221,14 @@ document.getElementById("loginForm").onsubmit = async (e) => {
           <h2>Acuerdo de servicio · carta.bo</h2>
           <div class="meta">Versión <span id="tVersion">—</span> · {{ p.name }}</div>
           <ol>
-            <li><b>El servicio</b><p>carta.bo te da una web de pedidos con tu marca. El menú y los precios se toman de tu restaurante en Yango, y el delivery lo hacen los mensajeros de Yango. carta.bo no cobra comisión por pedido.</p></li>
-            <li><b>Precio</b><p>El plan Pro cuesta <span class="t-price">—</span> por sucursal y por mes. Tu plan incluye <span class="t-branches">—</span>, en total <span class="t-monthly">—</span> al mes. Los precios no incluyen impuestos si correspondieran.</p></li>
-            <li><b>Meses pagados por Yango</b><p>Los primeros <span class="t-sp">—</span> meses (del <span class="t-start">—</span> al <span class="t-spend">—</span>) los paga Yango como apoyo a tu restaurante. No pagas nada en ese periodo.</p></li>
-            <li><b>Permanencia mínima</b><p>Al terminar los meses pagados por Yango, el plan tiene una permanencia mínima de <span class="t-min">—</span> meses pagados (hasta el <span class="t-commit">—</span>). Después continúa mes a mes.</p></li>
-            <li><b>Pago</b><p>Se paga por adelantado al inicio de cada mes, por QR o transferencia. Si un mes queda sin pagar 10 días después de su inicio, la web puede pausarse hasta regularizarlo.</p></li>
-            <li><b>Delivery y cobro al cliente</b><p>El cliente paga sus productos y el envío al mensajero de Yango, en efectivo o QR. Las condiciones del delivery y de tu restaurante en Yango siguen siendo las de tu acuerdo con Yango.</p></li>
-            <li><b>Baja</b><p>Después de la permanencia mínima puedes dar de baja el plan avisando con 30 días. Si das de baja antes, se cobran los meses de permanencia que falten.</p></li>
+            <li><b>El servicio</b><p>carta.bo te da una web de pedidos con tu marca. El menú y los precios se toman de tu restaurante en Yango, y el delivery lo hacen los mensajeros de Yango.</p></li>
+            <li><b>Comisión</b><p>Por cada pedido que entra por tu web pagas una comisión del <span class="t-pct">—</span> % sobre el valor de los productos. El envío no lleva comisión. No hay cuota mensual ni costo de instalación. Los precios no incluyen impuestos si correspondieran.</p></li>
+            <li><b>Pedidos cancelados</b><p>Los pedidos cancelados no generan comisión.</p></li>
+            <li><b>Liquidación</b><p>La comisión se liquida con Yango a fin de cada mes. En tu panel ves la comisión de cada pedido y el total del mes.</p></li>
+            <li><b>Delivery y cobro al cliente</b><p>El cliente paga sus productos y el envío al mensajero de Yango, en efectivo o QR. El envío se calcula por distancia y demanda, con un mínimo y un máximo que el cliente ve antes de pedir. Las condiciones de tu restaurante en Yango siguen siendo las de tu acuerdo con Yango.</p></li>
+            <li><b>Sin permanencia</b><p>Puedes dejar de usar carta.bo cuando quieras, avisándonos. Solo se liquida la comisión de los pedidos ya recibidos.</p></li>
             <li><b>Datos</b><p>Los datos de tus clientes (nombre, teléfono y dirección) se usan solo para entregar sus pedidos y no se venden a terceros.</p></li>
-            <li><b>Cambios</b><p>Cualquier cambio de precio se avisa con 30 días de anticipación y no afecta a la permanencia en curso.</p></li>
+            <li><b>Cambios</b><p>Cualquier cambio en el porcentaje de comisión se avisa con 30 días de anticipación.</p></li>
           </ol>
           <div class="accept" id="acceptBox">
             <label class="f" style="margin:0"><span>Nombre completo de quien acepta</span><input id="acName" maxlength="80" placeholder="Nombre y apellido"></label>
@@ -266,7 +258,7 @@ document.getElementById("loginForm").onsubmit = async (e) => {
   // ---------------------------------------------------------------- navegación
   const TITLES = {home: ["Inicio", "Resumen de tu web de pedidos"], orders: ["Pedidos", "Lo que entra por tu web"], design: ["Diseño", "Así se ve tu web"],
     texts: ["Textos", "Frases, horario y contacto"], tiktok: ["TikTok", "Videos con el producto que aparece"], branches: ["Sucursales", "Dónde entregas"],
-    plan: ["Plan y facturación", "carta.bo · Pro"], terms: ["Acuerdo", "Condiciones del servicio"]};
+    plan: ["Comisiones", "Lo que pagas por pedido"], terms: ["Acuerdo", "Condiciones del servicio"]};
   function go(s) {
     sec = s; $$("#nav button[data-s]").forEach((b) => b.classList.toggle("on", b.dataset.s === s));
     $$("[data-sec]").forEach((el) => (el.hidden = el.dataset.sec !== s));
@@ -329,7 +321,7 @@ document.getElementById("loginForm").onsubmit = async (e) => {
     const rows = await API("/orders");
     $("#ordersBody").innerHTML = rows.map((o) => `<tr><td>${esc(new Date(o.created_at).toLocaleString("es-BO", {dateStyle: "short", timeStyle: "short"}))}</td><td class="mono">${esc(o.number)}</td>
       <td>${esc(o.customer)}<br><span class="muted">${esc(o.phone)}</span>${o.invoice ? `<br><span class="muted">Factura: NIT ${esc(o.invoice.nit)} · ${esc(o.invoice.razon_social)}</span>` : ""}</td><td>${o.items.map((i) => `${i.quantity}× ${esc(i.name)}`).join("<br>")}</td>
-      <td class="mono">${money(o.total)}</td><td class="mono">${money(o.commission || 0)}</td><td>${esc(o.payment)}${o.channel === "telefono" ? "<br><span class=muted>📞 teléfono</span>" : ""}</td><td><span class="pill ${esc(o.status)}">${esc(ST[o.status] || o.status)}</span></td><td class="mono">${esc(o.yango_order_nr || "")}</td></tr>`).join("")
+      <td class="mono">${money(o.total)}</td><td class="mono">${money2(o.commission || 0)}</td><td>${esc(o.payment)}${o.channel === "telefono" ? "<br><span class=muted>📞 teléfono</span>" : ""}</td><td><span class="pill ${esc(o.status)}">${esc(ST[o.status] || o.status)}</span></td><td class="mono">${esc(o.yango_order_nr || "")}</td></tr>`).join("")
       || `<tr><td colspan="9" class="empty">Todavía no hay pedidos.</td></tr>`;
     $("#recentBody").innerHTML = rows.slice(0, 6).map((o) => `<tr><td><b>${esc(o.customer)}</b><br><span class="muted">${o.items.map((i) => `${i.quantity}× ${esc(i.name)}`).join(", ")}</span></td>
       <td class="mono" style="text-align:right">${money(o.total)}<br><span class="pill ${esc(o.status)}">${esc(ST[o.status] || o.status)}</span></td></tr>`).join("")
@@ -444,54 +436,40 @@ document.getElementById("loginForm").onsubmit = async (e) => {
     $("#ttAdd").disabled = false;
   };
 
-  // ---------------------------------------------------------------- plan, sucursales y acuerdo
-  const STATE = {patrocinado: "Pagado por Yango", activo: "Activo", pago_pendiente: "Pago pendiente", sin_aceptar: "Falta aceptar el acuerdo", cortesia: "Gratis · cortesía"};
-  const SCHED = {cortesia: ["patrocinado", "Gratis"], patrocinado: ["patrocinado", "Pagado por Yango"], pagado: ["pagado", "Pagado"], por_pagar: ["por_pagar", "Por pagar"], proximo: ["", "Próximo"]};
+  // ---------------------------------------------------------------- comisiones, sucursales y acuerdo
+  const mes = (m) => { const [y, mm] = m.split("-"); return new Date(+y, +mm - 1, 15).toLocaleDateString("es-BO", {month: "long", year: "numeric"}); };
+  // La comisión tiene centavos (el formateador general no muestra decimales).
+  const money2 = (n) => `${CUR}${Number(n || 0).toLocaleString("es-BO", {minimumFractionDigits: 2, maximumFractionDigits: 2})}`;
   function paintBilling() {
-    const b = bill, pct = Math.min(100, Math.round((1 - b.days_left_sponsored / b.sponsored_total_days) * 100));
-    // menú lateral y avisos
+    const b = bill, accepted = b.state === "activo", pct = `${String(b.commission_pct).replace(".", ",")} %`;
+    // menú lateral y aviso
     $("#planMini").hidden = false;
-    $("#planMiniT").textContent = b.state === "patrocinado" ? "Plan Pro · pagado por Yango" : `Plan Pro · ${STATE[b.state]}`;
-    $("#planMiniS").textContent = b.free_forever ? "Sin cobros mensuales" : b.state === "patrocinado" ? `Quedan ${b.days_left_sponsored} días · hasta el ${fecha(b.sponsored_until)}` : `${money(b.monthly_bs)} al mes`;
-    $("#planMiniBar").style.width = `${b.state === "patrocinado" ? pct : 100}%`;
-    const accepted = !!b.accepted_at && b.terms_current;
+    $("#planMiniT").textContent = `Comisión ${pct} por pedido`;
+    $("#planMiniS").textContent = `Este mes: ${money2(b.month_commission)} · ${F(b.month_orders)} pedidos`;
     $("#termsAlert").hidden = accepted; $("#navTerms").hidden = accepted;
-    $("#heroPlan").hidden = !(b.days_left_sponsored > 0) || b.free_forever;
-    $("#heroTitle").textContent = `Yango te regala ${b.sponsored_months} meses de carta.bo`;
-    $("#heroText").textContent = `Tu plan Pro (${money(b.sponsored_value_bs)}) está pagado hasta el ${fecha(b.sponsored_until)} · quedan ${b.days_left_sponsored} días`;
-    $("#heroBar").style.width = `${pct}%`;
-    // plan
-    $("#planState").textContent = STATE[b.state]; $("#planState").className = `pill ${b.state}`;
-    $("#pPrice").textContent = money(b.price_bs);
-    $("#pSince").textContent = b.free_forever ? `Desde el ${fecha(b.start_date)} · plan bonificado, sin permanencia` : `Desde el ${fecha(b.start_date)} · permanencia hasta el ${fecha(b.commitment_until)}`;
-    $("#pBranches").textContent = b.branches; $("#pUnit").textContent = money(b.price_bs); $("#pMonthly").textContent = money(b.monthly_bs);
-    $("#pSpM").textContent = b.sponsored_months; $("#pSpValue").textContent = money(b.sponsored_value_bs);
-    $("#pDue").textContent = money(b.due_bs);
-    $("#payInfo").textContent = b.free_forever ? "Tu plan está bonificado: no tienes cobros mensuales mientras dure la cortesía." : b.payment_info;
-    $("#timeline").innerHTML = b.free_forever ? `<div><small>Meses 1–${b.sponsored_months}</small><b>Pagado por Yango</b><p>${fecha(b.start_date)} – ${fecha(b.sponsored_until)}.</p></div>
-      <div><small>Después</small><b>Gratis · cortesía</b><p>Sin cobros mensuales ni permanencia mientras dure.</p></div>
-      <div><small>Precio normal</small><b>${money(b.monthly_bs)}/mes</b><p>Te avisamos con 30 días si la cortesía termina.</p></div>` : `<div><small>Meses 1–${b.sponsored_months}</small><b>Pagado por Yango</b><p>${fecha(b.start_date)} – ${fecha(b.sponsored_until)}. No pagas nada.</p></div>
-      <div><small>Meses ${b.sponsored_months + 1}–${b.sponsored_months + b.min_paid_months}</small><b>Permanencia mínima · ${money(b.monthly_bs)}/mes</b><p>Hasta el ${fecha(b.commitment_until)}.</p></div>
-      <div><small>Después</small><b>Mes a mes</b><p>Puedes dar de baja con 30 días de aviso.</p></div>`;
-    $("#schedBody").innerHTML = b.schedule.map((s) => { const [cls, txt] = SCHED[s.status];
-      return `<tr><td><b>Mes ${s.month}</b>${s.committed ? ` <span class="pill">Permanencia</span>` : ""}</td><td>${fecha(s.from)} – ${fecha(s.to)}</td>
-        <td class="mono">${s.sponsored || s.free ? `<span class="strike">${money(s.list_amount)}</span>${money(0)}` : money(s.amount)}</td><td><span class="pill ${cls}">${txt}</span></td></tr>`; }).join("");
+    // comisiones
+    $("#planState").textContent = accepted ? "Activo" : "Falta aceptar el acuerdo"; $("#planState").className = `pill ${accepted ? "activo" : "sin_aceptar"}`;
+    $("#pPrice").textContent = pct;
+    $("#pSince").textContent = mes(b.month);
+    $("#pOrders").textContent = F(b.month_orders); $("#pSales").textContent = money(b.month_sales);
+    $("#pRate").textContent = pct; $("#pDue").textContent = money2(b.month_commission);
+    $("#payInfo").textContent = b.payment_info;
+    $("#schedBody").innerHTML = b.months.map((m) => `<tr><td><b>${esc(mes(m.month))}</b></td><td>${F(m.orders)}</td><td class="mono">${money(m.subtotal)}</td><td class="mono">${money2(m.commission)}</td></tr>`).join("")
+      || `<tr><td colspan="4" class="empty">Todavía no hay pedidos.</td></tr>`;
     // sucursales
-    $("#brCount").textContent = `${b.branches} en tu plan · ${money(b.monthly_bs)}/mes`;
+    $("#brCount").textContent = `${b.branches} sucursal${b.branches > 1 ? "es" : ""}`;
     $("#brList").innerHTML = b.known_branches.map((x) => `<div class="li"><span class="ph">${icon("store")}</span><div class="bd"><b>${esc(x.name)}</b><span class="muted">${esc(x.address || "")}</span></div>
-      ${x.primary ? `<span class="pill">Principal</span>` : ""}<span class="pill ${b.state}">${STATE[b.state]}</span></div>`).join("")
+      ${x.primary ? `<span class="pill">Principal</span>` : ""}</div>`).join("")
       || `<p class="empty">Todavía no detectamos sucursales en Yango.</p>`;
     // acuerdo
-    const fill2 = (cls, v) => $$(cls).forEach((el) => (el.textContent = v));
-    fill2(".t-price", money(b.price_bs)); fill2(".t-branches", `${b.branches} sucursal${b.branches > 1 ? "es" : ""}`); fill2(".t-monthly", money(b.monthly_bs));
-    fill2(".t-sp", b.sponsored_months); fill2(".t-start", fecha(b.start_date)); fill2(".t-spend", fecha(b.sponsored_until));
-    fill2(".t-min", b.min_paid_months); fill2(".t-commit", fecha(b.commitment_until)); $("#tVersion").textContent = b.terms_version;
+    $$(".t-pct").forEach((el) => (el.textContent = String(b.commission_pct).replace(".", ",")));
+    $("#tVersion").textContent = b.terms_version;
     $("#acceptBox").hidden = accepted; $("#acceptedBox").hidden = !accepted;
     if (accepted) $("#acceptedText").textContent = `Aceptado por ${b.accepted_name} el ${new Date(b.accepted_at).toLocaleString("es-BO", {dateStyle: "long", timeStyle: "short"})}`;
   }
   $("#acBtn").onclick = async () => {
     try { bill = await API("/billing/accept", json("POST", {name: $("#acName").value, accept: $("#acCheck").checked})); paintBilling();
-      $("#acMsg").className = "msg ok"; $("#acMsg").textContent = "¡Listo! Tu plan está activo."; }
+      $("#acMsg").className = "msg ok"; $("#acMsg").textContent = "¡Listo! Acuerdo aceptado."; }
     catch (e) { $("#acMsg").className = "msg bad"; $("#acMsg").textContent = e.message; }
   };
 
