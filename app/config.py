@@ -57,6 +57,16 @@ class Settings:
         # Diferencia máxima (Bs) entre el envío cotizado al cliente y el que muestra Yango al pagar.
         self.fee_tolerance = _float("FEE_TOLERANCE", 2.0)
 
+        # Modelo comercial: comisión sobre el subtotal (la paga el restaurante a Yango), sin tarifas fijas al cliente.
+        self.commission_rate = _float("COMMISSION_RATE", 0.03)
+        self.charge_service_fee = _bool("CHARGE_SERVICE_FEE", False)
+        # Envío: model = tramos por distancia (mín–máx según distancia y demanda) | yango = el envío que cotiza Yango.
+        self.delivery_fee_mode = os.getenv("DELIVERY_FEE_MODE", "model")
+        # "hasta_km:min-max" separados por coma; el último tramo con "inf". Bs.
+        self.delivery_tiers = os.getenv("DELIVERY_TIERS", "1:5-10,3:10-15,inf:15-25")
+        self.delivery_max_km = _float("DELIVERY_MAX_KM", 8.0)     # distancia a la que el último tramo llega a su máximo
+        self.demand_weight = _float("DELIVERY_DEMAND_WEIGHT", 0.4)  # cuánto del rango sube con alta demanda
+
         self.quote_cache_seconds = _int("QUOTE_CACHE_SECONDS", 90)
         self.quote_precision = _int("QUOTE_PRECISION", 4)  # decimales de lat/lon para la caché (~11 m)
         self.menu_sync_minutes = _int("MENU_SYNC_MINUTES", 15)

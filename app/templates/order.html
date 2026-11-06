@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="es">
+<html lang="es" style="{{ css_vars }}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -8,7 +8,7 @@
 <link rel="stylesheet" href="{{ fonts_href }}">
 <link rel="stylesheet" href="/static/store.css">
 </head>
-<body style="{{ css_vars }}">
+<body>
 <header class="top always{{ ' dark' if theme.dark_header else '' }}"><div class="wrap">
   <a class="brand" href="/{{ p.slug }}">{% if theme.logo_url %}<img src="{{ theme.logo_url }}" alt="">{% else %}<span class="mono">{{ p.name[:1] }}</span>{% endif %}<b>{{ p.name }}</b></a>
 </div></header>

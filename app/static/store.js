@@ -243,7 +243,7 @@
     const q = quote && quote.subtotal === round2(sub) ? quote : null;
     $("#cartFoot").innerHTML = `
       <div class="sum"><span>Productos</span><span>${money(sub)}</span></div>
-      <div class="sum"><span>Envío</span><span>${q && q.delivery_fee != null ? (q.delivery_fee ? money(q.delivery_fee) : "Gratis") : "—"}</span></div>
+      <div class="sum"><span>Envío${q && q.fee_range && q.fee_mode === "model" ? ` <small class="muted">${money(q.fee_range.min)}–${money(q.fee_range.max)}</small>` : ""}</span><span>${q && q.delivery_fee != null ? (q.delivery_fee ? money(q.delivery_fee) : "Gratis") : "—"}</span></div>
       ${q && q.service_fee ? `<div class="sum"><span>Tarifa de servicio</span><span>${money(q.service_fee)}</span></div>` : ""}
       <div class="sum total"><span>Total a pagar</span><span>${q && q.total != null ? money(q.total) : "—"}</span></div>
       <div class="err" id="orderErr"></div>
@@ -256,6 +256,11 @@
   $("#addrPill").onclick = () => { if (!cart.length) return toast("Agrega productos para elegir la entrega"); view = "checkout"; renderCart(); open($("#cartSheet")); initMap(); };
 
   // ------------------------------------------------------------------ mapa y cotización
+  // Rango mín–máx del tramo de distancia (el precio exacto depende de distancia y demanda).
+  function rangeText(q) {
+    const r = q && q.fee_range; if (!r || q.fee_mode !== "model") return "";
+    return ` <span class="range">(${esc(r.label.toLowerCase())}: ${money(r.min)}–${money(r.max)}${q.distance_km ? ` · estás a ${String(q.distance_km).replace(".", ",")} km` : ""})</span>`;
+  }
   function setQuoteBox(cls, text) { $("#quoteBox").className = `quote ${cls}`; $("#quoteText").innerHTML = text; }
   const onPointChange = debounce(async (lat, lon) => {
     point = {lat, lon};
@@ -280,7 +285,7 @@
       if (!q.available) setQuoteBox("bad", q.reason === "cerrado" ? "El restaurante está cerrado ahora" : "No llegamos a esta dirección. Mueve el pin o prueba otra.");
       else if (q.below_min_order) setQuoteBox("bad", `El pedido mínimo es <b>${money(q.min_order)}</b>`);
       else if (q.delivery_fee == null) setQuoteBox("bad", "No pudimos calcular el envío para este pedido");
-      else setQuoteBox("ok", `Envío <b>${q.delivery_fee ? money(q.delivery_fee) : "gratis"}</b>${q.eta_min ? ` · llega en ${q.eta_min}–${q.eta_max} min` : ""}${q.surge ? " · alta demanda" : ""}`);
+      else setQuoteBox("ok", `Envío <b>${q.delivery_fee ? money(q.delivery_fee) : "gratis"}</b>${rangeText(q)}${q.eta_min ? ` · llega en ${q.eta_min}–${q.eta_max} min` : ""}${q.surge ? " · alta demanda" : ""}`);
       if (q.available && q.eta_min) $("#metaEta").innerHTML = `🛵 <b>${q.eta_min}–${q.eta_max} min</b>`;
     } catch (e) {
       if (seq !== quoteSeq) return;
@@ -361,7 +366,9 @@
   // ------------------------------------------------------------------ inicio
   window.addEventListener("message", (e) => {  // vista previa en vivo desde el portal
     if (e.origin !== location.origin || !e.data || e.data.type !== "theme") return;
-    for (const [k, v] of Object.entries(e.data.vars || {})) document.body.style.setProperty(k, v);
+    // Las variables viven en <html> (así el tamaño de letra mueve los rem de toda la página).
+    for (const [k, v] of Object.entries(e.data.vars || {})) if (/^--[a-z-]+$/.test(k)) document.documentElement.style.setProperty(k, String(v));
+    if (e.data.layout) document.body.classList.toggle("grid-layout", e.data.layout === "grid");
   });
   if (savedPoint) api("/quote", {lat: savedPoint.lat, lon: savedPoint.lon, subtotal: 0}).then((q) => {
     if (q.available && q.eta_min) $("#metaEta").innerHTML = `🛵 <b>${q.eta_min}–${q.eta_max} min</b>`;

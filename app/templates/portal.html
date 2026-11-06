@@ -25,6 +25,7 @@ document.getElementById("loginForm").onsubmit = async (e) => {
 </script>
 {% else %}
 <div class="bar">
+  <a class="btn ghost sm" id="chainLink" href="/cadena" hidden>← Mis locales</a>
   <b>{{ p.name }}</b>
   <div class="tabs" id="tabs"><button class="on" data-t="design">Diseño</button><button data-t="info">Textos</button><button data-t="orders">Pedidos</button></div>
   <div class="sp"></div>
@@ -77,11 +78,12 @@ document.getElementById("loginForm").onsubmit = async (e) => {
       <label class="f"><span>Instagram</span><input data-p="instagram" maxlength="60"></label>
       <button class="btn acc" id="saveProfile">Guardar textos</button><div class="msg" id="profileMsg"></div>
       <p class="muted" id="menuInfo" style="margin-top:16px"></p>
+      <p class="muted" id="commInfo"></p>
     </div>
   </section>
 
   <section id="t-orders" hidden>
-    <div class="card"><h2>Pedidos de tu web</h2><div class="tw"><table><thead><tr><th>Hora</th><th>N°</th><th>Cliente</th><th>Productos</th><th>Total</th><th>Pago</th><th>Estado</th><th>N° Yango</th></tr></thead><tbody id="ordersBody"></tbody></table></div></div>
+    <div class="card"><h2>Pedidos de tu web</h2><div class="tw"><table><thead><tr><th>Hora</th><th>N°</th><th>Cliente</th><th>Productos</th><th>Total</th><th>Comisión</th><th>Pago</th><th>Estado</th><th>N° Yango</th></tr></thead><tbody id="ordersBody"></tbody></table></div></div>
   </section>
 </div>
 
@@ -93,7 +95,9 @@ document.getElementById("loginForm").onsubmit = async (e) => {
   const API = (p, opt) => fetch(`/api/${SLUG}/portal${p}`, opt).then(async (r) => { const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.detail || "Error"); return d; });
   const json = (method, body) => ({method, headers: {"content-type": "application/json"}, body: JSON.stringify(body)});
   let theme = {}, me = null;
-  const RELOAD_KEYS = ["heading_font", "body_font", "card_layout", "hero_style", "logo_url", "cover_url", "dark_header"];
+  // Lo demás se aplica en vivo por variables CSS; esto necesita recargar la vista previa (fuentes, HTML).
+  const RELOAD_KEYS = ["heading_font", "body_font", "hero_style", "logo_url", "cover_url", "dark_header"];
+  const THUMBS = {s: "88px", m: "118px", l: "150px"};
   const PRESETS = [
     {name: "Tomate", primary: "#E8402F", on_primary: "#FFFFFF", background: "#FAF7F2", surface: "#FFFFFF", text: "#1D1B19", muted: "#6F6A64"},
     {name: "Bosque", primary: "#2F7D4A", on_primary: "#FFFFFF", background: "#F3F6F1", surface: "#FFFFFF", text: "#16241B", muted: "#5D6B61"},
@@ -105,7 +109,8 @@ document.getElementById("loginForm").onsubmit = async (e) => {
   function cssVars(t) {
     const size = {s: "190px", m: "240px", l: "310px"}[t.card_size];
     return {"--primary": t.primary, "--on-primary": t.on_primary, "--bg": t.background, "--surface": t.surface, "--text": t.text, "--muted": t.muted,
-      "--radius": t.radius + "px", "--card-min": size, "--img-ratio": t.image_ratio, "--base-size": t.base_font_size + "px"};
+      "--radius": t.radius + "px", "--card-min": size, "--thumb": THUMBS[t.card_size], "--img-ratio": t.image_ratio,
+      "--base-size": t.base_font_size + "px"};
   }
   function fill() {
     $$("[data-k]").forEach((el) => {
@@ -118,7 +123,7 @@ document.getElementById("loginForm").onsubmit = async (e) => {
     $("#v-radius").textContent = theme.radius; $("#v-base_font_size").textContent = theme.base_font_size;
     for (const [id, k] of [["#logoPrev", "logo_url"], ["#coverPrev", "cover_url"]]) { const img = $(id); img.style.visibility = theme[k] ? "visible" : "hidden"; if (theme[k]) img.src = theme[k]; }
   }
-  function push() { const f = $("#frame"); try { f.contentWindow.postMessage({type: "theme", vars: cssVars(theme)}, location.origin); } catch (e) {} }
+  function push() { const f = $("#frame"); try { f.contentWindow.postMessage({type: "theme", vars: cssVars(theme), layout: theme.card_layout}, location.origin); } catch (e) {} }
   let saveTimer, pending = {}, needReload = false;
   function change(k, v) {
     theme[k] = v; pending[k] = v; if (RELOAD_KEYS.includes(k)) needReload = true;
@@ -128,9 +133,10 @@ document.getElementById("loginForm").onsubmit = async (e) => {
   async function save() {
     const body = pending; pending = {};
     try {
-      theme = await API("/theme", json("PUT", body)); fill();
+      const saved = await API("/theme", json("PUT", body));
+      theme = {...saved, ...pending}; fill();  // lo que se tocó mientras guardaba no se pierde
       $("#saveMsg").className = "msg ok"; $("#saveMsg").textContent = "Guardado ✓";
-      if (needReload) { needReload = false; $("#frame").contentWindow.location.reload(); }
+      if (needReload && !Object.keys(pending).length) { needReload = false; $("#frame").contentWindow.location.reload(); }
     } catch (e) { $("#saveMsg").className = "msg bad"; $("#saveMsg").textContent = e.message; }
   }
   $$("[data-k]").forEach((el) => {
@@ -164,13 +170,15 @@ document.getElementById("loginForm").onsubmit = async (e) => {
     const rows = await API("/orders");
     $("#ordersBody").innerHTML = rows.map((o) => `<tr><td>${esc(new Date(o.created_at).toLocaleString("es-BO"))}</td><td class="mono">${esc(o.number)}</td>
       <td>${esc(o.customer)}<br><span class="muted">${esc(o.phone)}</span></td><td>${o.items.map((i) => `${i.quantity}× ${esc(i.name)}`).join("<br>")}</td>
-      <td>${CUR}${o.total}</td><td>${esc(o.payment)}</td><td><span class="pill ${esc(o.status)}">${esc(o.status)}</span></td><td class="mono">${esc(o.yango_order_nr || "")}</td></tr>`).join("")
-      || `<tr><td colspan="8" class="muted">Todavía no hay pedidos.</td></tr>`;
+      <td>${CUR}${o.total}</td><td>${CUR}${o.commission}</td><td>${esc(o.payment)}${o.channel === "telefono" ? "<br><span class=muted>📞 teléfono</span>" : ""}</td><td><span class="pill ${esc(o.status)}">${esc(o.status)}</span></td><td class="mono">${esc(o.yango_order_nr || "")}</td></tr>`).join("")
+      || `<tr><td colspan="9" class="muted">Todavía no hay pedidos.</td></tr>`;
   }
   API("/me").then((d) => {
     me = d; theme = d.theme; fill();
     $("#accepting").checked = d.accepting_orders; $("#acceptLbl").textContent = d.accepting_orders ? "Recibiendo pedidos" : "Pedidos en pausa";
     $("#openStore").href = `/${SLUG}`; $("#frame").src = `/${SLUG}?preview=1`;
+    if (d.via_chain) $("#chainLink").hidden = false;
+    $("#commInfo").textContent = `Comisión por pedido: ${(d.commission_rate * 100).toLocaleString("es-BO")} % del subtotal (sin cargos fijos).`;
     $$("[data-p]").forEach((el) => (el.value = (d.profile || {})[el.dataset.p] || ""));
     $("#menuInfo").textContent = d.menu_items ? `Menú sincronizado desde Yango: ${d.menu_items} productos (${new Date(d.menu_synced_at).toLocaleString("es-BO")}). Precios y productos se editan en Yango.` : "El menú todavía no se sincronizó desde Yango.";
   });

@@ -16,8 +16,8 @@ document.getElementById("f").onsubmit = async (e) => { e.preventDefault();
   if (r.ok) location.reload(); else document.getElementById("m").textContent = "Clave incorrecta"; };
 </script>
 {% else %}
-<div class="bar"><b>Pedidos propios · Admin</b>
-  <div class="tabs" id="tabs"><button class="on" data-t="orders">Pedidos</button><button data-t="partners">Restaurantes</button><button data-t="accounts">Cuentas Yango</button><button data-t="events">Eventos</button></div>
+<div class="bar"><b>Pedidos propios · Admin</b> <a class="btn ghost sm" href="/operador" target="_blank" rel="noopener">Cabina ↗</a>
+  <div class="tabs" id="tabs"><button class="on" data-t="orders">Pedidos</button><button data-t="partners">Restaurantes</button><button data-t="chains">Cadenas</button><button data-t="accounts">Cuentas Yango</button><button data-t="commissions">Comisiones</button><button data-t="features">Funciones</button><button data-t="events">Eventos</button></div>
   <div class="sp"></div><span class="muted" id="src"></span></div>
 <div class="page">
   <div class="stats" id="stats" style="margin-bottom:16px"></div>
@@ -34,21 +34,108 @@ document.getElementById("f").onsubmit = async (e) => { e.preventDefault();
       <form id="np" class="row" style="align-items:flex-end">
         <label class="f" style="flex:1 1 160px"><span>Nombre</span><input name="name" required></label>
         <label class="f" style="flex:1 1 140px"><span>Slug (URL)</span><input name="slug" required pattern="[a-z0-9-]+" placeholder="wrap-roll"></label>
-        <label class="f" style="flex:1 1 140px"><span>Cuenta Yango</span><input name="account" required placeholder="wrap_roll"></label>
+        <label class="f" style="flex:1 1 160px"><span>Cadena</span><select name="chain_id" id="npChain"><option value="">— Sin cadena (cuenta propia) —</option></select></label>
+        <label class="f" style="flex:1 1 140px" id="npAccount"><span>Cuenta Yango</span><input name="account" placeholder="wrap_roll"></label>
         <label class="f" style="flex:3 1 320px"><span>URL en food.yango.com</span><input name="yango_url" type="url" placeholder="https://food.yango.com/bo/santa-cruz-de-la-sierra/r/..."></label>
         <label class="f" style="flex:1 1 140px"><span>Contraseña portal</span><input name="password" type="password" minlength="8"></label>
         <button class="btn acc" style="margin-bottom:12px">Crear</button>
       </form><div class="msg" id="npMsg"></div></div>
-    <div class="card"><h2>Restaurantes</h2><div class="tw"><table><thead><tr><th>Restaurante</th><th>Cuenta</th><th>Local Yango</th><th>Menú</th><th>Estado</th><th></th></tr></thead><tbody id="pb"></tbody></table></div></div>
+    <div class="card"><h2>Restaurantes</h2><div class="tw"><table><thead><tr><th>Restaurante</th><th>Cadena / cuenta (bot)</th><th>Local Yango</th><th>Menú</th><th>Comisión</th><th>Estado</th><th></th></tr></thead><tbody id="pb"></tbody></table></div></div>
   </section>
 
   <section id="t-accounts" hidden>
     <div class="card"><h2>Cargar sesión (cookies JSON)</h2>
-      <p class="muted">Entra a food.yango.com con la cuenta en tu navegador (teléfono + SMS), exporta las cookies con la extensión «Cookie-Editor» (Export → JSON) y pégalas aquí. Una cuenta por restaurante.</p>
+      <p class="muted">Entra a food.yango.com con la cuenta en tu navegador (teléfono + SMS), exporta las cookies con la extensión «Cookie-Editor» (Export → JSON) y pégalas aquí. Una cuenta (bot) por cadena: todos sus locales la comparten.</p>
       <label class="f"><span>Cuenta</span><input id="acName" placeholder="wrap_roll"></label>
       <label class="f"><span>Cookies (JSON)</span><textarea id="acJson" style="min-height:120px" placeholder='[{"name":"Session_id","value":"...","domain":".yango.com",...}]'></textarea></label>
       <button class="btn acc" id="acSave">Cargar sesión</button><div class="msg" id="acMsg"></div></div>
-    <div class="card"><h2>Cuentas</h2><div class="tw"><table><thead><tr><th>Cuenta</th><th>Restaurantes</th><th>Estado</th><th>Detalle</th><th>Sesión cargada</th><th></th></tr></thead><tbody id="ab"></tbody></table></div></div>
+    <div class="card"><h2>Cuentas</h2><div class="tw"><table><thead><tr><th>Cuenta (bot)</th><th>Cadena / restaurantes</th><th>Celular de login</th><th>Estado</th><th>Detalle</th><th>Sesión cargada</th><th></th></tr></thead><tbody id="ab"></tbody></table></div></div>
+  </section>
+
+  <section id="t-chains" hidden>
+    <div class="card"><h2>Nueva cadena</h2>
+      <p class="muted">Cada cadena tiene <b>un bot</b> (una cuenta cliente de Yango) para todos sus locales y un <b>usuario y contraseña</b> para entrar a <a href="/cadena" target="_blank" rel="noopener">/cadena</a> y ver sus locales, pedidos y comisiones.</p>
+      <form id="nc" class="row" style="align-items:flex-end">
+        <label class="f" style="flex:1 1 160px"><span>Nombre</span><input name="name" required placeholder="Wrap & Roll"></label>
+        <label class="f" style="flex:1 1 130px"><span>Slug</span><input name="slug" required pattern="[a-z0-9-]+" placeholder="wrap-roll"></label>
+        <label class="f" style="flex:1 1 140px"><span>Cuenta Yango (bot)</span><input name="account" required pattern="[A-Za-z0-9_-]+" placeholder="bot_wraproll"></label>
+        <label class="f" style="flex:1 1 150px"><span>Usuario de la cadena</span><input name="login" required placeholder="wraproll"></label>
+        <label class="f" style="flex:1 1 140px"><span>Contraseña</span><input name="password" type="password" minlength="8" required></label>
+        <label class="f" style="flex:1 1 160px"><span>Contacto</span><input name="contact" placeholder="Nombre · celular"></label>
+        <button class="btn acc" style="margin-bottom:12px">Crear cadena</button>
+      </form><div class="msg" id="ncMsg"></div></div>
+    <div class="card"><h2>Cadenas</h2><div class="tw"><table><thead><tr><th>Cadena</th><th>Bot (cuenta Yango)</th><th>Usuario</th><th>Locales</th><th></th></tr></thead><tbody id="cb"></tbody></table></div></div>
+  </section>
+
+  <section id="t-commissions" hidden>
+    <div class="card"><div class="row" style="margin-bottom:10px"><h2 style="margin:0;flex:1">Comisión a pagar a Yango</h2>
+      <input type="month" id="cMonth" style="width:auto"></div>
+      <p class="muted" id="cInfo"></p>
+      <div class="tw"><table><thead><tr><th>Mes</th><th>Restaurante</th><th>Pedidos</th><th>Ventas (subtotal)</th><th>Envíos cobrados</th><th>Comisión</th></tr></thead><tbody id="cmb"></tbody></table></div></div>
+    <div class="card"><h2>Envío por distancia</h2><p class="muted" id="tierInfo"></p><div class="tw"><table><thead><tr><th>Distancia</th><th>Mínimo</th><th>Máximo</th></tr></thead><tbody id="tb"></tbody></table></div></div>
+  </section>
+
+  <section id="t-features" hidden>
+    <div class="tabs sub" id="ftabs"><button class="on" data-f="pdf">Menú PDF</button><button data-f="ops">Operadores</button><button data-f="script">Guion de llamadas</button></div>
+
+    <div id="f-pdf" class="grid2" style="margin-top:12px">
+      <div>
+        <div class="card"><h2>Menú PDF del local</h2>
+          <label class="f"><span>Restaurante</span><select id="pdfPartner"></select></label>
+          <label class="f"><span>Plantilla</span><div class="seg" id="pdfTpl"><button data-v="clasico">Clásico</button><button data-v="moderno">Moderno</button><button data-v="minimal">Minimal</button><button data-v="pizarra">Pizarra</button></div></label>
+          <div class="row"><a class="btn acc" id="pdfDownload" href="#">Descargar PDF</a><button class="btn ghost" id="pdfPrint" type="button">Imprimir</button><span class="msg" id="pdfMsg"></span></div>
+        </div>
+        <div class="card"><h2>Textos</h2>
+          <label class="f"><span>Título (vacío = nombre del restaurante)</span><input data-s="title" maxlength="60"></label>
+          <label class="f"><span>Subtítulo (vacío = frase del local)</span><input data-s="subtitle" maxlength="120"></label>
+          <label class="f"><span>Pie de página</span><input data-s="footer" maxlength="240" placeholder="Precios en Bs. Sujeto a disponibilidad."></label>
+        </div>
+        <div class="card"><h2>Colores y letras</h2>
+          <div class="colors">
+            {% for k, lbl in [('primary','Acento'),('background','Fondo'),('text','Texto'),('muted','Texto secundario')] %}
+            <label class="color"><input type="color" data-s="{{ k }}"><span><small>{{ lbl }}</small><span class="mono" data-shex="{{ k }}"></span></span></label>
+            {% endfor %}
+          </div>
+          <label class="f"><span>Títulos</span><select data-s="heading_font" class="pdfFonts"></select></label>
+          <label class="f"><span>Texto</span><select data-s="body_font" class="pdfFonts"></select></label>
+          <label class="f"><span>Tamaño de letra: <b id="v-font_size"></b> pt</span><input type="range" min="8" max="16" data-s="font_size"></label>
+        </div>
+        <div class="card"><h2>Diseño</h2>
+          <label class="f"><span>Columnas</span><div class="seg" data-s="columns"><button data-v="1">1</button><button data-v="2">2</button><button data-v="3">3</button></div></label>
+          <label class="f"><span>Hoja</span><div class="seg" data-s="page_size"><button data-v="A4">A4</button><button data-v="Letter">Carta</button><button data-v="A5">A5</button></div></label>
+          <label class="f"><span>Orientación</span><div class="seg" data-s="orientation"><button data-v="portrait">Vertical</button><button data-v="landscape">Horizontal</button></div></label>
+          <label class="f"><span>Entre nombre y precio</span><div class="seg" data-s="leader"><button data-v="dots">Puntos</button><button data-v="line">Línea</button><button data-v="none">Nada</button></div></label>
+          <label class="switch"><input type="checkbox" data-s="show_images"> Fotos de los platos</label>
+          <label class="switch"><input type="checkbox" data-s="show_descriptions"> Descripciones</label>
+          <label class="switch"><input type="checkbox" data-s="show_promo"> Precio anterior tachado en promos</label>
+          <label class="switch"><input type="checkbox" data-s="show_logo"> Logo</label>
+          <label class="switch"><input type="checkbox" data-s="show_qr"> QR a la web de pedidos</label>
+          <h3 style="margin:14px 0 6px;font-size:.95rem">Categorías en el PDF</h3><div id="pdfCats" class="checks"></div>
+          <div class="row" style="margin-top:10px"><button class="btn ghost sm" id="pdfReset" type="button">Restablecer estilo</button></div>
+        </div>
+      </div>
+      <div class="preview"><div class="ph">Vista previa del PDF</div><iframe id="pdfFrame" title="Vista previa del menú PDF"></iframe></div>
+    </div>
+
+    <div id="f-ops" hidden style="margin-top:12px">
+      <div class="card"><h2>Nuevo operador</h2>
+        <p class="muted">Los operadores entran a <a href="/operador" target="_blank" rel="noopener">/operador</a> para atender llamadas y cargar pedidos telefónicos con el guion.</p>
+        <form id="no" class="row" style="align-items:flex-end">
+          <label class="f" style="flex:1 1 180px"><span>Nombre</span><input name="name" required></label>
+          <label class="f" style="flex:1 1 150px"><span>Usuario</span><input name="login" required pattern="[a-z0-9._-]+"></label>
+          <label class="f" style="flex:1 1 150px"><span>Contraseña</span><input name="password" type="password" minlength="8" required></label>
+          <button class="btn acc" style="margin-bottom:12px">Crear</button></form><div class="msg" id="noMsg"></div></div>
+      <div class="card"><h2>Operadores · hoy</h2><div class="tw"><table><thead><tr><th>Operador</th><th>Usuario</th><th>Llamadas hoy</th><th>Pedidos hoy</th><th>Duración media</th><th>Estado</th><th></th></tr></thead><tbody id="opb"></tbody></table></div></div>
+      <div class="card"><h2>Últimas llamadas</h2><div class="tw"><table><thead><tr><th>Hora</th><th>Operador</th><th>Celular</th><th>Restaurante</th><th>Resultado</th><th>Notas</th></tr></thead><tbody id="clb"></tbody></table></div></div>
+    </div>
+
+    <div id="f-script" hidden style="margin-top:12px">
+      <div class="card"><h2>Guion de llamadas</h2>
+        <p class="muted">Lo que el operador lee en cada paso. Variables: <span class="mono">{saludo} {restaurante} {operador} {cliente} {direccion} {envio} {rango} {subtotal} {total} {eta} {pago} {resumen} {numero}</span></p>
+        <div id="steps"></div>
+        <div class="row"><button class="btn ghost sm" id="addStep" type="button">+ Paso</button><button class="btn ghost sm" id="defStep" type="button">Volver al guion por defecto</button><span class="sp" style="flex:1"></span><button class="btn acc" id="saveScript" type="button">Guardar guion</button></div>
+        <div class="msg" id="scMsg"></div></div>
+    </div>
   </section>
 
   <section id="t-events" hidden><div class="card"><h2>Eventos</h2><div class="tw"><table><thead><tr><th>Hora</th><th>Tipo</th><th>Cuenta</th><th>Detalle</th></tr></thead><tbody id="eb"></tbody></table></div></div></section>
@@ -67,7 +154,9 @@ document.getElementById("f").onsubmit = async (e) => { e.preventDefault();
     const h = await api("/health");
     $("#src").textContent = `fuente: ${h.source.source}${h.order_placement_enabled ? " · colocación automática ON" : " · colocación automática OFF (manual)"}`;
     const o = h.orders;
+    COMM = h.commission_rate;
     $("#stats").innerHTML = [["Por cargar a mano", o.manual || 0], ["En revisión", o.revision || 0], ["En cola", (o.en_cola || 0) + (o.colocando || 0)], ["Colocados", o.colocado || 0],
+      [`Comisión del mes (${(h.commission_rate * 100).toLocaleString("es-BO")} %)`, `${CUR}${h.commission_month}`],
       ["Cotizaciones (caché / Yango)", `${h.quotes.hits} / ${h.quotes.misses}`]].map(([l, v]) => `<div class="stat"><b>${esc(v)}</b><span>${esc(l)}</span></div>`).join("");
   }
   async function orders() {
@@ -78,7 +167,7 @@ document.getElementById("f").onsubmit = async (e) => { e.preventDefault();
       <td>${esc(o.customer.first_name)} ${esc(o.customer.last_name)} · ${esc(o.customer.phone)}<br><span class="muted">${esc(o.address.text)} · ${esc(o.address.reference)}</span><br>
         <a class="muted" target="_blank" rel="noopener" href="https://yandex.com/maps/?pt=${o.address.lon},${o.address.lat}&z=17">📍 ${o.address.lat}, ${o.address.lon}</a></td>
       <td>${o.items.map((i) => `${i.quantity}× ${esc(i.name)}${i.options.length ? ` <span class="muted">(${esc(i.options.map((x) => x.name).join(", "))})</span>` : ""}`).join("<br>")}</td>
-      <td>${CUR}${o.total}<br><span class="muted">envío ${CUR}${o.delivery_fee} · ${esc(o.payment.label)}</span></td>
+      <td>${CUR}${o.total}<br><span class="muted">envío ${CUR}${o.delivery_fee}${o.yango_fee != null && o.yango_fee !== o.delivery_fee ? ` (Yango ${CUR}${o.yango_fee})` : ""} · ${esc(o.payment.label)}<br>comisión ${CUR}${o.commission}${o.channel === "telefono" ? ` · 📞 ${esc(o.operator || "")}` : ""}</span></td>
       <td><span class="pill ${esc(o.status)}">${esc(o.status)}</span>${o.yango_order_nr ? `<br><span class="mono">${esc(o.yango_order_nr)}</span>` : ""}${o.error ? `<br><span class="muted">${esc(o.error)}</span>` : ""}</td>
       <td style="white-space:nowrap">${["manual", "revision"].includes(o.status) ? `<button class="btn sm" data-a="colocado" data-t="${esc(o.token)}">Marcar colocado</button> <button class="btn ghost sm" data-a="reintentar" data-t="${esc(o.token)}">Reintentar bot</button><br>
         <button class="btn ghost sm" data-copy="${esc(o.yango_comment)}" style="margin-top:4px">Copiar comentario</button> ` : ""}
@@ -92,30 +181,48 @@ document.getElementById("f").onsubmit = async (e) => { e.preventDefault();
     }));
     $$("[data-copy]").forEach((b) => (b.onclick = () => { navigator.clipboard.writeText(b.dataset.copy); b.textContent = "Copiado ✓"; }));
   }
+  let CHAINS = [], COMM = 0.03;
+  const chainName = (id) => (CHAINS.find((c) => c.id === id) || {}).name || `#${id}`;
+  async function loadChains() {
+    CHAINS = await api("/chains");
+    $("#npChain").innerHTML = `<option value="">— Sin cadena (cuenta propia) —</option>` + CHAINS.map((c) => `<option value="${c.id}">${esc(c.name)} · bot ${esc(c.account)}</option>`).join("");
+  }
+  $("#npChain").onchange = () => { $("#npAccount").hidden = !!$("#npChain").value; };
   async function partnersTab() {
+    await loadChains();
     const rows = await api("/partners");
     $("#pb").innerHTML = rows.map((p) => `<tr>
       <td><b>${esc(p.name)}</b><br><a href="/${esc(p.slug)}" target="_blank" rel="noopener" class="mono">/${esc(p.slug)}</a> · <a href="/${esc(p.slug)}/portal" target="_blank" rel="noopener">portal</a></td>
-      <td class="mono">${esc(p.account)}</td>
+      <td>${p.chain_id ? `<b>${esc(chainName(p.chain_id))}</b><br>` : `<span class="muted">sin cadena</span><br>`}<span class="mono">${esc(p.account)}</span></td>
       <td>${p.place_slug ? `<span class="mono">${esc(p.place_slug)}</span><br><span class="muted">${esc(p.place_address || "")}</span>` : `<span class="muted">sin resolver</span>`}<br><a class="muted" href="${esc(p.yango_url || "#")}" target="_blank" rel="noopener">${esc((p.yango_url || "").slice(0, 60))}</a></td>
       <td>${p.menu ? `${esc(when(p.menu.synced_at))}${p.menu.error ? `<br><span class="pill error">${esc(p.menu.error)}</span>` : ""}` : `<span class="muted">—</span>`}</td>
+      <td>${p.commission_rate != null ? `${(p.commission_rate * 100).toLocaleString("es-BO")} %` : `<span class="muted">${(COMM * 100).toLocaleString("es-BO")} % (general)</span>`}<br><button class="btn ghost sm" data-comm="${esc(p.slug)}">Cambiar</button></td>
       <td><span class="pill ${p.enabled ? "ok" : "cancelado"}">${p.enabled ? "activo" : "inactivo"}</span> ${p.accepting_orders ? "" : `<span class="pill manual">pausado</span>`}</td>
       <td style="white-space:nowrap"><button class="btn sm" data-sync="${esc(p.slug)}">Sincronizar</button> <button class="btn ghost sm" data-pw="${esc(p.slug)}">Contraseña</button> <button class="btn ghost sm" data-toggle="${esc(p.slug)}" data-on="${p.enabled ? 1 : 0}">${p.enabled ? "Desactivar" : "Activar"}</button></td></tr>`).join("")
-      || `<tr><td colspan="6" class="muted">Sin restaurantes.</td></tr>`;
+      || `<tr><td colspan="7" class="muted">Sin restaurantes.</td></tr>`;
+    $$("[data-comm]").forEach((b) => (b.onclick = async () => {
+      const v = prompt("Comisión para este restaurante en % (vacío = la general)", ""); if (v === null) return;
+      try { await post(`/partners/${b.dataset.comm}`, {commission_rate: v.trim() === "" ? null : Number(v.replace(",", ".")) / 100}, "PUT"); partnersTab(); } catch (e) { alert(e.message); }
+    }));
     $$("[data-sync]").forEach((b) => (b.onclick = async () => { b.disabled = true; b.textContent = "…"; try { const r = await post(`/partners/${b.dataset.sync}/sync`, {}); alert(`Menú: ${r.items} productos en ${r.categories} categorías`); } catch (e) { alert(e.message); } partnersTab(); }));
     $$("[data-pw]").forEach((b) => (b.onclick = async () => { const pw = prompt("Nueva contraseña del portal (mín. 8)"); if (!pw) return; try { await post(`/partners/${b.dataset.pw}/password`, {password: pw}); alert("Listo"); } catch (e) { alert(e.message); } }));
     $$("[data-toggle]").forEach((b) => (b.onclick = async () => { await post(`/partners/${b.dataset.toggle}`, {enabled: b.dataset.on === "1" ? 0 : 1}, "PUT"); partnersTab(); }));
   }
   $("#np").onsubmit = async (e) => {
     e.preventDefault(); const body = Object.fromEntries(new FormData(e.target));
+    body.chain_id = body.chain_id ? Number(body.chain_id) : null;
+    if (!body.chain_id && !body.account) { $("#npMsg").className = "msg bad"; $("#npMsg").textContent = "Elige una cadena o escribe la cuenta Yango"; return; }
     try { await post("/partners", body); e.target.reset(); $("#npMsg").className = "msg ok"; $("#npMsg").textContent = "Creado. Carga la sesión de la cuenta y pulsa Sincronizar."; partnersTab(); }
     catch (err) { $("#npMsg").className = "msg bad"; $("#npMsg").textContent = err.message; }
   };
   async function accounts() {
     const rows = await api("/accounts");
-    $("#ab").innerHTML = rows.map((a) => `<tr><td class="mono">${esc(a.name)}</td><td>${a.partners.map(esc).join(", ")}</td><td><span class="pill ${esc(a.status)}">${esc(a.status)}</span></td>
+    await loadChains();
+    $("#ab").innerHTML = rows.map((a) => { const ch = CHAINS.find((c) => c.account === a.name); return `<tr><td class="mono">${esc(a.name)}</td><td>${ch ? `<b>${esc(ch.name)}</b><br>` : ""}${a.partners.map(esc).join(", ")}</td>
+      <td><span class="mono">${esc(a.yango_phone || "—")}</span><br><button class="btn ghost sm" data-phone="${esc(a.name)}" data-v="${esc(a.yango_phone || "")}">Editar</button></td><td><span class="pill ${esc(a.status)}">${esc(a.status)}</span></td>
       <td class="muted">${esc(a.detail || "")}<br>${esc(when(a.checked_at))}</td><td>${a.has_session ? esc(when(a.session_imported_at)) : `<span class="muted">no</span>`}</td>
-      <td><button class="btn sm" data-check="${esc(a.name)}">Probar</button> <button class="btn ghost sm" data-load="${esc(a.name)}">Cargar cookies</button></td></tr>`).join("");
+      <td><button class="btn sm" data-check="${esc(a.name)}">Probar</button> <button class="btn ghost sm" data-load="${esc(a.name)}">Cargar cookies</button></td></tr>`; }).join("");
+    $$("[data-phone]").forEach((b) => (b.onclick = async () => { const v = prompt("Celular con el que se entra a Yango con esta cuenta (login por SMS)", b.dataset.v); if (v === null) return; await post(`/accounts/${encodeURIComponent(b.dataset.phone)}`, {yango_phone: v}, "PUT"); accounts(); }));
     $$("[data-check]").forEach((b) => (b.onclick = async () => { b.textContent = "…"; try { const r = await post(`/accounts/${b.dataset.check}/check`, {}); alert(r.ok ? "Sesión activa ✓" : `Sesión caída: ${r.detail}`); } catch (e) { alert(e.message); } accounts(); }));
     $$("[data-load]").forEach((b) => (b.onclick = () => { $("#acName").value = b.dataset.load; $("#acJson").focus(); }));
   }
@@ -129,7 +236,139 @@ document.getElementById("f").onsubmit = async (e) => { e.preventDefault();
     const rows = await api("/events?limit=300");
     $("#eb").innerHTML = rows.map((e) => `<tr><td>${esc(when(e.at))}</td><td class="mono">${esc(e.kind)}</td><td class="mono">${esc(e.account || "")}</td><td class="muted mono" style="max-width:600px;word-break:break-word">${esc((e.detail || "").slice(0, 400))}</td></tr>`).join("");
   }
-  const loaders = {orders, partners: partnersTab, accounts, events};
+  async function chainsTab() {
+    await loadChains();
+    const parts = await api("/partners");
+    const free = parts.filter((p) => !p.chain_id);
+    $("#cb").innerHTML = CHAINS.map((c) => `<tr><td><b>${esc(c.name)}</b><br><span class="muted mono">${esc(c.slug)}</span>${c.contact ? `<br><span class="muted">${esc(c.contact)}</span>` : ""}</td>
+      <td class="mono">${esc(c.account)}</td><td class="mono">${esc(c.login)}</td>
+      <td>${c.partners.map((p) => `${esc(p.name)} <button class="btn ghost sm" data-detach="${esc(p.slug)}" title="Quitar de la cadena">×</button>`).join("<br>") || `<span class="muted">sin locales</span>`}
+        ${free.length ? `<br><select data-attach="${c.id}" style="width:auto;margin-top:6px"><option value="">+ Agregar local…</option>${free.map((p) => `<option value="${esc(p.slug)}">${esc(p.name)}</option>`).join("")}</select>` : ""}</td>
+      <td style="white-space:nowrap"><button class="btn ghost sm" data-cpw="${c.id}">Contraseña</button> <button class="btn ghost sm" data-cacc="${c.id}" data-v="${esc(c.account)}">Cambiar bot</button></td></tr>`).join("")
+      || `<tr><td colspan="5" class="muted">Sin cadenas.</td></tr>`;
+    $$("[data-attach]").forEach((s) => (s.onchange = async () => { if (!s.value) return; try { await post(`/chains/${s.dataset.attach}/attach`, {slug: s.value}); } catch (e) { alert(e.message); } chainsTab(); }));
+    $$("[data-detach]").forEach((b) => (b.onclick = async () => { if (!confirm("¿Quitar el local de la cadena? Seguirá usando la misma cuenta Yango hasta que la cambies.")) return; await post(`/partners/${b.dataset.detach}/detach`, {}); chainsTab(); }));
+    $$("[data-cpw]").forEach((b) => (b.onclick = async () => { const pw = prompt("Nueva contraseña de la cadena (mín. 8)"); if (!pw) return; try { await post(`/chains/${b.dataset.cpw}`, {password: pw}, "PUT"); alert("Listo"); } catch (e) { alert(e.message); } }));
+    $$("[data-cacc]").forEach((b) => (b.onclick = async () => { const v = prompt("Cuenta Yango (bot) de la cadena. Todos sus locales pasan a usarla.", b.dataset.v); if (!v || v === b.dataset.v) return; try { await post(`/chains/${b.dataset.cacc}`, {account: v}, "PUT"); } catch (e) { alert(e.message); } chainsTab(); }));
+  }
+  $("#nc").onsubmit = async (e) => {
+    e.preventDefault();
+    try { await post("/chains", Object.fromEntries(new FormData(e.target))); e.target.reset(); $("#ncMsg").className = "msg ok"; $("#ncMsg").textContent = "Cadena creada. Agrega sus locales y carga las cookies de su bot en Cuentas Yango."; chainsTab(); }
+    catch (err) { $("#ncMsg").className = "msg bad"; $("#ncMsg").textContent = err.message; }
+  };
+
+  async function commissionsTab() {
+    const m = $("#cMonth").value;
+    const [r, h] = await Promise.all([api(`/commissions${m ? `?month=${m}` : ""}`), api("/health")]);
+    COMM = r.rate;
+    $("#cInfo").textContent = `Comisión general: ${(r.rate * 100).toLocaleString("es-BO")} % del subtotal de cada pedido (sin cargos fijos). La paga el restaurante a Yango. Pedidos cancelados no cuentan.`;
+    let tot = 0;
+    $("#cmb").innerHTML = r.rows.map((x) => { tot += x.commission; return `<tr><td class="mono">${esc(x.month)}</td><td>${esc(x.name)}</td><td>${x.orders}</td><td>${CUR}${x.subtotal}</td><td>${CUR}${x.delivery}</td><td><b>${CUR}${x.commission}</b></td></tr>`; }).join("")
+      + (r.rows.length ? `<tr><td colspan="5"><b>Total</b></td><td><b>${CUR}${Math.round(tot * 100) / 100}</b></td></tr>` : `<tr><td colspan="6" class="muted">Sin pedidos en el periodo.</td></tr>`);
+    $("#tierInfo").textContent = h.delivery_fee_mode === "model" ? "El cliente paga el envío del modelo: dentro de cada tramo sube con la distancia y con la demanda (recargo de Yango)." : "Modo yango: el cliente paga el envío que cotiza Yango; los tramos solo se muestran como referencia.";
+    $("#tb").innerHTML = h.delivery_tiers.map((t) => `<tr><td>${esc(t.label)}</td><td>${CUR}${t.min}</td><td>${CUR}${t.max}</td></tr>`).join("");
+  }
+  $("#cMonth").onchange = commissionsTab;
+
+  // ---------------------------------------------------------------- funciones
+  let ftab = "pdf";
+  $$("#ftabs button").forEach((b) => (b.onclick = () => { ftab = b.dataset.f; $$("#ftabs button").forEach((x) => x.classList.toggle("on", x === b)); ["pdf", "ops", "script"].forEach((f) => ($(`#f-${f}`).hidden = f !== ftab)); featuresTab(); }));
+  function featuresTab() { return {pdf: pdfTab, ops: opsTab, script: scriptTab}[ftab](); }
+
+  // Menú PDF: el estilo se guarda en el servidor (validado) y la vista previa se recarga.
+  let pdf = null, pdfSlug = null, pdfPending = {}, pdfTimer;
+  async function pdfTab() {
+    const parts = await api("/partners");
+    const sel = $("#pdfPartner");
+    if (!sel.options.length || sel.options.length !== parts.length) sel.innerHTML = parts.map((p) => `<option value="${esc(p.slug)}">${esc(p.name)}</option>`).join("");
+    if (!parts.length) return;
+    pdfSlug = sel.value || parts[0].slug;
+    pdf = await api(`/pdf/${pdfSlug}`);
+    if (!$(".pdfFonts").options.length) $$(".pdfFonts").forEach((s) => (s.innerHTML = pdf.fonts.map((f) => `<option>${esc(f)}</option>`).join("")));
+    pdfFill(); pdfReload();
+    $("#pdfDownload").href = `/admin/pdf/${pdfSlug}/menu.pdf`;
+  }
+  function pdfFill() {
+    const st = pdf.style;
+    $$("[data-s]").forEach((el) => {
+      const k = el.dataset.s, v = st[k];
+      if (el.classList.contains("seg")) el.querySelectorAll("button").forEach((b) => b.classList.toggle("on", String(v) === b.dataset.v));
+      else if (el.type === "checkbox") el.checked = !!v;
+      else if (document.activeElement !== el) el.value = v;
+    });
+    $$("#pdfTpl button").forEach((b) => b.classList.toggle("on", b.dataset.v === st.template));
+    $$("[data-shex]").forEach((el) => (el.textContent = st[el.dataset.shex]));
+    $("#v-font_size").textContent = st.font_size;
+    const hidden = new Set(st.hidden_categories || []);
+    $("#pdfCats").innerHTML = pdf.categories.map((c) => `<label class="switch"><input type="checkbox" data-cat="${esc(c.key)}" ${hidden.has(c.key) ? "" : "checked"}> ${esc(c.name)} <span class="muted">(${c.count})</span></label>`).join("") || `<span class="muted">El menú no está sincronizado.</span>`;
+    $$("[data-cat]").forEach((cb) => (cb.onchange = () => pdfChange("hidden_categories", $$("[data-cat]").filter((x) => !x.checked).map((x) => x.dataset.cat))));
+  }
+  function pdfReload() { $("#pdfFrame").src = `/admin/pdf/${pdfSlug}/preview?t=${Date.now()}`; }
+  function pdfChange(k, v) {
+    pdf.style[k] = v; pdfPending[k] = v; $("#pdfMsg").className = "msg"; $("#pdfMsg").textContent = "Guardando…";
+    $$("[data-shex]").forEach((el) => (el.textContent = pdf.style[el.dataset.shex])); $("#v-font_size").textContent = pdf.style.font_size;
+    clearTimeout(pdfTimer); pdfTimer = setTimeout(pdfSave, 450);
+  }
+  async function pdfSave(extra) {
+    const body = {...pdfPending, ...(extra || {})}; pdfPending = {};
+    try { pdf.style = await post(`/pdf/${pdfSlug}`, body, "PUT"); pdfFill(); pdfReload(); $("#pdfMsg").className = "msg ok"; $("#pdfMsg").textContent = "Guardado ✓"; }
+    catch (e) { $("#pdfMsg").className = "msg bad"; $("#pdfMsg").textContent = e.message; }
+  }
+  $$("[data-s]").forEach((el) => {
+    const k = el.dataset.s;
+    if (el.classList.contains("seg")) el.querySelectorAll("button").forEach((b) => (b.onclick = (e) => { e.preventDefault(); el.querySelectorAll("button").forEach((x) => x.classList.toggle("on", x === b)); pdfChange(k, k === "columns" ? +b.dataset.v : b.dataset.v); }));
+    else el.addEventListener("input", () => pdfChange(k, el.type === "checkbox" ? el.checked : el.type === "range" ? +el.value : el.type === "color" ? el.value.toUpperCase() : el.value));
+  });
+  $$("#pdfTpl button").forEach((b) => (b.onclick = (e) => { e.preventDefault(); clearTimeout(pdfTimer); pdfSave({template: b.dataset.v, apply_template: true}); }));
+  $("#pdfPartner").onchange = pdfTab;
+  $("#pdfReset").onclick = () => { if (confirm("¿Volver al estilo por defecto?")) { clearTimeout(pdfTimer); pdfPending = {}; pdfSave({reset: true}); } };
+  $("#pdfPrint").onclick = () => { const w = $("#pdfFrame").contentWindow; w.focus(); w.print(); };
+  $("#pdfDownload").onclick = async (e) => {
+    e.preventDefault(); const a = e.currentTarget; $("#pdfMsg").className = "msg"; $("#pdfMsg").textContent = "Generando PDF…";
+    try {
+      const r = await fetch(a.href); if (!r.ok) throw new Error((await r.json().catch(() => ({}))).detail || "No se pudo generar");
+      const url = URL.createObjectURL(await r.blob()); const l = document.createElement("a"); l.href = url; l.download = `menu-${pdfSlug}.pdf`; l.click(); setTimeout(() => URL.revokeObjectURL(url), 5000);
+      $("#pdfMsg").className = "msg ok"; $("#pdfMsg").textContent = "PDF listo ✓";
+    } catch (err) { $("#pdfMsg").className = "msg bad"; $("#pdfMsg").textContent = err.message; }
+  };
+
+  async function opsTab() {
+    const r = await api("/operators");
+    const today = Object.fromEntries(r.today.map((x) => [x.operator, x]));
+    $("#opb").innerHTML = r.operators.map((o) => { const t = today[o.login] || {}; return `<tr><td><b>${esc(o.name)}</b></td><td class="mono">${esc(o.login)}</td><td>${t.calls || 0}</td><td>${t.orders || 0}</td><td>${t.avg_seconds ? `${Math.round(t.avg_seconds / 60 * 10) / 10} min` : "—"}</td>
+      <td><span class="pill ${o.enabled ? "ok" : "cancelado"}">${o.enabled ? "activo" : "inactivo"}</span></td>
+      <td style="white-space:nowrap"><button class="btn ghost sm" data-opw="${esc(o.login)}">Contraseña</button> <button class="btn ghost sm" data-oon="${esc(o.login)}" data-on="${o.enabled ? 1 : 0}">${o.enabled ? "Desactivar" : "Activar"}</button></td></tr>`; }).join("")
+      || `<tr><td colspan="7" class="muted">Sin operadores.</td></tr>`;
+    $("#clb").innerHTML = r.calls.map((c) => `<tr><td>${esc(when(c.started_at))}</td><td class="mono">${esc(c.operator)}</td><td class="mono">${esc(c.phone || "")}</td><td>${esc(c.partner || "")}</td><td>${c.outcome ? `<span class="pill ${c.outcome === "pedido" ? "colocado" : "manual"}">${esc(c.outcome)}</span>` : `<span class="muted">en curso</span>`}</td><td class="muted">${esc(c.notes || "")}</td></tr>`).join("")
+      || `<tr><td colspan="6" class="muted">Sin llamadas.</td></tr>`;
+    $$("[data-opw]").forEach((b) => (b.onclick = async () => { const pw = prompt("Nueva contraseña (mín. 8)"); if (!pw) return; try { await post(`/operators/${b.dataset.opw}`, {password: pw}, "PUT"); alert("Listo"); } catch (e) { alert(e.message); } }));
+    $$("[data-oon]").forEach((b) => (b.onclick = async () => { await post(`/operators/${b.dataset.oon}`, {enabled: b.dataset.on !== "1"}, "PUT"); opsTab(); }));
+  }
+  $("#no").onsubmit = async (e) => {
+    e.preventDefault();
+    try { await post("/operators", Object.fromEntries(new FormData(e.target))); e.target.reset(); $("#noMsg").className = "msg ok"; $("#noMsg").textContent = "Operador creado."; opsTab(); }
+    catch (err) { $("#noMsg").className = "msg bad"; $("#noMsg").textContent = err.message; }
+  };
+
+  let steps = [], defSteps = [];
+  function renderSteps() {
+    $("#steps").innerHTML = steps.map((s, i) => `<div class="step-ed"><div class="row"><b class="mono">${i + 1}</b><input data-i="${i}" data-f="title" value="${esc(s.title)}" maxlength="40" style="flex:1">
+      <button class="btn ghost sm" data-up="${i}" ${i ? "" : "disabled"}>↑</button><button class="btn ghost sm" data-del="${i}">Quitar</button></div>
+      <label class="f"><span>Qué dice el operador</span><textarea data-i="${i}" data-f="say" maxlength="600">${esc(s.say)}</textarea></label>
+      <label class="f"><span>Ayuda para el operador</span><textarea data-i="${i}" data-f="tips" maxlength="600" style="min-height:50px">${esc(s.tips || "")}</textarea></label></div>`).join("");
+    $$("#steps [data-f]").forEach((el) => (el.oninput = () => (steps[+el.dataset.i][el.dataset.f] = el.value)));
+    $$("#steps [data-del]").forEach((b) => (b.onclick = () => { steps.splice(+b.dataset.del, 1); renderSteps(); }));
+    $$("#steps [data-up]").forEach((b) => (b.onclick = () => { const i = +b.dataset.up; [steps[i - 1], steps[i]] = [steps[i], steps[i - 1]]; renderSteps(); }));
+  }
+  async function scriptTab() { const r = await api("/call-script"); steps = r.steps.map((s) => ({...s})); defSteps = r.default; renderSteps(); }
+  $("#addStep").onclick = () => { steps.push({id: "", title: "Nuevo paso", say: "", tips: ""}); renderSteps(); };
+  $("#defStep").onclick = () => { if (confirm("¿Reemplazar por el guion por defecto?")) { steps = defSteps.map((s) => ({...s})); renderSteps(); } };
+  $("#saveScript").onclick = async () => {
+    try { const r = await post("/call-script", {steps}, "PUT"); steps = r.steps; renderSteps(); $("#scMsg").className = "msg ok"; $("#scMsg").textContent = "Guion guardado ✓ (los operadores lo ven en la próxima llamada)"; }
+    catch (e) { $("#scMsg").className = "msg bad"; $("#scMsg").textContent = e.message; }
+  };
+
+  const loaders = {orders, partners: partnersTab, chains: chainsTab, accounts, commissions: commissionsTab, features: featuresTab, events};
   function refresh() { stats(); loaders[tab](); }
   $$("#tabs button").forEach((b) => (b.onclick = () => { tab = b.dataset.t; $$("#tabs button").forEach((x) => x.classList.toggle("on", x === b)); Object.keys(loaders).forEach((t) => ($(`#t-${t}`).hidden = t !== tab)); refresh(); }));
   $("#fStatus").onchange = orders; $("#reload").onclick = refresh;

@@ -4,7 +4,7 @@ import re
 import secrets
 from typing import Any, Dict, List, Optional
 
-from app import db, geo, menu as menu_mod, quotes
+from app import db, geo, menu as menu_mod, pricing, quotes
 from app.config import settings
 
 # en_cola → colocando → colocado            (el bot lo creó en Yango)
@@ -36,8 +36,12 @@ def _clean_name(v: Any, field: str) -> str:
     return s[:40]
 
 
-def build_comment(customer: Dict[str, str], address: Dict[str, Any], payment: Dict[str, Any], number: str) -> str:
-    """Comentario del pedido en Yango: el mensajero ve quién es el cliente real y cómo paga."""
+CHANNELS = {"web": "WEB", "telefono": "TEL"}
+
+
+def build_comment(customer: Dict[str, str], address: Dict[str, Any], payment: Dict[str, Any], number: str,
+                  total: Optional[float] = None, channel: str = "web") -> str:
+    """Comentario del pedido en Yango: el mensajero ve quién es el cliente real, cómo paga y cuánto cobrar."""
     pay = PAYMENTS[payment["method"]]
     if payment["method"] == "cash" and payment.get("change_for"):
         pay += f" (paga con {settings.currency}{payment['change_for']:g})"
@@ -45,11 +49,15 @@ def build_comment(customer: Dict[str, str], address: Dict[str, Any], payment: Di
         f"CLIENTE: {customer['first_name']} {customer['last_name']}",
         f"TEL: {customer['phone']}",
         f"PAGO: {pay}",
+    ]
+    if total is not None:
+        parts.append(f"COBRAR: {settings.currency}{total:g}")
+    parts += [
         f"REF: {address['reference']}",
     ]
     if address.get("comment"):
         parts.append(f"NOTA: {address['comment']}")
-    parts.append(f"WEB #{number}")
+    parts.append(f"{CHANNELS.get(channel, 'WEB')} #{number}")
     return " | ".join(parts)[:480]
 
 
@@ -116,27 +124,34 @@ def new_number() -> str:
 
 
 def create(partner: Dict[str, Any], priced: Dict[str, Any], summary: Dict[str, Any],
-           client_ip: Optional[str] = None) -> Dict[str, Any]:
+           client_ip: Optional[str] = None, channel: str = "web", operator: Optional[str] = None) -> Dict[str, Any]:
     token = secrets.token_urlsafe(16)
     now = db.now_iso()
     for _ in range(5):
         number = new_number()
         if not db.one("SELECT 1 FROM orders WHERE number=?", (number,)):
             break
-    comment = build_comment(priced["customer"], priced["address"], priced["payment"], number)
-    quote_keep = {k: summary.get(k) for k in ("delivery_fee", "service_fee", "total", "eta_min", "eta_max",
-                                              "distance_km", "surge", "thresholds", "min_order", "place_slug")}
+    channel = channel if channel in CHANNELS else "web"
+    comment = build_comment(priced["customer"], priced["address"], priced["payment"], number,
+                            total=summary["total"], channel=channel)
+    quote_keep = {k: summary.get(k) for k in ("delivery_fee", "yango_fee", "fee_range", "fee_mode", "service_fee",
+                                              "total", "eta_min", "eta_max", "distance_km", "surge", "thresholds",
+                                              "min_order", "place_slug")}
+    commission = pricing.commission(priced["subtotal"], partner)
     db.execute(
         """INSERT INTO orders(token, number, partner_id, account, status, customer, address, items, payment,
-           subtotal, delivery_fee, service_fee, total, quote, yango_comment, client_ip, created_at, updated_at)
-           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
+           subtotal, delivery_fee, service_fee, total, quote, yango_comment, client_ip, commission, yango_fee,
+           channel, operator, created_at, updated_at)
+           VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)""",
         (token, number, partner["id"], partner["account"], "en_cola",
          json.dumps(priced["customer"], ensure_ascii=False), json.dumps(priced["address"], ensure_ascii=False),
          json.dumps(priced["lines"], ensure_ascii=False), json.dumps(priced["payment"], ensure_ascii=False),
          priced["subtotal"], summary["delivery_fee"], summary.get("service_fee") or 0, summary["total"],
-         json.dumps(quote_keep, ensure_ascii=False), comment, client_ip, now, now),
+         json.dumps(quote_keep, ensure_ascii=False), comment, client_ip, commission, summary.get("yango_fee"),
+         channel, operator, now, now),
     )
-    db.event("pedido_nuevo", {"number": number, "total": summary["total"]}, order_token=token,
+    db.event("pedido_nuevo", {"number": number, "total": summary["total"], "channel": channel,
+                              "operator": operator}, order_token=token,
              partner_id=partner["id"], account=partner["account"])
     return get(token)
 
@@ -160,11 +175,18 @@ def set_status(token: str, status: str, **fields: Any) -> Dict[str, Any]:
     return o
 
 
-def list_orders(partner_id: Optional[int] = None, status: Optional[str] = None, limit: int = 200) -> List[Dict[str, Any]]:
+def list_orders(partner_id: Optional[int] = None, status: Optional[str] = None, limit: int = 200,
+                partner_ids: Optional[List[int]] = None, phone: Optional[str] = None) -> List[Dict[str, Any]]:
     sql, params = "SELECT * FROM orders WHERE 1=1", []
     if partner_id is not None:
         sql += " AND partner_id=?"
         params.append(partner_id)
+    if partner_ids is not None:
+        sql += f" AND partner_id IN ({','.join('?' * len(partner_ids)) or 'NULL'})"
+        params.extend(partner_ids)
+    if phone:
+        sql += " AND json_extract(customer, '$.phone')=?"
+        params.append(phone)
     if status:
         sql += " AND status=?"
         params.append(status)
@@ -184,3 +206,20 @@ def public_view(o: Dict[str, Any]) -> Dict[str, Any]:
         "eta_min": (o["quote"] or {}).get("eta_min"), "eta_max": (o["quote"] or {}).get("eta_max"),
         "created_at": o["created_at"],
     }
+
+
+def commission_report(month: Optional[str] = None, partner_ids: Optional[List[int]] = None) -> List[Dict[str, Any]]:
+    """Comisión a pagar a Yango por restaurante y mes (pedidos no cancelados). month = 'AAAA-MM'."""
+    sql = ("SELECT p.slug, p.name, substr(o.created_at, 1, 7) month, COUNT(*) orders, "
+           "ROUND(SUM(o.subtotal), 2) subtotal, ROUND(SUM(o.commission), 2) commission, "
+           "ROUND(SUM(o.delivery_fee), 2) delivery "
+           "FROM orders o JOIN partners p ON p.id=o.partner_id WHERE o.status!='cancelado'")
+    params: List[Any] = []
+    if month:
+        sql += " AND substr(o.created_at, 1, 7)=?"
+        params.append(month)
+    if partner_ids is not None:
+        sql += f" AND o.partner_id IN ({','.join('?' * len(partner_ids)) or 'NULL'})"
+        params.extend(partner_ids)
+    sql += " GROUP BY p.id, month ORDER BY month DESC, p.name"
+    return [dict(r) for r in db.query(sql, tuple(params))]

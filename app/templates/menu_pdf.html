@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<base href="{{ base_href }}">
+<title>Menú · {{ p.name }}</title>
+<link rel="stylesheet" href="{{ fonts_href }}">
+<style>
+@page { size: {{ page }}; margin: 14mm 13mm; }
+*{box-sizing:border-box}
+html{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+body{margin:0;background:var(--bg);color:var(--text);font-family:var(--font-body);font-size:var(--fs);line-height:1.35}
+h1,h2,h3{font-family:var(--font-heading);margin:0;line-height:1.1}
+.head{display:flex;align-items:center;gap:16px;padding-bottom:12px;margin-bottom:16px;border-bottom:2px solid var(--primary)}
+.head img{width:64px;height:64px;border-radius:50%;object-fit:cover;flex:none}
+.head h1{font-size:2.6em;letter-spacing:-.01em}
+.head p{margin:4px 0 0;color:var(--muted);font-size:1.05em}
+.cols{column-count:var(--cols);column-gap:9mm}
+.sec{margin:0 0 6mm}
+.sec h2{break-after:avoid;font-size:1.45em;color:var(--primary);margin-bottom:2.5mm;text-transform:uppercase;letter-spacing:.06em}
+.it{display:flex;gap:3mm;break-inside:avoid;margin:0 0 2.6mm}
+.it img{width:16mm;height:16mm;border-radius:2mm;object-fit:cover;flex:none}
+.it .b{flex:1;min-width:0}
+.row{display:flex;align-items:baseline;gap:2mm}
+.row h3{font-size:1.06em;font-weight:700;font-family:var(--font-body)}
+.lead{flex:1;min-width:4mm;transform:translateY(-.25em)}
+.leader-dots .lead{border-bottom:1.5px dotted color-mix(in srgb,var(--text) 45%,transparent)}
+.leader-line .lead{border-bottom:1px solid color-mix(in srgb,var(--text) 20%,transparent)}
+.price{font-weight:800;white-space:nowrap}
+.price s{color:var(--muted);font-weight:500;margin-right:1.5mm;font-size:.85em}
+.ds{color:var(--muted);font-size:.86em;margin-top:.6mm}
+.foot{break-inside:avoid;display:flex;align-items:center;gap:6mm;margin-top:4mm;padding-top:4mm;border-top:1px solid color-mix(in srgb,var(--text) 18%,transparent)}
+.foot .qr svg{width:28mm;height:28mm;display:block}
+.foot b{font-family:var(--font-heading);font-size:1.3em;display:block}
+.foot p{margin:1mm 0;color:var(--muted)}
+.foot .url{color:var(--primary);font-weight:700}
+.empty{color:var(--muted);padding:20mm 0;text-align:center}
+
+/* Plantillas */
+.tpl-clasico .head{flex-direction:column;text-align:center;border-bottom:0;padding-bottom:0}
+.tpl-clasico .head::after{content:"";display:block;width:40%;height:0;border-top:1px solid var(--primary);border-bottom:1px solid var(--primary);padding-top:1.5mm;margin:3mm auto 0}
+.tpl-clasico .sec h2{text-align:center;font-style:italic;text-transform:none;letter-spacing:0;font-size:1.6em}
+.tpl-moderno .head{background:var(--primary);color:#fff;border:0;padding:6mm 7mm;border-radius:4mm}
+.tpl-moderno .head p{color:rgba(255,255,255,.85)}
+.tpl-moderno .sec h2{display:inline-block;background:color-mix(in srgb,var(--primary) 12%,transparent);padding:1mm 3mm;border-radius:99px;font-size:1.05em}
+.tpl-minimal .head{border-bottom:1px solid var(--text)}
+.tpl-minimal .sec h2{color:var(--text);font-size:.95em;letter-spacing:.18em;font-family:var(--font-body);font-weight:700}
+.tpl-minimal .price{font-weight:600}
+.tpl-pizarra .head{border-bottom:2px dashed var(--primary);justify-content:center;text-align:center}
+.tpl-pizarra .head h1{font-size:3.4em;letter-spacing:.04em}
+.tpl-pizarra .sec h2{font-size:1.9em;letter-spacing:.08em}
+.tpl-pizarra .price{color:var(--primary)}
+
+/* Vista en pantalla (editor): hoja con sombra */
+@media screen{
+  html{background:#e7e7ea}
+  body{width:{{ sheet_w }}mm;min-height:100vh;margin:8mm auto;padding:14mm 13mm;box-shadow:0 6px 30px rgba(0,0,0,.18)}
+}
+</style>
+</head>
+<body style="{{ css_vars }}" class="tpl-{{ s.template }} leader-{{ s.leader }}">
+<header class="head">
+  {% if logo_url %}<img src="{{ logo_url }}" alt="">{% endif %}
+  <div>
+    <h1>{{ s.title or p.name }}</h1>
+    {% if s.subtitle or profile.tagline %}<p>{{ s.subtitle or profile.tagline }}</p>{% endif %}
+  </div>
+</header>
+
+{% if sections %}
+<div class="cols">
+  {% for sec in sections %}
+  <section class="sec">
+    <h2>{{ sec.name }}</h2>
+    {% for it in sec["items"] %}
+    <div class="it">
+      {% if s.show_images and it.image %}<img src="{{ it.image }}" alt="">{% endif %}
+      <div class="b">
+        <div class="row"><h3>{{ it.name }}</h3><span class="lead"></span>
+          <span class="price">{% if s.show_promo and it.old_price %}<s>{{ currency }}{{ '%g' % it.old_price }}</s>{% endif %}{{ currency }}{{ '%g' % it.price }}</span></div>
+        {% if s.show_descriptions and it.description %}<div class="ds">{{ it.description }}</div>{% endif %}
+      </div>
+    </div>
+    {% endfor %}
+  </section>
+  {% endfor %}
+</div>
+{% else %}
+<p class="empty">El menú todavía no está sincronizado.</p>
+{% endif %}
+
+<footer class="foot">
+  {% if qr %}<div class="qr">{{ qr | safe }}</div>{% endif %}
+  <div>
+    {% if qr %}<b>Pide a domicilio</b><p>Escanea o entra a <span class="url">{{ store_url_short }}</span></p>{% endif %}
+    {% if profile.hours_text %}<p>🕒 {{ profile.hours_text }}</p>{% endif %}
+    {% if profile.whatsapp %}<p>WhatsApp {{ profile.whatsapp }}</p>{% endif %}
+    {% if s.footer %}<p>{{ s.footer }}</p>{% endif %}
+  </div>
+</footer>
+</body>
+</html>

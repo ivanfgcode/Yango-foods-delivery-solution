@@ -267,8 +267,10 @@ class YangoWebSource(YangoSource):
             y_total = float(dig(cart, ocfg["cart_total_path"]) or 0)
             if abs(y_sub - order["subtotal"]) > 0.01:
                 raise PlacementMismatch(f"Subtotal en Yango {y_sub} ≠ web {order['subtotal']}")
-            if y_fee - order["delivery_fee"] > settings.fee_tolerance:
-                raise PlacementMismatch(f"Envío en Yango {y_fee} > cotizado {order['delivery_fee']}")
+            # Con el modelo por distancia el cliente paga nuestro envío; Yango cobra a la cuenta el suyo (yango_fee).
+            expected_fee = order["yango_fee"] if order.get("yango_fee") is not None else order["delivery_fee"]
+            if y_fee - expected_fee > settings.fee_tolerance:
+                raise PlacementMismatch(f"Envío en Yango {y_fee} > cotizado {expected_fee}")
             nr = await self._checkout(rt, order, ocfg)
         return {"yango_order_nr": nr, "yango_total": y_total, "delivery_fee": y_fee}
 

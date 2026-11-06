@@ -8,6 +8,7 @@ import re
 import time
 from typing import Any, Awaitable, Callable, Dict, List, Optional, Tuple
 
+from app import pricing
 from app.config import settings
 
 _NUM = re.compile(r"(\d+(?:[.,]\d+)?)")
@@ -86,15 +87,30 @@ def fee_for(quote: Dict[str, Any], subtotal: float) -> Optional[float]:
 
 
 def price_for(quote: Dict[str, Any], subtotal: float) -> Dict[str, Any]:
-    """Resumen para el cliente: envío, tarifa de servicio, total y si se puede pedir."""
+    """Resumen para el cliente: envío (modelo por distancia o el de Yango), total y si se puede pedir.
+
+    `yango_fee` es lo que cobra Yango a la cuenta por el envío: el bot lo compara al colocar el pedido.
+    `fee_range` es el rango mín–máx del tramo de distancia (se muestra siempre al cliente).
+    """
     out = dict(quote)
-    fee = fee_for(quote, subtotal) if quote.get("available") else None
+    available = bool(quote.get("available"))
+    yango_fee = fee_for(quote, subtotal) if available else None
+    band = pricing.delivery_fee(quote.get("distance_km") or 0, pricing.demand_level(quote))
+    if settings.delivery_fee_mode == "yango":
+        fee = yango_fee
+    else:
+        fee = band["fee"] if available else None
+    service = (quote.get("service_fee") or 0.0) if settings.charge_service_fee else 0.0
     out["subtotal"] = round(subtotal, 2)
     out["delivery_fee"] = fee
+    out["yango_fee"] = yango_fee
+    out["fee_mode"] = settings.delivery_fee_mode
+    out["fee_range"] = {"min": band["min"], "max": band["max"], "label": band["label"]}
+    out["service_fee"] = service
     below_min = subtotal < (quote.get("min_order") or 0)
     out["below_min_order"] = below_min
-    out["can_order"] = bool(quote.get("available")) and fee is not None and not below_min and subtotal > 0
-    out["total"] = round(subtotal + (fee or 0) + (quote.get("service_fee") or 0), 2) if fee is not None else None
+    out["can_order"] = available and fee is not None and not below_min and subtotal > 0
+    out["total"] = round(subtotal + (fee or 0) + service, 2) if fee is not None else None
     return out
 
 

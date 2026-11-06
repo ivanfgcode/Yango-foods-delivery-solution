@@ -12,6 +12,8 @@ from app.config import settings
 
 PORTAL_COOKIE = "portal"
 ADMIN_COOKIE = "admin"
+CHAIN_COOKIE = "cadena"
+OPERATOR_COOKIE = "operador"
 TTL = 14 * 24 * 3600
 
 
@@ -45,6 +47,45 @@ def admin_token() -> str:
     return sign({"admin": True, "exp": int(time.time()) + TTL})
 
 
+def chain_token(chain_id: int) -> str:
+    return sign({"chain": int(chain_id), "exp": int(time.time()) + TTL})
+
+
+def operator_token(login: str) -> str:
+    return sign({"op": login, "exp": int(time.time()) + 12 * 3600})  # un turno
+
+
+def current_chain(request: Request) -> Optional[int]:
+    data = verify(request.cookies.get(CHAIN_COOKIE))
+    return int(data["chain"]) if data and data.get("chain") else None
+
+
+def require_chain(request: Request) -> int:
+    cid = current_chain(request)
+    if not cid:
+        raise HTTPException(401, "Inicia sesión con el usuario de tu cadena")
+    return cid
+
+
+def current_operator(request: Request) -> Optional[str]:
+    """Login del operador con sesión (o «admin» si entra el administrador). Revisa que siga activo."""
+    if is_admin(request):
+        return "admin"
+    data = verify(request.cookies.get(OPERATOR_COOKIE))
+    if not data or not data.get("op"):
+        return None
+    from app import operators  # evita import circular
+    op = operators.get(data["op"])
+    return op["login"] if op and op["enabled"] else None
+
+
+def require_operator(request: Request) -> str:
+    op = current_operator(request)
+    if not op:
+        raise HTTPException(401, "Inicia sesión como operador")
+    return op
+
+
 def is_admin(request: Request) -> bool:
     key = request.headers.get("x-admin-key")
     if key and hmac.compare_digest(key, settings.admin_key):
@@ -58,9 +99,21 @@ def require_admin(request: Request) -> None:
         raise HTTPException(401, "Requiere acceso de administrador")
 
 
-def require_portal(request: Request, slug: str) -> None:
+def can_portal(request: Request, slug: str) -> bool:
+    """Admin, sesión del portal de ese local o sesión de la cadena dueña del local."""
     if is_admin(request):
-        return
+        return True
     data = verify(request.cookies.get(PORTAL_COOKIE))
-    if not data or data.get("slug") != slug:
+    if data and data.get("slug") == slug:
+        return True
+    cid = current_chain(request)
+    if cid:
+        from app import partners  # evita import circular
+        p = partners.get(slug)
+        return bool(p and p.get("chain_id") == cid)
+    return False
+
+
+def require_portal(request: Request, slug: str) -> None:
+    if not can_portal(request, slug):
         raise HTTPException(401, "Inicia sesión en el portal")

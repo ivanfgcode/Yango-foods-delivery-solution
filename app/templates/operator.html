@@ -1,0 +1,122 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cabina de operadores</title>
+<link rel="stylesheet" href="/static/panel.css">
+<link rel="stylesheet" href="/static/operator.css">
+</head>
+<body>
+{% if not logged %}
+<div class="login card">
+  <h2>Cabina de operadores</h2>
+  <p class="muted">Atiende llamadas y carga pedidos telefónicos.</p>
+  <form id="loginForm">
+    <label class="f"><span>Usuario</span><input id="lg" autocomplete="username" required></label>
+    <label class="f"><span>Contraseña</span><input type="password" id="pw" autocomplete="current-password" required></label>
+    <button class="btn acc" style="width:100%">Entrar</button>
+    <div class="msg bad" id="loginMsg"></div>
+  </form>
+</div>
+<script>
+document.getElementById("loginForm").onsubmit = async (e) => {
+  e.preventDefault();
+  const r = await fetch("/api/operador/login", {method: "POST", headers: {"content-type": "application/json"},
+    body: JSON.stringify({login: document.getElementById("lg").value, password: document.getElementById("pw").value})});
+  if (r.ok) location.reload(); else document.getElementById("loginMsg").textContent = (await r.json()).detail || "Error";
+};
+</script>
+{% else %}
+<div class="bar">
+  <b>Cabina</b><span class="muted" id="opName"></span>
+  <button class="btn acc sm" id="newCall" title="F2">📞 Nueva llamada <kbd>F2</kbd></button>
+  <span class="timer" id="timer" hidden>00:00</span>
+  <div class="sp"></div>
+  <span class="muted keys"><kbd>/</kbd> buscar plato · <kbd>Alt</kbd>+<kbd>→</kbd> siguiente paso · <kbd>Ctrl</kbd>+<kbd>Enter</kbd> confirmar</span>
+  <button class="btn ghost sm" id="logout">Salir</button>
+</div>
+
+<div class="cab">
+  <main class="cab-main" id="form">
+    <div class="idle card" id="idle"><h2>Listo para la próxima llamada</h2><p class="muted">Pulsa <b>Nueva llamada</b> (F2) al contestar. El guion de la derecha te guía paso a paso.</p></div>
+
+    <section class="card blk" data-step="saludo">
+      <h3><i>1</i> Restaurante</h3>
+      <div class="row">
+        <select id="partner" style="flex:1"></select>
+        <span class="pill" id="partnerState"></span>
+      </div>
+      <p class="muted small" id="partnerInfo"></p>
+    </section>
+
+    <section class="card blk" data-step="cliente">
+      <h3><i>2</i> Cliente</h3>
+      <div class="row">
+        <label class="f" style="flex:1 1 150px"><span>Celular</span><div class="phone"><b>{{ phone_prefix }}</b><input id="phone" inputmode="numeric" maxlength="12" placeholder="7XXXXXXX" autocomplete="off"></div></label>
+        <label class="f" style="flex:1 1 140px"><span>Nombre</span><input id="first" autocomplete="off"></label>
+        <label class="f" style="flex:1 1 140px"><span>Apellido</span><input id="last" autocomplete="off"></label>
+      </div>
+      <div id="known"></div>
+    </section>
+
+    <section class="card blk" data-step="direccion">
+      <h3><i>3</i> Dirección</h3>
+      <div class="opmap"><div id="map"></div><div class="pin">📍</div></div>
+      <div class="quote" id="quote">Mueve el mapa hasta la puerta del cliente</div>
+      <div class="row">
+        <label class="f" style="flex:2 1 220px"><span>Dirección</span><input id="addr" autocomplete="off"></label>
+        <label class="f" style="flex:2 1 220px"><span>N° de casa / referencia *</span><input id="ref" autocomplete="off" placeholder="Casa 24, portón negro"></label>
+        <label class="f" style="flex:1 1 160px"><span>Nota al mensajero</span><input id="note" maxlength="200" autocomplete="off"></label>
+      </div>
+    </section>
+
+    <section class="card blk" data-step="pedido">
+      <h3><i>4</i> Pedido</h3>
+      <div class="search-wrap">
+        <input id="q" placeholder="Buscar plato… ( / )" autocomplete="off">
+        <div class="results" id="results"></div>
+      </div>
+      <div id="optsBox"></div>
+      <div id="lines"></div>
+    </section>
+
+    <section class="card blk" data-step="pago">
+      <h3><i>5</i> Pago al mensajero</h3>
+      <div class="row">
+        <label class="radio"><input type="radio" name="pay" value="cash" checked> 💵 Efectivo</label>
+        <label class="radio"><input type="radio" name="pay" value="qr"> 📱 QR</label>
+        <label class="f" id="changeF" style="flex:0 1 180px;margin:0"><span>Paga con (cambio)</span><input id="change" inputmode="decimal" placeholder="100"></label>
+      </div>
+    </section>
+
+    <section class="card blk total" data-step="confirmacion">
+      <div class="sums" id="sums"></div>
+      <div class="msg bad" id="err"></div>
+      <button class="btn acc big" id="place" disabled>Confirmar pedido <kbd>Ctrl+Enter</kbd></button>
+    </section>
+  </main>
+
+  <aside class="cab-side">
+    <div class="card script" id="script">
+      <div class="row" style="margin-bottom:8px"><h2 style="margin:0;flex:1">Guion</h2><span class="muted small" id="stepN"></span></div>
+      <ol class="steps" id="stepList"></ol>
+      <div class="say" id="say"></div>
+      <div class="tips" id="tips"></div>
+      <div class="row"><button class="btn ghost sm" id="prev">← Anterior</button><span class="sp" style="flex:1"></span><button class="btn sm" id="next">Siguiente →</button></div>
+    </div>
+    <div class="card" id="closeBox">
+      <h2>Cerrar llamada</h2>
+      <div class="outcomes" id="outcomes"></div>
+      <label class="f"><span>Notas</span><textarea id="notes" maxlength="600" style="min-height:60px" placeholder="Reclamo, pedido especial, devolver llamada…"></textarea></label>
+      <button class="btn" id="endCall" disabled>Registrar y terminar</button>
+      <div class="msg" id="endMsg"></div>
+    </div>
+    <div class="card"><h2>Mis últimos pedidos</h2><div id="mine" class="mine"></div></div>
+  </aside>
+</div>
+
+<script>window.CAB = {{ {"currency": currency, "phonePrefix": phone_prefix} | tojson }};</script>
+<script src="/static/operator.js"></script>
+{% endif %}
+</body>
+</html>

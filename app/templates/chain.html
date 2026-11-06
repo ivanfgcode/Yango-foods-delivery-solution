@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{{ chain.name if chain else 'Portal de la cadena' }}</title>
+<link rel="stylesheet" href="/static/panel.css">
+</head>
+<body>
+{% if not chain %}
+<div class="login card">
+  <h2>Portal de la cadena</h2>
+  <p class="muted">Entra con el usuario de tu cadena para ver todos tus locales, pedidos y comisiones.</p>
+  <form id="loginForm">
+    <label class="f"><span>Usuario</span><input id="lg" autocomplete="username" required></label>
+    <label class="f"><span>Contraseña</span><input type="password" id="pw" autocomplete="current-password" required></label>
+    <button class="btn acc" style="width:100%">Entrar</button>
+    <div class="msg bad" id="loginMsg"></div>
+  </form>
+</div>
+<script>
+document.getElementById("loginForm").onsubmit = async (e) => {
+  e.preventDefault();
+  const r = await fetch("/api/cadena/login", {method: "POST", headers: {"content-type": "application/json"},
+    body: JSON.stringify({login: document.getElementById("lg").value, password: document.getElementById("pw").value})});
+  if (r.ok) location.reload(); else document.getElementById("loginMsg").textContent = (await r.json()).detail || "Error";
+};
+</script>
+{% else %}
+<div class="bar"><b>{{ chain.name }}</b><span class="muted">Portal de la cadena</span><div class="sp"></div>
+  <input type="month" id="month" style="width:auto"><button class="btn ghost sm" id="logout">Salir</button></div>
+<div class="page">
+  <div class="stats" id="stats" style="margin-bottom:16px"></div>
+  <div class="card"><h2>Tus locales</h2><p class="muted">Todos los locales de la cadena usan el mismo bot de Yango: los pedidos se cargan de a uno, en orden de llegada.</p>
+    <div class="tw"><table><thead><tr><th>Local</th><th>Web</th><th>Estado</th><th>Comisión</th><th></th></tr></thead><tbody id="lb"></tbody></table></div></div>
+  <div class="card"><h2>Comisión del mes</h2><div class="tw"><table><thead><tr><th>Local</th><th>Pedidos</th><th>Ventas</th><th>Envíos</th><th>Comisión a Yango</th></tr></thead><tbody id="cb"></tbody></table></div></div>
+  <div class="card"><h2>Últimos pedidos</h2><div class="tw"><table><thead><tr><th>Hora</th><th>N°</th><th>Local</th><th>Cliente</th><th>Productos</th><th>Total</th><th>Comisión</th><th>Estado</th></tr></thead><tbody id="ob"></tbody></table></div></div>
+</div>
+<script>
+(() => {
+  const CUR = {{ currency | tojson }};
+  const $ = (s) => document.querySelector(s), $$ = (s) => [...document.querySelectorAll(s)];
+  const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+  const when = (s) => s ? new Date(s).toLocaleString("es-BO", {dateStyle: "short", timeStyle: "short"}) : "";
+  const pct = (r) => `${(r * 100).toLocaleString("es-BO")} %`;
+  async function load() {
+    const m = $("#month").value;
+    const r = await fetch(`/api/cadena/me${m ? `?month=${m}` : ""}`); if (r.status === 401) return location.reload();
+    const d = await r.json();
+    if (!m) $("#month").value = d.month;
+    const tot = d.commissions.reduce((a, x) => ({orders: a.orders + x.orders, subtotal: a.subtotal + x.subtotal, commission: a.commission + x.commission}), {orders: 0, subtotal: 0, commission: 0});
+    const bot = d.bot || {};
+    $("#stats").innerHTML = [["Locales", d.locales.length], ["Pedidos del mes", tot.orders], ["Ventas del mes", `${CUR}${Math.round(tot.subtotal * 100) / 100}`],
+      ["Comisión del mes", `${CUR}${Math.round(tot.commission * 100) / 100}`], ["Bot de Yango", bot.status === "ok" ? "activo ✓" : (bot.status || "sin sesión")]]
+      .map(([l, v]) => `<div class="stat"><b>${esc(v)}</b><span>${esc(l)}</span></div>`).join("");
+    $("#lb").innerHTML = d.locales.map((p) => `<tr><td><b>${esc(p.name)}</b></td><td><a href="${esc(p.url)}" target="_blank" rel="noopener" class="mono">${esc(p.url)}</a></td>
+      <td><span class="pill ${p.enabled ? "ok" : "cancelado"}">${p.enabled ? "activo" : "inactivo"}</span> ${p.accepting_orders ? "" : `<span class="pill manual">pausado</span>`}</td>
+      <td>${pct(p.commission_rate)}</td><td><a class="btn sm" href="${esc(p.portal)}">Diseño y pedidos →</a></td></tr>`).join("") || `<tr><td colspan="5" class="muted">Sin locales todavía.</td></tr>`;
+    $("#cb").innerHTML = d.commissions.map((x) => `<tr><td>${esc(x.name)}</td><td>${x.orders}</td><td>${CUR}${x.subtotal}</td><td>${CUR}${x.delivery}</td><td><b>${CUR}${x.commission}</b></td></tr>`).join("") || `<tr><td colspan="5" class="muted">Sin pedidos en el mes.</td></tr>`;
+    $("#ob").innerHTML = d.orders.map((o) => `<tr><td>${esc(when(o.created_at))}</td><td class="mono">${esc(o.number)}</td><td>${esc(o.partner)}</td><td>${esc(o.customer)}${o.channel === "telefono" ? `<br><span class="muted">📞 teléfono</span>` : ""}</td>
+      <td>${o.items.map((i) => `${i.quantity}× ${esc(i.name)}`).join("<br>")}</td><td>${CUR}${o.total}</td><td>${CUR}${o.commission}</td><td><span class="pill ${esc(o.status)}">${esc(o.status)}</span></td></tr>`).join("") || `<tr><td colspan="8" class="muted">Todavía no hay pedidos.</td></tr>`;
+  }
+  $("#month").onchange = load;
+  $("#logout").onclick = async () => { await fetch("/api/cadena/logout", {method: "POST"}); location.reload(); };
+  load(); setInterval(load, 30000);
+})();
+</script>
+{% endif %}
+</body>
+</html>

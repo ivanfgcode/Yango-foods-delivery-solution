@@ -10,8 +10,9 @@ from urllib.parse import urlparse
 from app import db, themes
 
 SLUG_RE = re.compile(r"^[a-z0-9](?:[a-z0-9-]{0,48}[a-z0-9])?$")
-RESERVED = {"admin", "api", "static", "uploads", "health", "docs", "openapi.json", "portal", "favicon.ico"}
-JSON_FIELDS = ("theme", "profile")
+RESERVED = {"admin", "api", "static", "uploads", "health", "docs", "openapi.json", "portal", "favicon.ico",
+            "operador", "cadena", "login", "redoc"}
+JSON_FIELDS = ("theme", "profile", "pdf_style")
 
 
 def parse_yango_url(url: str) -> Dict[str, Optional[str]]:
@@ -52,8 +53,14 @@ def all_partners() -> List[Dict[str, Any]]:
 
 def create(slug: str, name: str, account: str, yango_url: str = "", place_slug: str = "",
            password: Optional[str] = None, theme: Optional[Dict[str, Any]] = None,
-           profile: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+           profile: Optional[Dict[str, Any]] = None, chain_id: Optional[int] = None) -> Dict[str, Any]:
     slug = (slug or "").strip().lower()
+    if chain_id:
+        # El bot es de la cadena: todos sus locales usan la cuenta Yango de la cadena.
+        row = db.one("SELECT account FROM chains WHERE id=?", (int(chain_id),))
+        if not row:
+            raise ValueError("Cadena no encontrada")
+        account = row["account"]
     if not SLUG_RE.match(slug) or slug in RESERVED:
         raise ValueError("Slug inválido: minúsculas, números y guiones")
     if not re.match(r"^[A-Za-z0-9_-]{1,40}$", account or ""):
@@ -64,10 +71,10 @@ def create(slug: str, name: str, account: str, yango_url: str = "", place_slug: 
     now = db.now_iso()
     db.execute(
         """INSERT INTO partners(slug, name, yango_url, brand_slug, place_slug, account, theme, profile,
-           portal_password_hash, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+           portal_password_hash, chain_id, created_at, updated_at) VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
         (slug, name.strip(), yango_url.strip(), parsed["brand_slug"], place_slug.strip() or None, account,
          json.dumps(themes.validate(theme or {})), json.dumps(profile or {}, ensure_ascii=False),
-         hash_password(password) if password else None, now, now),
+         hash_password(password) if password else None, int(chain_id) if chain_id else None, now, now),
     )
     db.execute("INSERT OR IGNORE INTO accounts(name) VALUES (?)", (account,))
     return get(slug)
@@ -75,7 +82,14 @@ def create(slug: str, name: str, account: str, yango_url: str = "", place_slug: 
 
 def update(slug: str, **fields: Any) -> Dict[str, Any]:
     allowed = {"name", "yango_url", "place_slug", "place_id", "place_lat", "place_lon", "place_address",
-               "account", "enabled", "accepting_orders", "min_order", "brand_slug"}
+               "account", "enabled", "accepting_orders", "min_order", "brand_slug", "commission_rate"}
+    if "commission_rate" in fields and fields["commission_rate"] not in (None, ""):
+        rate = float(fields["commission_rate"])
+        if not 0 <= rate <= 0.5:
+            raise ValueError("Comisión entre 0 y 0,5 (50 %)")
+        fields["commission_rate"] = rate
+    elif "commission_rate" in fields:
+        fields["commission_rate"] = None
     sets, vals = [], []
     for k, v in fields.items():
         if k not in allowed:
@@ -100,6 +114,15 @@ def set_theme(slug: str, patch: Dict[str, Any]) -> Dict[str, Any]:
     theme.update(themes.validate(patch))
     db.execute("UPDATE partners SET theme=?, updated_at=? WHERE slug=?", (json.dumps(theme), db.now_iso(), slug))
     return themes.merge(theme)
+
+
+def set_pdf_style(slug: str, patch: Dict[str, Any]) -> Dict[str, Any]:
+    p = get(slug)
+    style = dict(p.get("pdf_style") or {})
+    style.update(themes.validate_pdf(patch))
+    db.execute("UPDATE partners SET pdf_style=?, updated_at=? WHERE slug=?",
+               (json.dumps(style, ensure_ascii=False), db.now_iso(), slug))
+    return themes.merge_pdf(style)
 
 
 PROFILE_KEYS = {"tagline": 120, "about": 600, "whatsapp": 20, "instagram": 60, "facebook": 120,

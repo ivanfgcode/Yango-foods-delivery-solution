@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="es">
+<html lang="es" style="{{ css_vars }}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
@@ -10,7 +10,7 @@
 <link rel="stylesheet" href="{{ fonts_href }}">
 <link rel="stylesheet" href="/static/store.css">
 </head>
-<body style="{{ css_vars }}" class="motion{{ ' grid-layout' if theme.card_layout == 'grid' else '' }}">
+<body class="motion{{ ' grid-layout' if theme.card_layout == 'grid' else '' }}">
 <header class="top{{ ' dark' if theme.dark_header else '' }}" id="top">
   <div class="wrap">
     <a class="brand" href="/{{ p.slug }}">
@@ -37,6 +37,7 @@
       {% if profile.tagline %}<p class="tag">{{ profile.tagline }}</p>{% endif %}
       <div class="meta">
         <span id="metaEta">🛵 <b>Delivery</b></span>
+        {% if delivery_tiers %}<span title="El precio exacto depende de la distancia y la demanda">📍 Envío {{ currency }}{{ '%g' % delivery_tiers[0].min }}–{{ currency }}{{ '%g' % delivery_tiers[-1].max }}</span>{% endif %}
         {% if profile.hours_text %}<span>🕒 {{ profile.hours_text }}</span>{% endif %}
         <span>💵 Efectivo o QR</span>
       </div>
@@ -88,6 +89,9 @@
         <button class="locate" type="button" id="locateBtn">◎ Mi ubicación</button>
       </div>
       <div class="quote loading" id="quoteBox"><span class="dot"></span><span id="quoteText">Mueve el mapa hasta tu puerta</span></div>
+      {% if delivery_tiers %}<details class="tiers"><summary>¿Cuánto cuesta el envío?</summary>
+        <table>{% for t in delivery_tiers %}<tr><td>{{ t.label }}</td><td>{{ currency }}{{ '%g' % t.min }} – {{ currency }}{{ '%g' % t.max }}</td></tr>{% endfor %}</table>
+        <p>Dentro de cada tramo el precio sube con la distancia y cuando hay mucha demanda.</p></details>{% endif %}
       <label class="field"><span>Dirección</span><input id="fAddr" name="street-address" autocomplete="street-address" placeholder="Calle o avenida" required></label>
       <label class="field"><span>N° de casa, edificio o referencia *</span><input id="fRef" placeholder="Casa 24, portón negro, frente a la farmacia" required></label>
       <label class="field"><span>Nota para el mensajero (opcional)</span><input id="fNote" maxlength="200" placeholder="Tocar el timbre 2 veces"></label>

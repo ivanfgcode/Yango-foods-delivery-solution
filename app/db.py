@@ -84,7 +84,71 @@ CREATE TABLE IF NOT EXISTS accounts (
     session_imported_at TEXT,
     checked_at TEXT
 );
+
+-- Cadena de restaurantes: un bot (cuenta cliente de Yango) por cadena y un login para sus dueños.
+CREATE TABLE IF NOT EXISTS chains (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    slug TEXT UNIQUE NOT NULL,
+    name TEXT NOT NULL,
+    account TEXT UNIQUE NOT NULL,         -- cuenta Yango (bot) de toda la cadena
+    login TEXT UNIQUE NOT NULL,           -- usuario del portal de la cadena
+    password_hash TEXT NOT NULL,
+    contact TEXT,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
+
+-- Operadores del call center (cabina de llamadas).
+CREATE TABLE IF NOT EXISTS operators (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    login TEXT UNIQUE NOT NULL,
+    name TEXT NOT NULL,
+    password_hash TEXT NOT NULL,
+    enabled INTEGER NOT NULL DEFAULT 1,
+    created_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS calls (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    operator TEXT NOT NULL,
+    phone TEXT,
+    partner_id INTEGER,
+    order_token TEXT,
+    outcome TEXT,                         -- pedido | consulta | reclamo | sin_cobertura | colgo | otro
+    notes TEXT,
+    started_at TEXT NOT NULL,
+    ended_at TEXT
+);
+CREATE INDEX IF NOT EXISTS calls_at ON calls(started_at);
+
+-- Ajustes editables desde el admin (guion de llamadas, etc.).
+CREATE TABLE IF NOT EXISTS kv (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+);
 """
+
+# Columnas agregadas después de la primera versión: se añaden a bases existentes al arrancar.
+MIGRATIONS = (
+    ("partners", "chain_id", "INTEGER REFERENCES chains(id)"),
+    ("partners", "commission_rate", "REAL"),
+    ("partners", "pdf_style", "TEXT NOT NULL DEFAULT '{}'"),
+    ("orders", "commission", "REAL NOT NULL DEFAULT 0"),
+    ("orders", "yango_fee", "REAL"),
+    ("orders", "channel", "TEXT NOT NULL DEFAULT 'web'"),
+    ("orders", "operator", "TEXT"),
+    ("accounts", "yango_phone", "TEXT"),
+)
+
+
+def _migrate(conn: sqlite3.Connection) -> None:
+    for table, col, ddl in MIGRATIONS:
+        cols = {r[1] for r in conn.execute(f"PRAGMA table_info({table})")}
+        if col not in cols:
+            conn.execute(f"ALTER TABLE {table} ADD COLUMN {col} {ddl}")
+    conn.execute("CREATE INDEX IF NOT EXISTS partners_chain ON partners(chain_id)")
+    conn.execute("CREATE INDEX IF NOT EXISTS orders_phone ON orders(json_extract(customer, '$.phone'))")
 
 _lock = threading.RLock()
 _conn: Optional[sqlite3.Connection] = None
@@ -105,6 +169,7 @@ def connect() -> sqlite3.Connection:
             _conn.execute("PRAGMA foreign_keys=ON")
             _conn.execute("PRAGMA busy_timeout=5000")
             _conn.executescript(SCHEMA)
+            _migrate(_conn)
         return _conn
 
 
@@ -152,6 +217,17 @@ def event(kind: str, detail: Any = None, order_token: Optional[str] = None,
         (now_iso(), kind, order_token, partner_id, account,
          json.dumps(detail, ensure_ascii=False, default=str) if detail is not None else None),
     )
+
+
+def kv_get(key: str, default: Any = None) -> Any:
+    r = one("SELECT value FROM kv WHERE key=?", (key,))
+    return json.loads(r["value"]) if r else default
+
+
+def kv_set(key: str, value: Any) -> None:
+    execute("INSERT INTO kv(key, value, updated_at) VALUES (?,?,?) ON CONFLICT(key) DO UPDATE SET "
+            "value=excluded.value, updated_at=excluded.updated_at",
+            (key, json.dumps(value, ensure_ascii=False), now_iso()))
 
 
 def row_dict(row: Optional[sqlite3.Row], json_fields: tuple = ()) -> Optional[Dict[str, Any]]:

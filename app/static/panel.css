@@ -59,3 +59,8 @@ th{font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:var(--mu
 code,.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.85em}
 .upl{display:flex;gap:8px;align-items:center}
 .upl img{width:42px;height:42px;border-radius:8px;object-fit:cover;background:var(--soft)}
+.tabs.sub{display:inline-flex;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:4px}
+.checks{display:flex;flex-direction:column;gap:2px}
+.step-ed{border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:12px;background:var(--bg)}
+.step-ed textarea{min-height:70px}
+.preview iframe#pdfFrame{background:#e7e7ea}

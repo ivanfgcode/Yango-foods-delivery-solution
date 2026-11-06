@@ -15,7 +15,8 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from app import auth, db, geo, menu as menu_mod, orders, partners, quotes, runtime as runtime_mod, themes
+from app import (auth, checkout, db, geo, menu as menu_mod, orders, partners, pricing, quotes,
+                 runtime as runtime_mod, themes)
 from app.config import ROOT, settings
 from bot import sessions
 
@@ -52,6 +53,11 @@ app.state.background = True
 app.mount("/static", StaticFiles(directory=str(ROOT / "app" / "static")), name="static")
 settings.ensure_dirs()
 app.mount("/uploads", StaticFiles(directory=str(settings.uploads_dir)), name="uploads")
+
+# Cadenas, cabina de operadores, menú PDF y comisiones. Va antes de la tienda, que captura /<slug>.
+from app import api_extra  # noqa: E402
+
+app.include_router(api_extra.router)
 
 
 def script_json(data: Any) -> str:
@@ -103,7 +109,9 @@ def _store_ctx(p: Dict[str, Any]) -> Dict[str, Any]:
                                       "center": [p.get("place_lat") or -17.7833, p.get("place_lon") or -63.1821],
                                       "accepting": bool(p["accepting_orders"]),
                                       "yandexKey": settings.yandex_maps_api_key,
-                                      "phonePrefix": settings.phone_prefix})}
+                                      "phonePrefix": settings.phone_prefix,
+                                      "deliveryTiers": pricing.public_tiers()}),
+            "delivery_tiers": pricing.public_tiers()}
 
 
 @app.get("/{slug}/pedido/{token}", response_class=HTMLResponse)
@@ -182,24 +190,13 @@ def _rate_limited(ip: str) -> bool:
 @app.post("/api/{slug}/orders")
 async def api_create_order(request: Request, slug: str, body: Dict[str, Any] = Body(...)):
     p = _partner_or_404(slug)
-    if not p["accepting_orders"]:
-        raise orders.OrderError("El restaurante no está recibiendo pedidos ahora")
     ip = request.headers.get("x-forwarded-for", "").split(",")[0].strip() or (request.client.host if request.client else "")
-    m = _menu_or_503(p)
-    priced = orders.prepare(p, m, body)
-    if _rate_limited(ip):
-        raise HTTPException(429, "Demasiados pedidos seguidos, espera unos minutos")
-    a = priced["address"]
-    try:
-        q = await rt().quotes.quote(p["account"], p["place_slug"], a["lat"], a["lon"])
-    except Exception:
-        raise HTTPException(503, "No pudimos cotizar el envío, intenta de nuevo")
-    summary = orders.check_quote(priced, q, p)
-    expected = body.get("expected_total")
-    if expected is not None and abs(float(expected) - summary["total"]) > 0.01:
-        raise orders.OrderError(f"El total cambió a {settings.currency}{summary['total']:g}. Revisa y confirma de nuevo.")
-    o = orders.create(p, priced, summary, client_ip=ip)
-    rt().dispatcher.enqueue(o["account"], o["token"])
+
+    def limit() -> None:
+        if _rate_limited(ip):
+            raise HTTPException(429, "Demasiados pedidos seguidos, espera unos minutos")
+
+    o = await checkout.place(p, body, channel="web", client_ip=ip, before_quote=limit)
     return {"token": o["token"], "number": o["number"], "url": f"/{slug}/pedido/{o['token']}",
             "order": orders.public_view(o)}
 
@@ -217,8 +214,7 @@ async def api_order(slug: str, token: str):
 @app.get("/{slug}/portal", response_class=HTMLResponse)
 async def portal_page(request: Request, slug: str):
     p = _partner_or_404(slug, public=False)
-    data = auth.verify(request.cookies.get(auth.PORTAL_COOKIE))
-    logged = auth.is_admin(request) or bool(data and data.get("slug") == slug)
+    logged = auth.can_portal(request, slug)
     return templates.TemplateResponse(request, "portal.html", {
         "p": p, "logged": logged, "fonts": list(themes.FONTS), "choices": themes.CHOICES,
         "defaults": themes.DEFAULTS, "currency": settings.currency})
@@ -249,6 +245,8 @@ async def portal_me(request: Request, slug: str):
     return {"slug": p["slug"], "name": p["name"], "theme": themes.merge(p["theme"]), "profile": p["profile"],
             "accepting_orders": bool(p["accepting_orders"]), "enabled": bool(p["enabled"]),
             "menu_items": len(m["items"]) if m else 0, "menu_synced_at": m.get("synced_at") if m else None,
+            "commission_rate": pricing.commission_rate(p), "chain_id": p.get("chain_id"),
+            "via_chain": bool(auth.current_chain(request)),
             "public_url": f"{settings.public_base_url}/{p['slug']}"}
 
 
@@ -303,7 +301,8 @@ async def portal_orders(request: Request, slug: str):
     for o in orders.list_orders(partner_id=p["id"], limit=200):
         v = orders.public_view(o)
         v.update({"customer": f"{o['customer']['first_name']} {o['customer']['last_name']}",
-                  "phone": o["customer"]["phone"], "yango_order_nr": o["yango_order_nr"]})
+                  "phone": o["customer"]["phone"], "yango_order_nr": o["yango_order_nr"],
+                  "commission": o.get("commission") or 0, "channel": o.get("channel") or "web"})
         out.append(v)
     return out
 
@@ -329,8 +328,13 @@ async def admin_login(response: Response, body: Dict[str, Any] = Body(...)):
 async def admin_health(request: Request):
     auth.require_admin(request)
     counts = {r["status"]: r["n"] for r in db.query("SELECT status, COUNT(*) n FROM orders GROUP BY status")}
+    month = db.now_iso()[:7]
+    comm = db.one("SELECT ROUND(COALESCE(SUM(commission), 0), 2) c FROM orders WHERE status!='cancelado' "
+                  "AND substr(created_at, 1, 7)=?", (month,))["c"]
     return {"source": rt().source.health(), "queues": rt().dispatcher.health(), "quotes": rt().quotes.stats,
-            "orders": counts, "order_placement_enabled": settings.order_placement_enabled}
+            "orders": counts, "order_placement_enabled": settings.order_placement_enabled,
+            "commission_month": comm, "commission_rate": settings.commission_rate,
+            "delivery_fee_mode": settings.delivery_fee_mode, "delivery_tiers": pricing.public_tiers()}
 
 
 @app.get("/api/admin/partners")
@@ -351,7 +355,7 @@ async def admin_create_partner(request: Request, body: Dict[str, Any] = Body(...
     try:
         p = partners.create(body.get("slug", ""), body.get("name", ""), body.get("account", ""),
                             yango_url=body.get("yango_url", ""), place_slug=body.get("place_slug", ""),
-                            password=body.get("password") or None)
+                            password=body.get("password") or None, chain_id=body.get("chain_id") or None)
     except ValueError as e:
         raise HTTPException(422, str(e))
     p.pop("portal_password_hash", None)
@@ -362,7 +366,10 @@ async def admin_create_partner(request: Request, body: Dict[str, Any] = Body(...
 async def admin_update_partner(request: Request, slug: str, body: Dict[str, Any] = Body(...)):
     auth.require_admin(request)
     _partner_or_404(slug, public=False)
-    p = partners.update(slug, **body)
+    try:
+        p = partners.update(slug, **body)
+    except (ValueError, TypeError) as e:
+        raise HTTPException(422, str(e))
     p.pop("portal_password_hash", None)
     return p
 

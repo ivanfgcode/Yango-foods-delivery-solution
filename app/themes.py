@@ -45,6 +45,7 @@ CHOICES = {
     "image_ratio": ("1/1", "4/3", "16/9"),
     "hero_style": ("cover", "compact", "minimal"),
 }
+THUMBS = {"s": "88px", "m": "118px", "l": "150px"}  # foto en el diseño de lista
 COLOR_KEYS = ("primary", "on_primary", "background", "surface", "text", "muted")
 _HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
 _URL = re.compile(r"^(https://[^\s\"'<>()]{3,500}|/uploads/[A-Za-z0-9._-]{1,120})$")
@@ -91,10 +92,11 @@ def validate(patch: Dict[str, Any]) -> Dict[str, Any]:
 def css_vars(theme: Dict[str, Any]) -> str:
     t = merge(theme)
     size = {"s": "190px", "m": "240px", "l": "310px"}[t["card_size"]]
+    thumb = THUMBS[t["card_size"]]
     return (
         f"--primary:{t['primary']};--on-primary:{t['on_primary']};--bg:{t['background']};"
         f"--surface:{t['surface']};--text:{t['text']};--muted:{t['muted']};"
-        f"--radius:{t['radius']}px;--card-min:{size};--img-ratio:{t['image_ratio']};"
+        f"--radius:{t['radius']}px;--card-min:{size};--thumb:{thumb};--img-ratio:{t['image_ratio']};"
         f"--font-heading:'{t['heading_font']}',system-ui,sans-serif;"
         f"--font-body:'{t['body_font']}',system-ui,sans-serif;--base-size:{t['base_font_size']}px;"
     )
@@ -103,4 +105,103 @@ def css_vars(theme: Dict[str, Any]) -> str:
 def fonts_href(theme: Dict[str, Any]) -> str:
     t = merge(theme)
     fams = {FONTS[t["heading_font"]], FONTS[t["body_font"]]}
+    return "https://fonts.googleapis.com/css2?" + "&".join(f"family={f}" for f in sorted(fams)) + "&display=swap"
+
+
+# ------------------------------------------------------------------------------------------- menú PDF
+PDF_DEFAULTS: Dict[str, Any] = {
+    "template": "clasico",       # clasico | moderno | minimal | pizarra
+    "primary": "#F25C54",
+    "background": "#FFFFFF",
+    "text": "#1D1B19",
+    "muted": "#6F6A64",
+    "heading_font": "Playfair Display",
+    "body_font": "Lora",
+    "columns": 2,                # 1 | 2 | 3
+    "page_size": "A4",           # A4 | Letter | A5
+    "orientation": "portrait",   # portrait | landscape
+    "font_size": 11,             # pt
+    "leader": "dots",            # dots (puntos entre nombre y precio) | line | none
+    "show_images": False,
+    "show_descriptions": True,
+    "show_logo": True,
+    "show_qr": True,             # QR a la web de pedidos
+    "show_promo": True,          # precio promo tachado
+    "title": "",                 # vacío = nombre del restaurante
+    "subtitle": "",
+    "footer": "",
+    "hidden_categories": [],     # ids de categorías que no van al PDF
+}
+PDF_CHOICES = {
+    "template": ("clasico", "moderno", "minimal", "pizarra"),
+    "page_size": ("A4", "Letter", "A5"),
+    "orientation": ("portrait", "landscape"),
+    "leader": ("dots", "line", "none"),
+}
+PDF_COLORS = ("primary", "background", "text", "muted")
+PDF_TEXTS = {"title": 60, "subtitle": 120, "footer": 240}
+PDF_BOOLS = ("show_images", "show_descriptions", "show_logo", "show_qr", "show_promo")
+# Plantillas = punto de partida (colores y letras). El editor permite cambiarlas después.
+PDF_TEMPLATES: Dict[str, Dict[str, Any]] = {
+    "clasico": {"background": "#FFFDF8", "text": "#1D1B19", "muted": "#6F6A64",
+                "heading_font": "Playfair Display", "body_font": "Lora", "leader": "dots"},
+    "moderno": {"background": "#FFFFFF", "text": "#141414", "muted": "#6B6B70",
+                "heading_font": "Outfit", "body_font": "Inter", "leader": "none"},
+    "minimal": {"background": "#FFFFFF", "text": "#222222", "muted": "#8A8A8A",
+                "heading_font": "DM Sans", "body_font": "DM Sans", "leader": "line"},
+    "pizarra": {"background": "#1F2421", "text": "#F3F1EA", "muted": "#B9B6AC",
+                "heading_font": "Bebas Neue", "body_font": "Nunito", "leader": "dots"},
+}
+_CAT_ID = re.compile(r"^[A-Za-z0-9_-]{1,40}$")
+
+
+def merge_pdf(style: Dict[str, Any]) -> Dict[str, Any]:
+    out = dict(PDF_DEFAULTS)
+    out.update({k: v for k, v in (style or {}).items() if k in PDF_DEFAULTS})
+    return out
+
+
+def validate_pdf(patch: Dict[str, Any]) -> Dict[str, Any]:
+    """Igual que validate(): solo valores seguros, porque van a CSS del PDF."""
+    clean: Dict[str, Any] = {}
+    for k, v in (patch or {}).items():
+        if k not in PDF_DEFAULTS:
+            continue
+        if k in PDF_COLORS:
+            if not isinstance(v, str) or not _HEX.match(v):
+                raise ValueError(f"Color inválido en {k}")
+            clean[k] = v.upper()
+        elif k in ("heading_font", "body_font"):
+            if v not in FONTS:
+                raise ValueError(f"Tipografía no disponible: {v}")
+            clean[k] = v
+        elif k in PDF_CHOICES:
+            if v not in PDF_CHOICES[k]:
+                raise ValueError(f"Valor inválido en {k}")
+            clean[k] = v
+        elif k == "columns":
+            clean[k] = max(1, min(3, int(v)))
+        elif k == "font_size":
+            clean[k] = max(8, min(16, int(v)))
+        elif k in PDF_BOOLS:
+            clean[k] = bool(v)
+        elif k in PDF_TEXTS:
+            clean[k] = re.sub(r"[<>]", "", str(v or "")).strip()[:PDF_TEXTS[k]]
+        elif k == "hidden_categories":
+            if not isinstance(v, list) or not all(isinstance(x, str) and _CAT_ID.match(x) for x in v):
+                raise ValueError("Categorías ocultas inválidas")
+            clean[k] = v[:200]
+    return clean
+
+
+def pdf_css_vars(style: Dict[str, Any]) -> str:
+    s = merge_pdf(style)
+    return (f"--primary:{s['primary']};--bg:{s['background']};--text:{s['text']};--muted:{s['muted']};"
+            f"--font-heading:'{s['heading_font']}',Georgia,serif;--font-body:'{s['body_font']}',system-ui,sans-serif;"
+            f"--cols:{s['columns']};--fs:{s['font_size']}pt;")
+
+
+def pdf_fonts_href(style: Dict[str, Any]) -> str:
+    s = merge_pdf(style)
+    fams = {FONTS[s["heading_font"]], FONTS[s["body_font"]]}
     return "https://fonts.googleapis.com/css2?" + "&".join(f"family={f}" for f in sorted(fams)) + "&display=swap"
