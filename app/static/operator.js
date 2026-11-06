@@ -282,6 +282,28 @@
       $("#mydayIn").textContent = t.first_in ? `Entrada: ${new Date(t.first_in).toLocaleTimeString("es-BO", {hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "America/La_Paz"})}` : "";
     } catch (e) {}
   }
+  // Supervisor: su equipo en vivo y los pedidos de sus locales (cancelar, reintentar, marcar colocado).
+  async function loadSupervisor() {
+    if (!me.supervisor) return;
+    try {
+      const t = await req("/api/operador/team?days=1");
+      $("#supTeamBody").innerHTML = t.members.filter((m) => m.enabled).map((m) => { const s = m.stats; return `<div class="o"><b>${esc(m.name)}</b> <span class="pill ${s.online ? "ok" : ""}">${s.online ? "en línea" : "desconectado"}</span><br>
+        <span class="muted">${hrs(s.hours_online)} · ${s.calls} llamadas · ${s.orders} pedidos · ${money(s.sales)}</span></div>`; }).join("") || `<p class="muted small">Sin miembros en tu equipo.</p>`;
+      const st = $("#supStatus").value, rows = await req(`/api/operador/scope-orders${st ? `?status=${st}` : ""}`);
+      $("#supOrdersBody").innerHTML = rows.slice(0, 25).map((o) => `<div class="o"><b class="mono">#${esc(o.number)}</b> · ${esc(o.partner)} · ${money(o.total)} <span class="pill ${esc(o.status)}">${esc(o.status)}</span><br>
+        <span class="muted">${esc(o.customer)} · ${esc(o.phone)} · ${o.channel === "telefono" ? `teléfono${o.operator ? ` (${esc(o.operator)})` : ""}` : "web"}</span>${o.error ? `<br><span class="muted">${esc(o.error)}</span>` : ""}
+        <div class="row" style="gap:6px;margin-top:6px">${["manual", "revision"].includes(o.status) ? `<button class="btn sm" data-sa="colocado" data-t="${esc(o.token)}">Marcar colocado</button><button class="btn ghost sm" data-sa="reintentar" data-t="${esc(o.token)}">Reintentar bot</button>` : ""}
+        ${o.status !== "cancelado" && o.status !== "colocado" ? `<button class="btn ghost sm" data-sa="cancelar" data-t="${esc(o.token)}">Cancelar</button>` : ""}</div></div>`).join("") || `<p class="muted small">Sin pedidos.</p>`;
+      $$("#supOrdersBody [data-sa]").forEach((b) => (b.onclick = async () => {
+        const body = {action: b.dataset.sa};
+        if (body.action === "colocado") { body.yango_order_nr = prompt("N° de pedido en Yango"); if (!body.yango_order_nr) return; }
+        if (body.action === "cancelar" && !confirm("¿Cancelar este pedido? Si ya está en Yango, cancélalo también allí.")) return;
+        try { await req(`/api/operador/orders/${b.dataset.t}/status`, {body}); $("#supMsg").className = "msg ok"; $("#supMsg").textContent = "Hecho."; loadSupervisor(); }
+        catch (e) { $("#supMsg").className = "msg bad"; $("#supMsg").textContent = e.message; }
+      }));
+    } catch (e) {}
+  }
+  $("#supStatus").onchange = loadSupervisor;
   async function loadMine() {
     try {
       const rows = await req("/api/operador/orders");
@@ -326,7 +348,10 @@
     $("#outcomes").innerHTML = Object.entries(d.outcomes).map(([k, v]) => `<button type="button" data-o="${esc(k)}">${esc(v)}</button>`).join("");
     $$("#outcomes button").forEach((b) => (b.onclick = () => { outcome = b.dataset.o; $$("#outcomes button").forEach((x) => x.classList.toggle("on", x === b)); update(); }));
     if (d.partners.length === 1) { $("#partner").value = d.partners[0].slug; await selectPartner(d.partners[0].slug); }
-    setOff(true); goStep(0); update(); loadMine(); ping(); setInterval(ping, 60000);
+    $("#opName").textContent = d.operator.name + (d.operator.chain ? ` · ${d.operator.chain}` : "") + (d.supervisor ? " · Supervisor" : "");
+    if (d.supervisor) { $("#supTeam").hidden = false; $("#supOrders").hidden = false; }
+    setOff(true); goStep(0); update(); loadMine(); ping(); loadSupervisor();
+    setInterval(() => { ping(); loadSupervisor(); }, 60000);
     initMap().catch(() => setQuote("bad", "No se pudo cargar el mapa"));
   });
 })();

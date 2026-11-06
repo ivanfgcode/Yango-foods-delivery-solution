@@ -142,7 +142,7 @@ document.getElementById("f").onsubmit = async (e) => { e.preventDefault();
 
   <section id="t-team" class="sec" hidden>
     <div class="card"><div class="row"><div style="flex:1"><h2>Equipo</h2><p class="muted">Cada miembro entra a <a href="/operador" target="_blank" rel="noopener" class="mono">/operador</a> con su usuario para atender llamadas y cargar pedidos. Las horas se cuentan mientras tiene la cabina abierta.</p></div>
-      <div class="seg" id="teamDays" style="width:auto"><button data-d="1" class="on">Hoy</button><button data-d="7">7 días</button><button data-d="30">30 días</button></div></div>
+      <select id="teamChain" style="width:auto;margin-right:8px"><option value="">Todos los equipos</option><option value="central">Equipo central</option></select><div class="seg" id="teamDays" style="width:auto"><button data-d="1" class="on">Hoy</button><button data-d="7">7 días</button><button data-d="30">30 días</button></div></div>
       <div class="team-kpis" id="teamKpis"></div></div>
     <div class="card"><h2>Nuevo miembro</h2>
       <form id="no" class="row" style="align-items:flex-end">
@@ -150,6 +150,7 @@ document.getElementById("f").onsubmit = async (e) => { e.preventDefault();
         <label class="f" style="flex:1 1 140px;margin:0"><span>Usuario</span><input name="login" required pattern="[a-z0-9._-]+" placeholder="ana.rojas"></label>
         <label class="f" style="flex:1 1 140px;margin:0"><span>Contraseña</span><input name="password" type="password" minlength="8" required></label>
         <label class="f" style="flex:0 1 150px;margin:0"><span>Rol</span><select name="role"><option value="operador">Operador</option><option value="supervisor">Supervisor</option></select></label>
+        <label class="f" style="flex:1 1 200px;margin:0"><span>Equipo</span><select name="chain_id" id="noChain"><option value="">Central (todos los restaurantes)</option></select></label>
         <label class="f" style="flex:1 1 180px;margin:0"><span>Horario</span><input name="schedule" maxlength="80" placeholder="Lun–Vie 11:00–19:00"></label>
         <label class="f" style="flex:1 1 130px;margin:0"><span>Celular</span><input name="phone" inputmode="tel" maxlength="20"></label>
         <button class="btn acc">Crear miembro</button></form><div class="msg" id="noMsg"></div></div>
@@ -861,11 +862,16 @@ document.getElementById("f").onsubmit = async (e) => { e.preventDefault();
   const pct = (x) => x == null ? "—" : `${Math.round(x * 100)} %`;
   const bs = (n) => `${CUR}${Number(n || 0).toLocaleString("es-BO", {maximumFractionDigits: 2})}`;
   async function teamTab() {
-    const r = await api(`/team?days=${teamDays}`), t = r.totals;
+    await loadChains();
+    const chOpts = CHAINS.map((c) => `<option value="${c.id}">Cadena: ${esc(c.name)}</option>`).join("");
+    if ($("#noChain").options.length !== CHAINS.length + 1) $("#noChain").innerHTML = `<option value="">Central (todos los restaurantes)</option>` + chOpts;
+    if ($("#teamChain").options.length !== CHAINS.length + 2) { const v = $("#teamChain").value; $("#teamChain").innerHTML = `<option value="">Todos los equipos</option><option value="central">Equipo central</option>` + chOpts; $("#teamChain").value = v; }
+    const ch = $("#teamChain").value;
+    const r = await api(`/team?days=${teamDays}${ch ? `&chain=${ch}` : ""}`), t = r.totals;
     $("#teamKpis").innerHTML = [["Miembros activos", `${t.active} de ${t.members}`], ["En línea ahora", t.online], ["Horas conectadas", hrs(t.hours_online)],
       ["Llamadas", t.calls], ["Pedidos", t.orders], ["Ventas", bs(t.sales)]].map(([l, v]) => `<div><b>${esc(v)}</b><span>${esc(l)}</span></div>`).join("");
     $("#opb").innerHTML = r.members.map((m) => { const s = m.stats; return `<tr data-row="${esc(m.login)}">
-      <td><b>${esc(m.name)}</b> <span class="pill">${esc(m.role_label)}</span><br><span class="muted mono">${esc(m.login)}</span>${m.schedule ? `<br><span class="muted">Horario: ${esc(m.schedule)}</span>` : ""}${m.phone ? `<br><span class="muted mono">${esc(m.phone)}</span>` : ""}</td>
+      <td><b>${esc(m.name)}</b> <span class="pill">${esc(m.role_label)}</span><br><span class="muted">${m.chain ? `Cadena: ${esc(m.chain)}` : "Equipo central"}</span> · <span class="muted mono">${esc(m.login)}</span>${m.schedule ? `<br><span class="muted">Horario: ${esc(m.schedule)}</span>` : ""}${m.phone ? `<br><span class="muted mono">${esc(m.phone)}</span>` : ""}</td>
       <td>${!m.enabled ? `<span class="pill cancelado">inactivo</span>` : s.online ? `<span class="pill ok">en línea</span>` : `<span class="pill">desconectado</span>`}${s.last_seen && !s.online ? `<br><span class="muted">visto ${esc(when(s.last_seen))}</span>` : ""}</td>
       <td class="mono">${hrs(s.hours_online)}</td><td class="mono">${s.first_in ? hm(s.first_in) : "—"}</td>
       <td class="mono">${s.calls}</td><td class="mono"><b>${s.orders}</b>${s.cancelled ? `<br><span class="muted">${s.cancelled} cancel.</span>` : ""}</td>
@@ -903,10 +909,12 @@ document.getElementById("f").onsubmit = async (e) => { e.preventDefault();
         <h3>Últimos pedidos</h3><div class="tw"><table><tbody>${d.orders.map((o) => `<tr><td class="mono">${esc(when(o.created_at))}</td><td class="mono">${esc(o.number)}</td><td>${esc(o.partner)}</td><td>${esc(o.customer)}</td><td class="mono">${bs(o.total)}</td><td><span class="pill ${esc(o.status)}">${esc(o.status)}</span></td></tr>`).join("") || `<tr><td class="muted">Sin pedidos.</td></tr>`}</tbody></table></div></div>
     </div></td></tr>`);
   }
+  $("#teamChain").onchange = () => teamTab();
   $$("#teamDays button").forEach((b) => (b.onclick = () => { teamDays = +b.dataset.d; $$("#teamDays button").forEach((x) => x.classList.toggle("on", x === b)); teamTab(); }));
   $("#no").onsubmit = async (e) => {
     e.preventDefault();
-    try { await post("/operators", Object.fromEntries(new FormData(e.target))); e.target.reset(); $("#noMsg").className = "msg ok"; $("#noMsg").textContent = "Miembro creado: ya puede entrar a /operador con su usuario."; teamTab(); }
+    const body = Object.fromEntries(new FormData(e.target)); body.chain_id = body.chain_id ? Number(body.chain_id) : null;
+    try { await post("/operators", body); e.target.reset(); $("#noMsg").className = "msg ok"; $("#noMsg").textContent = "Miembro creado: ya puede entrar a /operador con su usuario."; teamTab(); }
     catch (err) { $("#noMsg").className = "msg bad"; $("#noMsg").textContent = err.message; }
   };
 

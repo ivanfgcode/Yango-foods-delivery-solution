@@ -65,3 +65,10 @@ code,.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.85
 .step-ed textarea{min-height:70px}
 .preview iframe#pdfFrame{background:#e7e7ea}
 .ic{width:1.05em;height:1.05em;vertical-align:-.15em;flex:none}
+
+/* Equipo (portal de la cadena) */
+.hours{display:grid;grid-template-columns:repeat(24,1fr);align-items:end;gap:3px;height:70px;padding:6px;border:1px solid var(--line);border-radius:10px;margin:8px 0 2px}
+.hours i{display:block;min-height:2px;border-radius:3px;background:var(--accent)}
+.hours-x{display:flex;justify-content:space-between;font-size:.75rem;color:var(--muted);margin-bottom:10px}
+tr.sub-row>td{background:var(--soft)}
+#teamDays button{white-space:nowrap}

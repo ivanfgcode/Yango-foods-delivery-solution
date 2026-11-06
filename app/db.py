@@ -224,7 +224,9 @@ ADDED_COLUMNS = [("partners", "place_name", "TEXT"), ("billing", "free_forever",
                  ("accounts", "yango_phone", "TEXT"),
                  # Equipo: rol, horario acordado y celular de cada miembro.
                  ("operators", "role", "TEXT NOT NULL DEFAULT 'operador'"), ("operators", "schedule", "TEXT"),
-                 ("operators", "phone", "TEXT")]
+                 ("operators", "phone", "TEXT"),
+                 # Equipo de una cadena (NULL = equipo central de carta.bo, atiende a todos los restaurantes).
+                 ("operators", "chain_id", "INTEGER REFERENCES chains(id)")]
 
 
 def _migrate(conn: sqlite3.Connection) -> None:

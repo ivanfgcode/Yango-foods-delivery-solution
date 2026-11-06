@@ -122,7 +122,7 @@ async def admin_create_operator(request: Request, body: Dict[str, Any] = Body(..
     try:
         return operators.create(body.get("login", ""), body.get("name", ""), body.get("password", ""),
                                 role=body.get("role") or "operador", schedule=body.get("schedule") or "",
-                                phone=body.get("phone") or "")
+                                phone=body.get("phone") or "", chain_id=body.get("chain_id") or None)
     except ValueError as e:
         raise _err(e)
 
@@ -139,28 +139,20 @@ async def admin_update_operator(request: Request, login: str, body: Dict[str, An
 
 
 @router.get("/api/admin/team")
-async def admin_team(request: Request, days: int = 1):
-    """Equipo: cada miembro con horas conectado, llamadas, pedidos, ventas, ticket, conversión y en línea ahora."""
+async def admin_team(request: Request, days: int = 1, chain: Optional[str] = None):
+    """Equipo: cada miembro con horas conectado, llamadas, pedidos, ventas, ticket, conversión y en línea ahora.
+    chain: vacío = todos · «central» = equipo de carta.bo · id = equipo de esa cadena."""
     auth.require_admin(request)
-    return operators.team(max(1, min(days, 365)))
+    scope: Any = operators.ALL if not chain else None if chain == "central" else int(chain)
+    return operators.team(max(1, min(days, 365)), scope)
 
 
 @router.get("/api/admin/team/{login}")
 async def admin_team_member(request: Request, login: str, days: int = 30):
     auth.require_admin(request)
-    op = operators.get(login)
-    if not op:
+    if not operators.get(login):
         raise HTTPException(404, "Miembro no encontrado")
-    names = {p["id"]: p["name"] for p in partners.all_partners()}
-    recent = []
-    for r in db.query("SELECT token FROM orders WHERE operator=? ORDER BY created_at DESC LIMIT 20", (login,)):
-        o = orders.get(r["token"])
-        recent.append({"number": o["number"], "partner": names.get(o["partner_id"]), "total": o["total"],
-                       "status": o["status"], "created_at": o["created_at"],
-                       "customer": f"{o['customer']['first_name']} {o['customer']['last_name']}"})
-    return {**op, "role_label": operators.ROLES.get(op.get("role") or "operador"),
-            "stats": operators.member_stats(login, max(1, min(days, 365))),
-            "orders": recent, "calls": operators.recent_calls(login, limit=30)}
+    return operators.member_detail(login, max(1, min(days, 365)))
 
 
 @router.get("/api/admin/call-script")
@@ -284,7 +276,76 @@ async def chain_me(request: Request, month: Optional[str] = None):
     }
 
 
+# ============================================================================================ cadena: su equipo
+def _chain_member(request: Request, login: str) -> Dict[str, Any]:
+    cid = auth.require_chain(request)
+    op = operators.get(login)
+    if not op or op.get("chain_id") != cid:
+        raise HTTPException(404, "Miembro no encontrado")
+    return op
+
+
+@router.get("/api/cadena/team")
+async def chain_team(request: Request, days: int = 1):
+    """El equipo de la cadena (solo sus miembros) con sus estadísticas."""
+    cid = auth.require_chain(request)
+    return operators.team(max(1, min(days, 365)), cid)
+
+
+@router.get("/api/cadena/team/{login}")
+async def chain_team_member(request: Request, login: str, days: int = 30):
+    _chain_member(request, login)
+    return operators.member_detail(login, max(1, min(days, 365)))
+
+
+@router.post("/api/cadena/team")
+async def chain_team_create(request: Request, body: Dict[str, Any] = Body(...)):
+    """La cadena da de alta a su gente: solo atienden los locales de la cadena."""
+    cid = auth.require_chain(request)
+    try:
+        return operators.create(body.get("login", ""), body.get("name", ""), body.get("password", ""),
+                                role=body.get("role") or "operador", schedule=body.get("schedule") or "",
+                                phone=body.get("phone") or "", chain_id=cid)
+    except ValueError as e:
+        raise _err(e)
+
+
+@router.put("/api/cadena/team/{login}")
+async def chain_team_update(request: Request, login: str, body: Dict[str, Any] = Body(...)):
+    _chain_member(request, login)
+    try:
+        return operators.update(login, enabled=body.get("enabled"), password=body.get("password") or None,
+                                name=body.get("name"), role=body.get("role"), schedule=body.get("schedule"),
+                                phone=body.get("phone"))
+    except ValueError as e:
+        raise _err(e)
+
+
 # ============================================================================================ cabina de operadores
+ADMIN_OP = {"login": "admin", "name": "Administrador", "role": "supervisor", "chain_id": None}
+
+
+def _op(request: Request) -> Dict[str, Any]:
+    """Miembro con sesión en la cabina (el admin entra como supervisor del equipo central, con todo)."""
+    login = auth.require_operator(request)
+    return dict(ADMIN_OP) if login == "admin" else operators.get(login)
+
+
+def _supervisor(request: Request) -> Dict[str, Any]:
+    op = _op(request)
+    if op.get("role") != "supervisor":
+        raise HTTPException(403, "Solo para supervisores")
+    return op
+
+
+def _scoped_partner(op: Dict[str, Any], slug: Optional[str]) -> Optional[Dict[str, Any]]:
+    """Restaurante dentro del alcance del miembro (los de su cadena, o todos para el equipo central)."""
+    if not slug:
+        return None
+    p = partners.get(str(slug))
+    if not p or not p["enabled"] or not operators.in_scope(op, p["id"]):
+        raise HTTPException(404, "Restaurante no encontrado")
+    return p
 @router.get("/operador", response_class=HTMLResponse)
 async def operator_page(request: Request):
     op = auth.current_operator(request)
@@ -316,18 +377,23 @@ async def operator_logout(request: Request, response: Response):
 
 @router.get("/api/operador/me")
 async def operator_me(request: Request):
-    login = auth.require_operator(request)
-    op = operators.get(login) if login != "admin" else {"login": "admin", "name": "Administrador"}
+    op = _op(request)
+    ids = operators.partner_ids(op)
     locs = []
     for p in partners.all_partners():
-        if not p["enabled"]:
+        if not p["enabled"] or (ids is not None and p["id"] not in ids):
             continue
         locs.append({"slug": p["slug"], "name": p["name"], "accepting_orders": bool(p["accepting_orders"]),
                      "ready": bool(p.get("place_slug")), "center": [p.get("place_lat"), p.get("place_lon")],
                      "address": p.get("place_address"), "hours": (p.get("profile") or {}).get("hours_text"),
                      "chain_id": p.get("chain_id")})
-    return {"operator": op, "partners": locs, "script": operators.get_script(), "outcomes": operators.OUTCOMES,
-            "tiers": pricing.public_tiers(), "calls": operators.recent_calls(login, limit=15),
+    chain = chains.get(op["chain_id"]) if op.get("chain_id") else None
+    return {"operator": {"login": op["login"], "name": op["name"], "role": op.get("role") or "operador",
+                         "role_label": operators.ROLES.get(op.get("role") or "operador"),
+                         "chain": chain["name"] if chain else None},
+            "supervisor": op.get("role") == "supervisor",
+            "partners": locs, "script": operators.get_script(), "outcomes": operators.OUTCOMES,
+            "tiers": pricing.public_tiers(), "calls": operators.recent_calls(op["login"], limit=15),
             "server_hour": datetime.now(timezone.utc).hour}
 
 
@@ -344,24 +410,25 @@ async def operator_ping(request: Request):
 
 @router.get("/api/operador/customer")
 async def operator_customer(request: Request, phone: str):
-    auth.require_operator(request)
+    op = _op(request)
     try:
-        return operators.lookup_customer(phone)
+        return operators.lookup_customer(phone, operators.partner_ids(op))
     except geo.AddressError as e:
         raise _err(e)
 
 
 @router.post("/api/operador/calls")
 async def operator_start_call(request: Request, body: Dict[str, Any] = Body(default={})):
-    login = auth.require_operator(request)
-    p = partners.get(str(body.get("slug") or "")) if body.get("slug") else None
-    return operators.start_call(login, str(body.get("phone") or ""), p["id"] if p else None)
+    op = _op(request)
+    p = _scoped_partner(op, body.get("slug"))
+    return operators.start_call(op["login"], str(body.get("phone") or ""), p["id"] if p else None)
 
 
 @router.put("/api/operador/calls/{call_id}")
 async def operator_end_call(request: Request, call_id: int, body: Dict[str, Any] = Body(...)):
-    login = auth.require_operator(request)
-    p = partners.get(str(body.get("slug") or "")) if body.get("slug") else None
+    op = _op(request)
+    login = op["login"]
+    p = _scoped_partner(op, body.get("slug"))
     try:
         return operators.end_call(call_id, login, str(body.get("outcome") or ""), str(body.get("notes") or ""),
                                   str(body.get("phone") or ""), p["id"] if p else None,
@@ -373,11 +440,9 @@ async def operator_end_call(request: Request, call_id: int, body: Dict[str, Any]
 @router.post("/api/operador/orders")
 async def operator_create_order(request: Request, body: Dict[str, Any] = Body(...)):
     """Pedido telefónico: mismas validaciones y cotización que la web; queda marcado con el operador."""
-    login = auth.require_operator(request)
-    p = partners.get(str(body.get("slug") or ""))
-    if not p or not p["enabled"]:
-        raise HTTPException(404, "Restaurante no encontrado")
-    o = await checkout.place(p, body, channel="telefono", operator=login)
+    op = _op(request)
+    p = _scoped_partner(op, body.get("slug") or "-")
+    o = await checkout.place(p, body, channel="telefono", operator=op["login"])
     return {"token": o["token"], "number": o["number"], "order": orders.public_view(o),
             "status_url": f"/{p['slug']}/pedido/{o['token']}"}
 
@@ -395,3 +460,43 @@ async def operator_orders(request: Request):
                   "customer": f"{o['customer']['first_name']} {o['customer']['last_name']}"})
         out.append(v)
     return out
+
+
+# ============================================================================================ cabina: supervisor
+@router.get("/api/operador/team")
+async def supervisor_team(request: Request, days: int = 1):
+    """Supervisor: su equipo (el de su cadena, o el central) con horas, llamadas, pedidos y quién está en línea."""
+    op = _supervisor(request)
+    return operators.team(max(1, min(days, 365)), op.get("chain_id"))
+
+
+@router.get("/api/operador/scope-orders")
+async def supervisor_orders(request: Request, status: Optional[str] = None):
+    """Supervisor: pedidos de los restaurantes que atiende su equipo (web y teléfono), para cancelar o reintentar."""
+    op = _supervisor(request)
+    if status and status not in orders.STATUSES:
+        raise HTTPException(422, "Estado inválido")
+    names = {p["id"]: p["name"] for p in partners.all_partners()}
+    staff = {o["login"]: o["name"] for o in operators.all_operators()}
+    out = []
+    for o in orders.list_orders(status=status, limit=60, partner_ids=operators.partner_ids(op)):
+        v = orders.public_view(o)
+        v.update({"token": o["token"], "partner": names.get(o["partner_id"]), "phone": o["customer"]["phone"],
+                  "customer": f"{o['customer']['first_name']} {o['customer']['last_name']}",
+                  "channel": o.get("channel") or "web", "operator": staff.get(o.get("operator"), o.get("operator")),
+                  "yango_order_nr": o.get("yango_order_nr"), "error": o.get("error"),
+                  "yango_comment": o.get("yango_comment")})
+        out.append(v)
+    return out
+
+
+@router.post("/api/operador/orders/{token}/status")
+async def supervisor_order_status(request: Request, token: str, body: Dict[str, Any] = Body(...)):
+    """Supervisor: cancelar, reintentar con el bot o marcar colocado (con el N° de Yango) un pedido de su alcance."""
+    op = _supervisor(request)
+    o = orders.get(token)
+    if not o or not operators.in_scope(op, o["partner_id"]):
+        raise HTTPException(404, "Pedido no encontrado")
+    o = checkout.order_action(token, str(body.get("action") or ""), str(body.get("yango_order_nr") or ""),
+                              by=op["login"])
+    return orders.public_view(o)

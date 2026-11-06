@@ -114,6 +114,10 @@ document.getElementById("loginForm").onsubmit = async (e) => {
       <div class="msg" id="endMsg"></div>
     </div>
     <div class="card"><h2>Mi turno · hoy</h2><div class="myday" id="myday"><div><b>—</b><span>Horas</span></div></div><p class="muted small" id="mydayIn"></p></div>
+    <div class="card" id="supTeam" hidden><h2>Mi equipo · hoy</h2><div id="supTeamBody" class="mine"></div></div>
+    <div class="card" id="supOrders" hidden><div class="row" style="margin-bottom:6px"><h2 style="margin:0;flex:1">Pedidos del equipo</h2>
+        <select id="supStatus" style="width:auto"><option value="">Todos</option><option value="manual">Por cargar</option><option value="revision">En revisión</option><option value="en_cola">En cola</option><option value="colocado">En Yango</option><option value="cancelado">Cancelados</option></select></div>
+      <div id="supOrdersBody" class="mine"></div><div class="msg" id="supMsg"></div></div>
     <div class="card"><h2>Mis últimos pedidos</h2><div id="mine" class="mine"></div></div>
   </aside>
 </div>

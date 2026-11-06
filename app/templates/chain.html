@@ -33,6 +33,19 @@ document.getElementById("loginForm").onsubmit = async (e) => {
   <div class="stats" id="stats" style="margin-bottom:16px"></div>
   <div class="card"><h2>Tus locales</h2><p class="muted">Todos los locales de la cadena usan el mismo bot de Yango: los pedidos se cargan de a uno, en orden de llegada.</p>
     <div class="tw"><table><thead><tr><th>Local</th><th>Web</th><th>Estado</th><th>Comisión</th><th></th></tr></thead><tbody id="lb"></tbody></table></div></div>
+  <div class="card"><div class="row" style="margin-bottom:6px"><h2 style="margin:0;flex:1">Tu equipo</h2>
+      <div class="seg" id="teamDays"><button data-d="1" class="on">Hoy</button><button data-d="7">7 días</button><button data-d="30">30 días</button></div></div>
+    <p class="muted">Tu gente atiende las llamadas en <a href="/operador" target="_blank" rel="noopener" class="mono">/operador</a> con su usuario y solo ve los locales de tu cadena. Los <b>supervisores</b> ven además al equipo y pueden cancelar o reintentar pedidos. Las horas se cuentan mientras tienen la cabina abierta.</p>
+    <div class="stats" id="teamKpis" style="margin:12px 0"></div>
+    <form id="tm" class="row" style="align-items:flex-end">
+      <label class="f" style="flex:1 1 160px"><span>Nombre</span><input name="name" required></label>
+      <label class="f" style="flex:1 1 130px"><span>Usuario</span><input name="login" required pattern="[a-z0-9._-]+" placeholder="ana.rojas"></label>
+      <label class="f" style="flex:1 1 130px"><span>Contraseña</span><input name="password" type="password" minlength="8" required></label>
+      <label class="f" style="flex:0 1 140px"><span>Rol</span><select name="role"><option value="operador">Operador</option><option value="supervisor">Supervisor</option></select></label>
+      <label class="f" style="flex:1 1 170px"><span>Horario</span><input name="schedule" maxlength="80" placeholder="Lun–Sáb 12:00–20:00"></label>
+      <label class="f" style="flex:1 1 120px"><span>Celular</span><input name="phone" inputmode="tel" maxlength="20"></label>
+      <button class="btn acc" style="margin-bottom:12px">Agregar</button></form><div class="msg" id="tmMsg"></div>
+    <div class="tw"><table><thead><tr><th>Miembro</th><th>Estado</th><th>Horas</th><th>Entrada</th><th>Llamadas</th><th>Pedidos</th><th>Ventas</th><th>Ticket medio</th><th>Conversión</th><th></th></tr></thead><tbody id="tb"></tbody></table></div></div>
   <div class="card"><h2>Comisión del mes</h2><div class="tw"><table><thead><tr><th>Local</th><th>Pedidos</th><th>Ventas</th><th>Envíos</th><th>Comisión a Yango</th></tr></thead><tbody id="cb"></tbody></table></div></div>
   <div class="card"><h2>Últimos pedidos</h2><div class="tw"><table><thead><tr><th>Hora</th><th>N°</th><th>Local</th><th>Cliente</th><th>Productos</th><th>Total</th><th>Comisión</th><th>Estado</th></tr></thead><tbody id="ob"></tbody></table></div></div>
 </div>
@@ -63,6 +76,48 @@ document.getElementById("loginForm").onsubmit = async (e) => {
   $("#month").onchange = load;
   $("#logout").onclick = async () => { await fetch("/api/cadena/logout", {method: "POST"}); location.reload(); };
   load(); setInterval(load, 30000);
+  // ---------------------------------------------------------------- equipo de la cadena
+  let teamDays = 1;
+  const api = (path, opt) => fetch(`/api/cadena${path}`, opt).then(async (r) => { const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.detail || "Error"); return d; });
+  const send = (path, body, method = "POST") => api(path, {method, headers: {"content-type": "application/json"}, body: JSON.stringify(body)});
+  const hrs = (h) => { const m = Math.round((h || 0) * 60); return `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, "0")} min`; };
+  const bs = (n) => `${CUR}${Number(n || 0).toLocaleString("es-BO", {maximumFractionDigits: 2})}`;
+  const hm = (iso) => iso ? new Date(iso).toLocaleTimeString("es-BO", {hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "America/La_Paz"}) : "—";
+  const conv = (x) => x == null ? "—" : `${Math.round(x * 100)} %`;
+  async function team() {
+    const r = await api(`/team?days=${teamDays}`), t = r.totals;
+    $("#teamKpis").innerHTML = [["Miembros activos", `${t.active} de ${t.members}`], ["En línea ahora", t.online], ["Horas", hrs(t.hours_online)], ["Pedidos", t.orders], ["Ventas", bs(t.sales)]]
+      .map(([l, v]) => `<div class="stat"><b>${esc(v)}</b><span>${esc(l)}</span></div>`).join("");
+    $("#tb").innerHTML = r.members.map((m) => { const s = m.stats; return `<tr>
+      <td><b>${esc(m.name)}</b> <span class="pill">${esc(m.role_label)}</span><br><span class="muted mono">${esc(m.login)}</span>${m.schedule ? `<br><span class="muted">Horario: ${esc(m.schedule)}</span>` : ""}</td>
+      <td>${!m.enabled ? `<span class="pill cancelado">inactivo</span>` : s.online ? `<span class="pill ok">en línea</span>` : `<span class="pill">desconectado</span>`}</td>
+      <td class="mono">${hrs(s.hours_online)}</td><td class="mono">${hm(s.first_in)}</td><td class="mono">${s.calls}</td><td class="mono"><b>${s.orders}</b></td>
+      <td class="mono">${bs(s.sales)}</td><td class="mono">${s.orders ? bs(s.avg_ticket) : "—"}</td><td class="mono">${conv(s.conversion)}</td>
+      <td style="white-space:nowrap"><button class="btn sm" data-det="${esc(m.login)}">Detalle</button> <button class="btn ghost sm" data-role="${esc(m.login)}" data-v="${m.role === "supervisor" ? "operador" : "supervisor"}">${m.role === "supervisor" ? "Hacer operador" : "Hacer supervisor"}</button>
+        <button class="btn ghost sm" data-pw="${esc(m.login)}">Contraseña</button> <button class="btn ghost sm" data-on="${esc(m.login)}" data-v="${m.enabled ? 0 : 1}">${m.enabled ? "Desactivar" : "Activar"}</button></td></tr>`; }).join("")
+      || `<tr><td colspan="10" class="muted">Todavía no hay nadie en tu equipo. Agrega al primero arriba.</td></tr>`;
+    $$("[data-role]").forEach((b) => (b.onclick = async () => { await send(`/team/${b.dataset.role}`, {role: b.dataset.v}, "PUT"); team(); }));
+    $$("[data-on]").forEach((b) => (b.onclick = async () => { await send(`/team/${b.dataset.on}`, {enabled: b.dataset.v === "1"}, "PUT"); team(); }));
+    $$("[data-pw]").forEach((b) => (b.onclick = async () => { const pw = prompt("Nueva contraseña (mín. 8)"); if (!pw) return; try { await send(`/team/${b.dataset.pw}`, {password: pw}, "PUT"); alert("Listo"); } catch (e) { alert(e.message); } }));
+    $$("[data-det]").forEach((b) => (b.onclick = async () => {
+      const tr = b.closest("tr"), nx = tr.nextElementSibling; if (nx && nx.classList.contains("sub-row")) return nx.remove();
+      const d = await api(`/team/${encodeURIComponent(b.dataset.det)}?days=30`), s = d.stats, mx = Math.max(1, ...s.by_hour);
+      tr.insertAdjacentHTML("afterend", `<tr class="sub-row"><td colspan="10">
+        <p class="muted">Últimos 30 días: <b>${hrs(s.hours_online)}</b> conectado · <b>${s.calls}</b> llamadas · <b>${s.orders}</b> pedidos · <b>${bs(s.sales)}</b> · llamada media ${s.avg_call_seconds ? Math.round(s.avg_call_seconds / 60 * 10) / 10 + " min" : "—"}</p>
+        <div class="hours">${s.by_hour.map((v, h) => `<i title="${h}:00 · ${v} pedidos" style="height:${Math.round(v / mx * 100)}%"></i>`).join("")}</div><div class="hours-x"><span>0 h</span><span>12 h</span><span>23 h</span></div>
+        <div class="tw"><table><thead><tr><th>Día</th><th>Entrada</th><th>Salida</th><th>Horas</th><th>Llamadas</th><th>Pedidos</th><th>Ventas</th></tr></thead><tbody>
+        ${s.daily.map((x) => `<tr><td>${esc(new Date(x.day + "T12:00:00").toLocaleDateString("es-BO", {weekday: "short", day: "numeric", month: "short"}))}</td><td class="mono">${x.first_in || "—"}</td><td class="mono">${x.last_out || "—"}</td><td class="mono">${hrs(x.hours)}</td><td>${x.calls}</td><td>${x.orders}</td><td class="mono">${bs(x.sales)}</td></tr>`).join("") || `<tr><td colspan="7" class="muted">Sin actividad.</td></tr>`}
+        </tbody></table></div></td></tr>`);
+    }));
+  }
+  $$("#teamDays button").forEach((b) => (b.onclick = () => { teamDays = +b.dataset.d; $$("#teamDays button").forEach((x) => x.classList.toggle("on", x === b)); team(); }));
+  $("#tm").onsubmit = async (e) => {
+    e.preventDefault();
+    try { await send("/team", Object.fromEntries(new FormData(e.target))); e.target.reset(); $("#tmMsg").className = "msg ok"; $("#tmMsg").textContent = "Listo: ya puede entrar a /operador con su usuario."; team(); }
+    catch (err) { $("#tmMsg").className = "msg bad"; $("#tmMsg").textContent = err.message; }
+  };
+  team(); setInterval(team, 60000);
+
 })();
 </script>
 {% endif %}

@@ -784,24 +784,7 @@ async def admin_orders(request: Request, status: Optional[str] = None, partner: 
 async def admin_order_status(request: Request, token: str, body: Dict[str, Any] = Body(...)):
     """Operador: marcar colocado a mano (con el N° de Yango), cancelar o reintentar con el bot."""
     auth.require_admin(request)
-    o = orders.get(token)
-    if not o:
-        raise HTTPException(404, "Pedido no encontrado")
-    action = body.get("action")
-    if action == "colocado":
-        nr = str(body.get("yango_order_nr") or "").strip()
-        if not nr:
-            raise HTTPException(422, "Falta el número de pedido de Yango")
-        return orders.set_status(token, "colocado", yango_order_nr=nr[:40], error=None)
-    if action == "cancelar":
-        return orders.set_status(token, "cancelado")
-    if action == "reintentar":
-        if o["status"] not in ("manual", "revision"):
-            raise HTTPException(422, "Solo se reintentan pedidos en manual o revisión")
-        o = orders.set_status(token, "en_cola", error=None)
-        rt().dispatcher.enqueue(o["account"], token)
-        return o
-    raise HTTPException(422, "Acción inválida")
+    return checkout.order_action(token, str(body.get("action") or ""), str(body.get("yango_order_nr") or ""))
 
 
 @app.post("/api/admin/orders/{token}/dry-run")

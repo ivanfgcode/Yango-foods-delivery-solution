@@ -451,3 +451,50 @@ def test_team_member_stats_and_hours(client):
     m = next(x for x in client.get("/api/admin/team", headers=ADMIN).json()["members"] if x["login"] == "luis")
     assert not m["stats"]["online"]
     assert client.get("/api/admin/team").status_code == 401
+
+
+def test_chain_team_scope_and_supervisor(client):
+    """Equipo por cadena: solo ve y carga sus locales; el supervisor ve su equipo y gestiona sus pedidos."""
+    cid = client.post("/api/admin/chains", headers=ADMIN, json={
+        "slug": "wraps-bo", "name": "Wraps Bolivia", "account": "bot_wraps", "login": "wraps",
+        "password": "cadena1234", "partners": ["wrap-roll"]}).json()["id"]
+    client.post("/api/admin/partners", headers=ADMIN, json={"slug": "otro", "name": "Otro", "account": "otro"})
+    # La cadena crea a su gente (no puede tocar a miembros de otros equipos).
+    client.post("/api/cadena/login", json={"login": "wraps", "password": "cadena1234"})
+    assert client.post("/api/cadena/team", json={"login": "sup", "name": "Sara Sup", "password": "super1234",
+                                                  "role": "supervisor"}).status_code == 200
+    assert client.post("/api/cadena/team", json={"login": "op1", "name": "Omar Op", "password": "opera1234"}).status_code == 200
+    client.post("/api/admin/operators", headers=ADMIN, json={"login": "central", "name": "Central", "password": "central12"})
+    assert client.put("/api/cadena/team/central", json={"enabled": False}).status_code == 404
+    team = client.get("/api/cadena/team").json()
+    assert {m["login"] for m in team["members"]} == {"sup", "op1"} and all(m["chain"] == "Wraps Bolivia" for m in team["members"])
+    client.cookies.clear()
+    # El operador de la cadena solo ve los locales de la cadena y no puede cargar en otros.
+    client.post("/api/operador/login", json={"login": "op1", "password": "opera1234"})
+    me = client.get("/api/operador/me").json()
+    assert [p["slug"] for p in me["partners"]] == ["wrap-roll"] and not me["supervisor"]
+    assert me["operator"]["chain"] == "Wraps Bolivia"
+    body = order_body(client)
+    assert client.post("/api/operador/orders", json={**body, "slug": "otro"}).status_code == 404
+    o = client.post("/api/operador/orders", json={**body, "slug": "wrap-roll"}).json()
+    assert client.get("/api/operador/team").status_code == 403          # no es supervisor
+    assert client.post(f"/api/operador/orders/{o['token']}/status", json={"action": "cancelar"}).status_code == 403
+    client.cookies.clear()
+    # El supervisor ve a su equipo y cancela pedidos de sus locales.
+    client.post("/api/operador/login", json={"login": "sup", "password": "super1234"})
+    me = client.get("/api/operador/me").json()
+    assert me["supervisor"]
+    t = client.get("/api/operador/team").json()
+    assert {m["login"] for m in t["members"]} == {"sup", "op1"}
+    assert next(m for m in t["members"] if m["login"] == "op1")["stats"]["orders"] == 1
+    rows = client.get("/api/operador/scope-orders").json()
+    assert [r["token"] for r in rows] == [o["token"]] and rows[0]["operator"] == "Omar Op"
+    r = client.post(f"/api/operador/orders/{o['token']}/status", json={"action": "cancelar"})
+    assert r.status_code == 200 and r.json()["status"] == "cancelado"
+    # Un pedido de otro restaurante no está a su alcance.
+    client.cookies.clear()
+    client.post("/api/admin/operators", headers=ADMIN, json={"login": "cen2", "name": "C2", "password": "central12"})
+    client.post("/api/operador/login", json={"login": "cen2", "password": "central12"})
+    assert {p["slug"] for p in client.get("/api/operador/me").json()["partners"]} >= {"wrap-roll"}  # central: todos
+    assert client.get("/api/admin/team?chain=central", headers=ADMIN).json()["totals"]["members"] == 2
+    assert client.get(f"/api/admin/team?chain={cid}", headers=ADMIN).json()["totals"]["members"] == 2

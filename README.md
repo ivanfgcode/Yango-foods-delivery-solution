@@ -122,6 +122,20 @@ día (entrada, salida, horas, llamadas, pedidos, ventas), resultado de las llama
 últimos pedidos. Las horas salen de un latido de la cabina cada minuto (`operator_sessions`; más de 10 min sin
 latido cuenta como pausa). En la cabina, **Mi turno** muestra los números del día.
 
+### Niveles de acceso
+
+| Quién | Entra en | Ve y puede |
+|---|---|---|
+| Admin (equipo carta.bo) | `/admin` (clave `ADMIN_KEY`) | Todo, incluidos todos los equipos |
+| Cadena | `/cadena` | Sus locales, pedidos y comisión; **crea y gestiona su propio equipo** y ve sus estadísticas |
+| Restaurante | `/<local>/portal` | Su web, sus pedidos y comisiones |
+| Operador de una cadena | `/operador` | Solo los locales de su cadena: atiende llamadas y carga pedidos |
+| Operador del equipo central | `/operador` | Todos los restaurantes |
+| Supervisor (rol) | `/operador` | Lo del operador, más su equipo en vivo (en línea, horas, llamadas, pedidos) y los pedidos de sus locales para cancelar, reintentar con el bot o marcar colocado |
+
+Un miembro pertenece a una cadena (`operators.chain_id`) o al equipo central (vacío). La cadena solo puede tocar a
+los suyos; el cliente conocido por celular solo muestra pedidos de los locales que atiende el miembro.
+
 ### Cabina de operadores
 
 Admin → Funciones → Operadores crea los usuarios. En `/operador`: **F2** nueva llamada, el celular trae al cliente

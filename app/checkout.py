@@ -58,3 +58,30 @@ async def place(p: Dict[str, Any], body: Dict[str, Any], channel: str = "web", o
     upsell.clear_cache(p["id"])
     rt.dispatcher.enqueue(o["account"], o["token"])
     return o
+
+
+def order_action(token: str, action: str, yango_order_nr: str = "", by: Optional[str] = None) -> Dict[str, Any]:
+    """Acciones sobre un pedido (admin o supervisor): marcar colocado con el N° de Yango, cancelar o reintentar."""
+    o = orders.get(token)
+    if not o:
+        raise HTTPException(404, "Pedido no encontrado")
+    if action == "colocado":
+        nr = str(yango_order_nr or "").strip()
+        if not nr:
+            raise HTTPException(422, "Falta el número de pedido de Yango")
+        o = orders.set_status(token, "colocado", yango_order_nr=nr[:40], error=None)
+    elif action == "cancelar":
+        if o["status"] == "cancelado":
+            raise HTTPException(422, "El pedido ya está cancelado")
+        o = orders.set_status(token, "cancelado")
+    elif action == "reintentar":
+        if o["status"] not in ("manual", "revision"):
+            raise HTTPException(422, "Solo se reintentan pedidos en manual o revisión")
+        o = orders.set_status(token, "en_cola", error=None)
+        runtime_mod.get_runtime().dispatcher.enqueue(o["account"], token)
+    else:
+        raise HTTPException(422, "Acción inválida")
+    if by:
+        from app import db
+        db.event("pedido_accion", {"accion": action, "por": by}, order_token=token, partner_id=o["partner_id"])
+    return o

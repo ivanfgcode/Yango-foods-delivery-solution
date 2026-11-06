@@ -82,8 +82,30 @@ def _public(row) -> Optional[Dict[str, Any]]:
     return d
 
 
-def all_operators() -> List[Dict[str, Any]]:
-    return [_public(r) for r in db.query("SELECT * FROM operators ORDER BY name")]
+ALL = "all"  # todos los equipos (admin)
+
+
+def all_operators(chain_id: Any = ALL) -> List[Dict[str, Any]]:
+    """chain_id: ALL = todos · None = equipo central · int = equipo de esa cadena."""
+    if chain_id == ALL:
+        rows = db.query("SELECT * FROM operators ORDER BY name")
+    elif chain_id is None:
+        rows = db.query("SELECT * FROM operators WHERE chain_id IS NULL ORDER BY name")
+    else:
+        rows = db.query("SELECT * FROM operators WHERE chain_id=? ORDER BY name", (int(chain_id),))
+    return [_public(r) for r in rows]
+
+
+def partner_ids(op: Optional[Dict[str, Any]]) -> Optional[List[int]]:
+    """Restaurantes que puede atender un miembro: los de su cadena; el equipo central (o el admin), todos (None)."""
+    if not op or not op.get("chain_id"):
+        return None
+    return [r["id"] for r in db.query("SELECT id FROM partners WHERE chain_id=?", (op["chain_id"],))]
+
+
+def in_scope(op: Optional[Dict[str, Any]], partner_id: Optional[int]) -> bool:
+    ids = partner_ids(op)
+    return ids is None or partner_id in ids
 
 
 def _clean_member(role: Optional[str], schedule: Optional[str], phone: Optional[str]) -> Dict[str, Any]:
@@ -100,7 +122,7 @@ def _clean_member(role: Optional[str], schedule: Optional[str], phone: Optional[
 
 
 def create(login: str, name: str, password: str, role: str = "operador", schedule: str = "",
-           phone: str = "") -> Dict[str, Any]:
+           phone: str = "", chain_id: Optional[int] = None) -> Dict[str, Any]:
     login = (login or "").strip().lower()
     if not LOGIN_RE.match(login):
         raise ValueError("Usuario inválido (3–40: minúsculas, números, . _ -)")
@@ -111,10 +133,13 @@ def create(login: str, name: str, password: str, role: str = "operador", schedul
     if db.one("SELECT 1 FROM operators WHERE login=?", (login,)):
         raise ValueError("Ya existe ese usuario")
     extra = _clean_member(role or "operador", schedule, phone)
-    db.execute("INSERT INTO operators(login, name, password_hash, created_at, role, schedule, phone) VALUES (?,?,?,?,?,?,?)",
+    if chain_id and not db.one("SELECT 1 FROM chains WHERE id=?", (int(chain_id),)):
+        raise ValueError("Cadena no encontrada")
+    db.execute("INSERT INTO operators(login, name, password_hash, created_at, role, schedule, phone, chain_id) "
+               "VALUES (?,?,?,?,?,?,?,?)",
                (login, name.strip()[:60], partners.hash_password(password), db.now_iso(), extra["role"],
-                extra.get("schedule"), extra.get("phone")))
-    db.event("equipo_alta", {"login": login, "rol": extra["role"]})
+                extra.get("schedule"), extra.get("phone"), int(chain_id) if chain_id else None))
+    db.event("equipo_alta", {"login": login, "rol": extra["role"], "cadena": chain_id})
     return get(login)
 
 
@@ -148,10 +173,10 @@ def authenticate(login: str, password: str) -> Optional[Dict[str, Any]]:
 
 
 # ------------------------------------------------------------------------------------------- clientes
-def lookup_customer(phone: str) -> Dict[str, Any]:
-    """Cliente conocido por su celular: nombre, últimas direcciones y pedidos."""
+def lookup_customer(phone: str, partner_ids: Optional[List[int]] = None) -> Dict[str, Any]:
+    """Cliente conocido por su celular: nombre, últimas direcciones y pedidos (solo de los restaurantes que atiende)."""
     norm = geo.normalize_phone(phone)  # lanza AddressError si no es válido
-    past = orders.list_orders(phone=norm, limit=10)
+    past = orders.list_orders(phone=norm, limit=10, partner_ids=partner_ids)
     names = {p["id"]: p["name"] for p in partners.all_partners()}
     addresses, seen = [], set()
     for o in past:
@@ -333,9 +358,11 @@ def member_stats(login: str, days: int = 1) -> Dict[str, Any]:
     }
 
 
-def team(days: int = 1) -> Dict[str, Any]:
+def team(days: int = 1, chain_id: Any = ALL) -> Dict[str, Any]:
     members = []
-    for op in all_operators():
+    chains = {r["id"]: r["name"] for r in db.query("SELECT id, name FROM chains")}
+    for op in all_operators(chain_id):
+        op["chain"] = chains.get(op.get("chain_id")) if op.get("chain_id") else None
         st = member_stats(op["login"], days)
         members.append({**op, "role_label": ROLES.get(op.get("role") or "operador", "Operador"), "stats": st})
     tot = {k: round(sum(m["stats"][k] for m in members), 2) for k in ("orders", "sales", "calls", "hours_online")}
@@ -343,3 +370,16 @@ def team(days: int = 1) -> Dict[str, Any]:
     tot["members"] = len(members)
     tot["active"] = sum(1 for m in members if m["enabled"])
     return {"days": days, "since": period_start(days).isoformat(), "members": members, "totals": tot}
+
+
+def member_detail(login: str, days: int = 30) -> Dict[str, Any]:
+    op = get(login)
+    names = {p["id"]: p["name"] for p in partners.all_partners()}
+    recent = []
+    for r in db.query("SELECT token FROM orders WHERE operator=? ORDER BY created_at DESC LIMIT 20", (login,)):
+        o = orders.get(r["token"])
+        recent.append({"number": o["number"], "partner": names.get(o["partner_id"]), "total": o["total"],
+                       "status": o["status"], "created_at": o["created_at"],
+                       "customer": f"{o['customer']['first_name']} {o['customer']['last_name']}"})
+    return {**op, "role_label": ROLES.get(op.get("role") or "operador"), "stats": member_stats(login, days),
+            "orders": recent, "calls": recent_calls(login, limit=30)}
