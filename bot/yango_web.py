@@ -14,6 +14,7 @@ from pathlib import Path
 from typing import Any, Dict, List, Optional
 
 import yaml
+from urllib.parse import quote, unquote
 
 from app.config import ROOT, settings
 from bot import sessions
@@ -22,9 +23,26 @@ from bot.base import PlacementMismatch, SessionDown, YangoSource
 log = logging.getLogger("yango_web")
 CONFIG_PATH = ROOT / "config" / "yango_web.yaml"
 
+# Lo que el checkout no necesita para funcionar: se corta para que cargue antes.
+HEAVY_TYPES = {"image", "media", "font"}
+HEAVY_HOSTS = re.compile(r"mc\.yandex|yandex\.(ru|com)/(clck|metrika)|clck\.|google|doubleclick|facebook|tiktok|"
+                         r"snapchat|twitter|analytics|metrika|adfox|ads\.", re.I)
+
+
+async def _skip_heavy(route: Any) -> None:
+    req = route.request
+    if req.resource_type in HEAVY_TYPES or HEAVY_HOSTS.search(req.url):
+        await route.abort()
+    else:
+        await route.continue_()
+
+
+# Cabeceras de la web que no se reusan: dependen de cada petición.
+API_HEADER_SKIP = {"x-ya-client-time", "x-retpath-y", "x-idempotency-token", "x-yarequestid", "x-request-id"}
+
 FETCH_JS = """
-async ([method, path, body]) => {
-  const opts = {method, headers: {'accept': 'application/json'}, credentials: 'include'};
+async ([method, path, body, headers]) => {
+  const opts = {method, headers: {'accept': 'application/json', ...(headers || {})}, credentials: 'include'};
   if (body !== null) { opts.body = JSON.stringify(body); opts.headers['content-type'] = 'application/json'; }
   const r = await fetch(path, opts);
   return {status: r.status, text: await r.text()};
@@ -81,6 +99,19 @@ class AccountRuntime:
         self.session_mtime = 0.0
         self.requests = 0
         self.errors = 0
+        # Cabeceras con las que la propia web llama a su API. El carrito real va ligado a x-device-id: sin ellas
+        # Yango usa otro carrito (verificado 2026-10-30). Se copian de las peticiones de la pestaña.
+        self.api_headers: Dict[str, str] = {}
+
+    async def _on_request(self, request: Any) -> None:
+        try:
+            if "/api/" not in request.url and "/eats/" not in request.url:
+                return
+            h = await request.all_headers()
+            if h.get("x-device-id"):
+                self.api_headers = {k: v for k, v in h.items() if k.startswith("x-") and k not in API_HEADER_SKIP}
+        except Exception:
+            pass
 
     async def ensure(self) -> None:
         path = sessions.session_path(self.account)
@@ -98,8 +129,41 @@ class AccountRuntime:
             home = self.source.url(self.source.cfg["home_path"])
             for _ in range(max(1, settings.pages_per_account)):
                 page = await self.context.new_page()
+                page.on("request", self._on_request)
                 await page.goto(home, wait_until="domcontentloaded", timeout=60000)
+                # La web redirige sola tras cargar (/es-la → /bo/...): se espera a que quede quieta antes de usarla.
+                try:
+                    await page.wait_for_load_state("networkidle", timeout=15000)
+                except Exception:
+                    pass
                 self.pages.append(page)
+
+    async def checkout_context(self, lat: float, lon: float) -> Any:
+        """Navegador limpio con la misma sesión y el mismo dispositivo (mismo carrito) y el punto del cliente en la
+        cookie eda_web. La web toma la dirección de entrega de ese punto al cargar (verificado 2026-10-30); en una
+        pestaña ya usada se queda con la dirección guardada de la cuenta y pregunta «¿Pedir a esta dirección?»."""
+        await self.ensure()
+        state = await self.context.storage_state()
+        # Sin el localStorage de la web: ahí guarda la última dirección y le gana a la cookie. Sesión, dispositivo
+        # (x-device-id) y carrito van en las cookies.
+        state["origins"] = [o for o in state.get("origins", []) if "food.yango" not in o.get("origin", "")]
+        for c in state["cookies"]:
+            if c["name"] == "eda_web":
+                data = json.loads(unquote(c["value"]))
+                data.setdefault("app", {}).update({"lat": lat, "lon": lon})
+                c["value"] = quote(json.dumps(data, separators=(",", ":")), safe=":,")
+        ctx = await self.source.browser.new_context(storage_state=state, locale="es-BO",
+                                                    timezone_id=settings.timezone, viewport={"width": 1280, "height": 900})
+        await ctx.route("**/*", _skip_heavy)  # el checkout carga en ~la mitad sin imágenes, fuentes ni analítica
+        return ctx
+
+    def _headers_for(self, path: str) -> Dict[str, str]:
+        h = dict(self.api_headers)
+        m = re.search(r"latitude=(-?[\d.]+).*?longitude=(-?[\d.]+)|longitude=(-?[\d.]+).*?latitude=(-?[\d.]+)", path)
+        if m:  # la ubicación de la llamada, no la que tenía la pestaña
+            lat, lon = (m.group(1), m.group(2)) if m.group(1) else (m.group(4), m.group(3))
+            h["x-ya-coordinates"] = f"latitude={lat},longitude={lon}"
+        return h
 
     async def close(self) -> None:
         if self.context is not None:
@@ -114,12 +178,22 @@ class AccountRuntime:
         return self.pages[self._rr]
 
     async def fetch(self, method: str, path: str, body: Any = None) -> Any:
+        try:
+            return await self._fetch(method, path, body)
+        except Exception as e:
+            # Si la pestaña navegó a mitad de la consulta, una lectura se repite una vez. Una escritura no: pudo llegar.
+            if method != "GET" or "context was destroyed" not in str(e):
+                raise
+            await asyncio.sleep(1.5)
+            return await self._fetch(method, path, body)
+
+    async def _fetch(self, method: str, path: str, body: Any = None) -> Any:
         await self.ensure()
         async with self.sem:
             page = self._page()
             self.requests += 1
             try:
-                res = await asyncio.wait_for(page.evaluate(FETCH_JS, [method, path, body]),
+                res = await asyncio.wait_for(page.evaluate(FETCH_JS, [method, path, body, self._headers_for(path)]),
                                              timeout=settings.bot_request_timeout)
             except Exception:
                 self.errors += 1
@@ -137,6 +211,91 @@ class AccountRuntime:
             raise RuntimeError(f"Respuesta no JSON en {path.split('?')[0]}")
 
 
+VENDOR_FETCH_JS = """
+async ([url, headers]) => {
+  const r = await fetch(url, {headers, credentials: 'include'});
+  return {status: r.status, text: await r.text()};
+}
+"""
+
+
+class VendorRuntime:
+    """Sesión de la vendor app del local (vendor.yango.com), solo lectura. Como en restotec-yango: la web llama a su API
+    con cabeceras propias (token incluido); se copian de sus peticiones y se reusan con fetch() desde la misma pestaña."""
+
+    def __init__(self, source: "YangoWebSource", account: str) -> None:
+        self.source = source
+        self.account = account
+        self.cfg = source.cfg["vendor"]
+        self.context = None
+        self.page = None
+        self.headers: Dict[str, str] = {}
+        self.session_mtime = 0.0
+        self._lock = asyncio.Lock()
+
+    async def _on_request(self, request: Any) -> None:
+        if self.cfg["api_prefix"] + "/" in request.url:
+            try:
+                h = await request.all_headers()  # .headers oculta las de seguridad (x-oauth incluida)
+                if h.get("x-oauth"):  # sin token la web también llama (ab/configs): esas no sirven
+                    self.headers = {k: v for k, v in h.items() if not k.startswith(":")
+                                    and k.lower() not in ("content-length", "host", "cookie", "x-idempotency-token")}
+            except Exception:
+                pass
+
+    async def ensure(self) -> None:
+        path = sessions.session_path(self.account)
+        if not path.exists():
+            raise SessionDown(f"La cuenta vendor {self.account} no tiene sesión cargada")
+        mtime = path.stat().st_mtime
+        async with self._lock:
+            if self.page is not None and mtime == self.session_mtime and not self.page.is_closed():
+                return
+            await self.close()
+            self.context = await self.source.browser.new_context(storage_state=str(path), locale="es-BO",
+                                                                 timezone_id=settings.timezone)
+            self.session_mtime = mtime
+            self.page = await self.context.new_page()
+            self.page.on("request", self._on_request)
+            await self.page.goto(self.cfg["base_url"] + self.cfg["home_path"], wait_until="domcontentloaded",
+                                 timeout=60000)
+            if re.search(self.cfg["logged_out_url_regex"], self.page.url):
+                await self.close()
+                raise SessionDown(f"vendor {self.account}: la vendor app pide iniciar sesión")
+            for _ in range(30):  # la web pide los activos al cargar: de ahí salen las cabeceras
+                if self.headers:
+                    break
+                await asyncio.sleep(0.5)
+            if not self.headers:
+                # La sesión de la vendor app es un token en localStorage (persist:auth), no una cookie.
+                await self.close()
+                raise SessionDown(f"vendor {self.account}: sin token de la vendor app (persist:auth vencido o falta)")
+
+    async def close(self) -> None:
+        if self.context is not None:
+            try:
+                await self.context.close()
+            except Exception:
+                pass
+        self.context, self.page = None, None
+
+    async def get(self, path: str) -> Any:
+        await self.ensure()
+        url = self.cfg["base_url"] + self.cfg["api_prefix"] + path
+        try:
+            res = await asyncio.wait_for(self.page.evaluate(VENDOR_FETCH_JS, [url, self.headers]),
+                                         timeout=settings.bot_request_timeout)
+        except Exception:
+            await self.close()
+            raise
+        if res["status"] in (401, 403):
+            await self.close()
+            raise SessionDown(f"vendor {self.account}: HTTP {res['status']}")
+        if res["status"] >= 400:
+            raise RuntimeError(f"vendor HTTP {res['status']} en {path.split('?')[0]}")
+        return json.loads(res["text"]) if res["text"] else {}
+
+
 class YangoWebSource(YangoSource):
     name = "yango_web"
 
@@ -145,6 +304,7 @@ class YangoWebSource(YangoSource):
         self._pw = None
         self.browser = None
         self.accounts: Dict[str, AccountRuntime] = {}
+        self.vendors: Dict[str, VendorRuntime] = {}
 
     def url(self, path: str) -> str:
         return settings.yango_base_url + path.replace("{locale}", settings.yango_locale_path)
@@ -156,7 +316,7 @@ class YangoWebSource(YangoSource):
                                                       executable_path=settings.chromium_executable or None)
 
     async def stop(self) -> None:
-        for rt in self.accounts.values():
+        for rt in list(self.accounts.values()) + list(self.vendors.values()):
             await rt.close()
         if self.browser:
             await self.browser.close()
@@ -190,6 +350,34 @@ class YangoWebSource(YangoSource):
         body = {"action": "pin_drop", "state": {"current_mode": "eats"}, "position": [lon, lat],
                 "sticky": False, "type": "a"}
         return await self.rt(account).fetch("POST", self.cfg["endpoints"]["finalsuggest"], body)
+
+    async def brand_place(self, account: str, brand_slug: str, lat: float, lon: float) -> Optional[Dict[str, Any]]:
+        path = self.cfg["endpoints"]["brand_place"].format(brand_slug=brand_slug, lat=lat, lon=lon)
+        try:
+            return await self.rt(account).fetch("GET", path)
+        except RuntimeError as e:
+            if "BRAND_NOT_FOUND" in str(e) or "HTTP 404" in str(e):
+                return None
+            raise
+
+    async def search_address(self, account: str, text: str, lat: float, lon: float) -> Dict[str, Any]:
+        body = {"part": text, "position": [lon, lat], "state": {"current_mode": "eats"}, "type": "a",
+                "action": "user_input"}
+        return await self.rt(account).fetch("POST", self.cfg["endpoints"]["suggest"], body)
+
+    async def order_tracking(self, account: str) -> Dict[str, Any]:
+        return await self.rt(account).fetch("GET", self.cfg["endpoints"]["order_tracking"])
+
+    def vendor(self, account: str) -> VendorRuntime:
+        if account not in self.vendors:
+            self.vendors[account] = VendorRuntime(self, account)
+        return self.vendors[account]
+
+    async def vendor_active(self, account: str) -> Dict[str, Any]:
+        return await self.vendor(account).get(self.cfg["vendor"]["active"])
+
+    async def vendor_order(self, account: str, order_nr: str) -> Optional[Dict[str, Any]]:
+        return await self.vendor(account).get(self.cfg["vendor"]["order"].format(order_nr=order_nr))
 
     async def resolve_place(self, account: str, yango_url: str) -> Dict[str, Any]:
         rt = self.rt(account)
@@ -229,6 +417,14 @@ class YangoWebSource(YangoSource):
                 "address": (place.get("address") or {}).get("short"), "logo_url": logo, "accent_color": accent}
 
     async def check_session(self, account: str) -> Dict[str, Any]:
+        res = await self._check_session(account)
+        if not res["ok"] and "closed" in res["detail"]:
+            # La pestaña se cerró a mitad de la comprobación (el bot la reabrió para un pedido): no es sesión caída.
+            await asyncio.sleep(3)
+            res = await self._check_session(account)
+        return res
+
+    async def _check_session(self, account: str) -> Dict[str, Any]:
         rt = self.rt(account)
         try:
             await rt.ensure()
@@ -250,19 +446,27 @@ class YangoWebSource(YangoSource):
         return {"ok": True, "detail": "sesión activa"}
 
     # ------------------------------------------------------------------ pedidos
-    async def place_order(self, account: str, partner: Dict[str, Any], order: Dict[str, Any]) -> Dict[str, Any]:
+    async def place_order(self, account: str, partner: Dict[str, Any], order: Dict[str, Any],
+                          dry_run: bool = False) -> Dict[str, Any]:
+        """Coloca el pedido. dry_run=True hace todo (carrito, dirección, comentarios, NIT, Efectivo comprobado) menos
+        pulsar «Pagar», y deja el carrito y el NIT como estaban: para probar en producción sin pedir."""
         ocfg = self.cfg["order"]
         rt = self.rt(account)
         addr = order["address"]
         async with rt.order_lock:
-            await rt.fetch(ocfg["clear_cart"]["method"], ocfg["clear_cart"]["path"])
+            await self._clear_cart(rt, addr["lat"], addr["lon"])
             for line in order["items"]:
                 ctx = {"item_id": int(line["item_id"]), "quantity": int(line["quantity"]),
-                       "place_slug": partner["place_slug"], "item_options": item_options_payload(line)}
-                await rt.fetch(ocfg["add_item"]["method"], ocfg["add_item"]["path"],
+                       "place_slug": (order.get("quote") or {}).get("place_slug") or partner["place_slug"],
+                       "item_options": item_options_payload(line)}
+                await rt.fetch(ocfg["add_item"]["method"],
+                               ocfg["add_item"]["path"].format(lat=addr["lat"], lon=addr["lon"]),
                                fill_template(ocfg["add_item"]["body"], ctx))
             cart = await rt.fetch("GET", self.cfg["endpoints"]["cart"].format(lat=addr["lat"], lon=addr["lon"]))
-            y_sub = float(dig(cart, ocfg["cart_subtotal_path"]) or 0)
+            # «subtotal» de Yango es el precio sin promo; el de cada línea con promo es promo_subtotal (verificado).
+            lines = dig(cart, ocfg["clear_cart"]["items_path"]) or []
+            y_sub = round(sum(float(l.get("promo_subtotal") or l.get("subtotal") or 0) for l in lines), 2) if lines \
+                else float(dig(cart, ocfg["cart_subtotal_path"]) or 0)
             y_fee = float(dig(cart, ocfg["cart_delivery_fee_path"]) or 0)
             y_total = float(dig(cart, ocfg["cart_total_path"]) or 0)
             if abs(y_sub - order["subtotal"]) > 0.01:
@@ -271,21 +475,51 @@ class YangoWebSource(YangoSource):
             expected_fee = order["yango_fee"] if order.get("yango_fee") is not None else order["delivery_fee"]
             if y_fee - expected_fee > settings.fee_tolerance:
                 raise PlacementMismatch(f"Envío en Yango {y_fee} > cotizado {expected_fee}")
-            nr = await self._checkout(rt, order, ocfg)
-        return {"yango_order_nr": nr, "yango_total": y_total, "delivery_fee": y_fee}
+            try:
+                await self._clear_tin(rt)  # el NIT queda guardado en la cuenta: nunca pasa al pedido siguiente
+                nr = await self._checkout(rt, order, ocfg, dry_run=dry_run)
+            finally:
+                if dry_run:
+                    await self._clear_cart(rt, addr["lat"], addr["lon"])
+                    await self._clear_tin(rt)
+        return {"yango_order_nr": nr, "yango_total": y_total, "delivery_fee": y_fee, "dry_run": dry_run}
 
-    async def _checkout(self, rt: AccountRuntime, order: Dict[str, Any], ocfg: Dict[str, Any]) -> str:
+    async def _clear_tin(self, rt: AccountRuntime) -> None:
+        try:
+            await rt.fetch("DELETE", self.cfg["endpoints"]["profile_tin"])
+        except RuntimeError as e:
+            log.info("borrar NIT guardado: %s", e)
+
+    async def _clear_cart(self, rt: AccountRuntime, lat: float, lon: float) -> None:
+        """Yango no tiene «vaciar carrito»: se borra cada línea (como el botón «Reducir cantidad» de la web)."""
+        cc = self.cfg["order"]["clear_cart"]
+        cart = await rt.fetch("GET", self.cfg["endpoints"]["cart"].format(lat=lat, lon=lon))
+        for line in dig(cart, cc["items_path"]) or []:
+            await rt.fetch(cc["method"], cc["path"].format(cart_item_id=dig(line, cc["id_path"]), lat=lat, lon=lon))
+
+    async def _checkout(self, rt: AccountRuntime, order: Dict[str, Any], ocfg: Dict[str, Any],
+                        dry_run: bool = False) -> str:
         addr = order["address"]
+        cust = order.get("customer") or {}
         ctx = {"address_text": addr["text"], "reference": addr["reference"], "comment": order["yango_comment"],
+               "nit": cust.get("nit") or "", "razon_social": cust.get("razon_social") or "",
                "lat": addr["lat"], "lon": addr["lon"], "locale": settings.yango_locale_path}
         never = [n.lower() for n in ocfg.get("never_click") or []]
-        page = await rt.context.new_page()
+        cctx = await rt.checkout_context(addr["lat"], addr["lon"])
+        page = await cctx.new_page()
         captured: Dict[str, Any] = {}
         responses: List[Any] = []
         page.on("response", lambda r: responses.append(r))
         try:
+            paid = False
             for step in ocfg["checkout_steps"]:
                 act, optional = step["action"], step.get("optional", False)
+                if step.get("final") and dry_run:
+                    shot = await self._screenshot(page, f"prueba_{rt.account}_{order['number']}")
+                    return f"PRUEBA-{order['number']} (captura {shot})"
+                paid = paid or bool(step.get("final"))
+                if step.get("if") and not ctx.get(step["if"]):
+                    continue  # paso condicional (p. ej. factura solo si el cliente dio NIT)
                 try:
                     if act == "goto":
                         await page.goto(self.url(fill_template(step["path"], ctx)), wait_until="domcontentloaded",
@@ -299,6 +533,12 @@ class YangoWebSource(YangoSource):
                         await self._fill_any(page, step["labels"], fill_template(step["value"], ctx))
                     elif act == "press":
                         await page.keyboard.press(step["key"])
+                    elif act == "require_after":
+                        # Comprueba lo que la página muestra justo debajo de una etiqueta (p. ej. el método de pago).
+                        lines = [l.strip() for l in (await page.inner_text("body")).splitlines() if l.strip()]
+                        shown = next((lines[i + 1] for i, l in enumerate(lines[:-1]) if l == step["label"]), None)
+                        if shown != step["value"]:
+                            raise PlacementMismatch(f"{step['label']}: Yango muestra «{shown}», se esperaba «{step['value']}»")
                     elif act == "wait_text":
                         await page.get_by_text(step["text"]).first.wait_for(timeout=step.get("timeout", 15000))
                     elif act == "capture":
@@ -317,37 +557,70 @@ class YangoWebSource(YangoSource):
                                         v = dig(data, p)
                                         if v:
                                             captured["nr"] = str(v)
+                                            self._save_order_request(order["number"], resp)
                                             break
                             seen = len(responses)
                             await asyncio.sleep(0.3)
                 except Exception as e:
-                    if optional:
+                    if optional and not isinstance(e, PlacementMismatch):
                         continue
                     shot = await self._screenshot(page, f"checkout_{rt.account}_{order['number']}")
+                    if isinstance(e, PlacementMismatch) or paid:
+                        # Después de «Pagar» el pedido pudo crearse: nunca se reintenta (sería un pedido doble).
+                        raise PlacementMismatch(f"checkout, paso {act}: {e} (captura {shot})"
+                                                + (" · revisar en Yango si se creó" if paid else ""))
                     raise RuntimeError(f"checkout, paso {act}: {e} (captura {shot})")
             if not captured.get("nr"):
                 shot = await self._screenshot(page, f"checkout_sin_nr_{order['number']}")
-                raise RuntimeError(f"No se pudo leer el número de pedido de Yango (captura {shot})")
+                raise PlacementMismatch(f"Se pulsó «Pagar» pero no se leyó el número de Yango: revisar en Yango "
+                                        f"si se creó (captura {shot})")
             return captured["nr"]
         finally:
-            await page.close()
+            await cctx.close()
 
-    async def _click_any(self, page: Any, names: List[str]) -> None:
-        for n in names:
-            for loc in (page.get_by_role("button", name=n), page.get_by_text(n, exact=True)):
-                if await loc.count():
-                    await loc.first.click(timeout=8000)
-                    await page.wait_for_timeout(600)
-                    return
-        raise RuntimeError(f"no aparece ninguno de {names}")
+    def _save_order_request(self, number: str, resp: Any) -> None:
+        """Guarda la petición con la que la web creó el pedido (POST /api/v1/orders): es la base para colocar por API
+        sin abrir la página (~2 s en vez de ~10 s). Va a data/debug, que nunca se sube al repositorio."""
+        try:
+            settings.debug_dir.mkdir(parents=True, exist_ok=True)
+            body = resp.request.post_data
+            (settings.debug_dir / f"order_request_{number}.json").write_text(json.dumps(
+                {"url": resp.request.url, "method": resp.request.method, "status": resp.status,
+                 "body": json.loads(body) if body else None}, ensure_ascii=False, indent=1))
+            log.info("pedido %s: petición de creación guardada (%s)", number, resp.request.url.split("?")[0])
+        except Exception as e:  # pragma: no cover - solo diagnóstico
+            log.info("no se pudo guardar la petición del pedido %s: %s", number, e)
 
-    async def _fill_any(self, page: Any, labels: List[str], value: str) -> None:
-        for lab in labels:
-            for loc in (page.get_by_label(lab), page.get_by_placeholder(lab)):
-                if await loc.count():
-                    await loc.first.fill(value, timeout=8000)
-                    return
-        raise RuntimeError(f"no aparece el campo {labels}")
+    async def _click_any(self, page: Any, names: List[str], wait_s: float = 6.0) -> None:
+        """Pulsa el primero que aparezca (espera hasta wait_s a que la web lo muestre, sin pausas fijas)."""
+        deadline = time.monotonic() + wait_s
+        while True:
+            for n in names:
+                # Nombre exacto: «Pagar» nunca debe coincidir con «Pagar con tarjeta».
+                for loc in (page.get_by_role("button", name=n, exact=True),
+                            page.locator(f"label[aria-label={json.dumps(n)}]"),  # opciones tipo radio (método de pago)
+                            page.get_by_text(n, exact=True)):
+                    if await loc.count():
+                        await loc.first.click(timeout=8000)
+                        await page.wait_for_timeout(120)
+                        return
+            if time.monotonic() > deadline:
+                raise RuntimeError(f"no aparece ninguno de {names}")
+            await page.wait_for_timeout(100)
+
+    async def _fill_any(self, page: Any, labels: List[str], value: str, wait_s: float = 6.0) -> None:
+        deadline = time.monotonic() + wait_s
+        while True:
+            for lab in labels:
+                # Solo campos de texto: la fila «NIT» del checkout también es un botón con esa etiqueta.
+                for loc in (page.get_by_placeholder(lab, exact=True), page.get_by_role("textbox", name=lab, exact=True),
+                            page.locator("input:visible, textarea:visible").and_(page.get_by_label(lab))):
+                    if await loc.count():
+                        await loc.first.fill(value, timeout=8000)
+                        return
+            if time.monotonic() > deadline:
+                raise RuntimeError(f"no aparece el campo {labels}")
+            await page.wait_for_timeout(100)
 
     def health(self) -> Dict[str, Any]:
         return {"source": self.name, "order_flow_verified": bool(self.cfg["order"].get("verified")),

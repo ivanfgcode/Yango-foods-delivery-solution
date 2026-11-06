@@ -36,6 +36,22 @@ def _clean_name(v: Any, field: str) -> str:
     return s[:40]
 
 
+NIT_RE = re.compile(r"^\d{4,15}(?:-?[0-9A-Z]{1,3})?$")
+
+
+def clean_invoice(c: Dict[str, Any]) -> Dict[str, str]:
+    """Datos para la factura (opcionales): NIT o CI y razón social. Van juntos o no van."""
+    nit = re.sub(r"[\s.]", "", str(c.get("nit") or "")).upper()
+    razon = re.sub(r"\s+", " ", re.sub(r"[<>|]", "", str(c.get("razon_social") or ""))).strip()
+    if not nit and not razon:
+        return {}
+    if not NIT_RE.match(nit):
+        raise OrderError("Escribe un NIT o CI válido (solo números)")
+    if len(razon) < 2:
+        raise OrderError("Escribe el nombre o razón social para la factura")
+    return {"nit": nit, "razon_social": razon[:80]}
+
+
 CHANNELS = {"web": "WEB", "telefono": "TEL"}
 
 
@@ -57,6 +73,8 @@ def build_comment(customer: Dict[str, str], address: Dict[str, Any], payment: Di
     ]
     if address.get("comment"):
         parts.append(f"NOTA: {address['comment']}")
+    if customer.get("nit"):
+        parts.append(f"FACTURA: NIT {customer['nit']} a nombre de {customer['razon_social']}")
     parts.append(f"{CHANNELS.get(channel, 'WEB')} #{number}")
     return " | ".join(parts)[:480]
 
@@ -90,6 +108,7 @@ def prepare(partner: Dict[str, Any], menu: Dict[str, Any], body: Dict[str, Any])
         address = geo.validate_address(body.get("address") or {})
     except geo.AddressError as e:
         raise OrderError(str(e))
+    customer.update(clean_invoice(c))
     p = body.get("payment") or {}
     method = p.get("method")
     if method not in PAYMENTS:
@@ -196,13 +215,19 @@ def list_orders(partner_id: Optional[int] = None, status: Optional[str] = None, 
 
 
 def public_view(o: Dict[str, Any]) -> Dict[str, Any]:
+    from app.tracking import TEXT
+    stage = o.get("track_stage") if o["status"] in ("colocado", "cancelado") else None
     return {
-        "number": o["number"], "status": o["status"], "status_text": CUSTOMER_STATUS[o["status"]],
+        "number": o["number"], "status": o["status"],
+        "status_text": TEXT[stage][0] if stage else CUSTOMER_STATUS[o["status"]],
+        "stage": stage, "stage_text": TEXT[stage][1] if stage else None, "courier_eta": o.get("track_eta"),
         "items": [{"name": i["name"], "quantity": i["quantity"], "amount": i["amount"],
                    "options": [x["name"] for x in i["options"]]} for i in o["items"]],
         "subtotal": o["subtotal"], "delivery_fee": o["delivery_fee"], "service_fee": o["service_fee"],
         "total": o["total"], "payment": o["payment"]["label"],
         "address": o["address"]["text"], "reference": o["address"]["reference"],
+        "invoice": {"nit": o["customer"]["nit"], "razon_social": o["customer"]["razon_social"]}
+        if o["customer"].get("nit") else None,
         "eta_min": (o["quote"] or {}).get("eta_min"), "eta_max": (o["quote"] or {}).get("eta_max"),
         "created_at": o["created_at"],
     }

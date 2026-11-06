@@ -3,11 +3,12 @@ import asyncio
 import logging
 from typing import Any, Dict, Optional
 
-from app import alerts, db, menu as menu_mod, orders, partners
+from app import alerts, db, menu as menu_mod, orders, partners, tracking
 from app.config import settings
 from app.quotes import QuoteService
 from bot import sessions
 from bot.base import PlacementMismatch, SessionDown, YangoSource
+from bot.login import LoginManager
 
 log = logging.getLogger("runtime")
 
@@ -61,9 +62,9 @@ class Dispatcher:
             return
         partner = partners.get_by_id(o["partner_id"])
         label = f"#{o['number']} {partner['name']} {settings.currency}{o['total']:g}"
-        if not settings.order_placement_enabled:
+        if not partners.placement_enabled(partner):
             orders.set_status(token, "manual", error="Colocación automática apagada")
-            await alerts.alert("pedido_manual", f"🧾 Pedido nuevo {label}: cargar a mano en Yango con la cuenta "
+            await alerts.alert("pedido_manual", f"[MANUAL] Pedido nuevo {label}: cargar a mano en Yango con la cuenta "
                                                 f"{o['account']}.\nComentario: {o['yango_comment']}")
             return
         attempts = o["attempts"]
@@ -74,22 +75,23 @@ class Dispatcher:
                 res = await self.rt.source.place_order(o["account"], partner, o)
                 orders.set_status(token, "colocado", yango_order_nr=res.get("yango_order_nr"),
                                   yango_total=res.get("yango_total"), error=None)
+                await tracking.notify(token, "confirmado")
                 return
             except PlacementMismatch as e:
                 orders.set_status(token, "revision", error=str(e))
-                await alerts.alert("pedido_revision", f"⚠️ {label} en revisión: {e}")
+                await alerts.alert("pedido_revision", f"[REVISIÓN] {label} en revisión: {e}")
                 return
             except SessionDown as e:
                 sessions.set_status(o["account"], "caida", str(e))
                 orders.set_status(token, "manual", error=str(e))
-                await alerts.alert("sesion_caida", f"🔒 Cuenta {o['account']} sin sesión ({e}). {label} pasa a manual. "
+                await alerts.alert("sesion_caida", f"[SESIÓN] Cuenta {o['account']} sin sesión ({e}). {label} pasa a manual. "
                                                    "Cargar cookies nuevas en Admin → Cuentas.")
                 return
             except Exception as e:
                 log.warning("colocar %s intento %s: %s", o["number"], attempts, e)
                 if attempts >= settings.order_max_attempts:
                     orders.set_status(token, "manual", error=str(e)[:300])
-                    await alerts.alert("pedido_fallido", f"❌ {label}: el bot no pudo colocarlo ({e}). Cargar a mano.")
+                    await alerts.alert("pedido_fallido", f"[FALLÓ] {label}: el bot no pudo colocarlo ({e}). Cargar a mano.")
                     return
                 orders.set_status(token, "en_cola", error=str(e)[:300], attempts=attempts)
                 await asyncio.sleep(self.retry_delays[min(attempts - 1, len(self.retry_delays) - 1)])
@@ -105,23 +107,31 @@ class Runtime:
         self.source = source or make_source()
         self.quotes = QuoteService(self.source.catalog)
         self.dispatcher = Dispatcher(self)
+        self.login: Optional[LoginManager] = None
         self.tasks: list = []
 
     async def start(self, background: bool = True) -> None:
         await self.source.start()
+        from bot.yango_web import load_config
+        cfg = load_config()
+        self.login = LoginManager({**cfg["login"], "logged_out_texts": cfg["session"]["logged_out_texts"]},
+                                  browser=getattr(self.source, "browser", None))
         self.dispatcher.recover()
         if background:
             self.tasks.append(asyncio.create_task(self._menu_loop(), name="menu"))
             self.tasks.append(asyncio.create_task(self._session_loop(), name="sesiones"))
+            self.tasks.append(asyncio.create_task(self._tracking_loop(), name="seguimiento"))
 
     async def stop(self) -> None:
         for t in self.tasks + list(self.dispatcher.workers.values()):
             t.cancel()
+        if self.login:
+            await self.login.stop()
         await self.source.stop()
 
     async def sync_partner(self, partner: Dict[str, Any]) -> Dict[str, Any]:
         """Resuelve el local (si falta) y actualiza el menú."""
-        if not partner.get("place_slug") or partner.get("place_lat") is None:
+        if not partner.get("place_slug") or partner.get("place_lat") is None or not partner.get("place_name"):
             if not partner.get("yango_url"):
                 raise ValueError("Falta la URL de Yango del restaurante")
             place = await self.source.resolve_place(partner["account"], partner["yango_url"])
@@ -129,7 +139,7 @@ class Runtime:
                 raise RuntimeError("Yango no devolvió el local")
             partner = partners.update(partner["slug"], place_slug=place["place_slug"], place_id=place["place_id"],
                                       place_lat=place["lat"], place_lon=place["lon"],
-                                      place_address=place.get("address"))
+                                      place_address=place.get("address"), place_name=place.get("name"))
             db.event("local_resuelto", place, partner_id=partner["id"])
         try:
             raw = await self.source.menu(partner["account"], partner["place_slug"],
@@ -153,6 +163,15 @@ class Runtime:
                         log.warning("menú %s: %s", p["slug"], e)
             await asyncio.sleep(settings.menu_sync_minutes * 60)
 
+    async def _tracking_loop(self) -> None:
+        """Estado de los pedidos colocados (vendor app o cuenta cliente) y avisos push al cliente."""
+        while True:
+            try:
+                await tracking.poll_once(self.source)
+            except Exception:  # pragma: no cover
+                log.exception("seguimiento")
+            await asyncio.sleep(settings.tracking_seconds)
+
     async def _session_loop(self) -> None:
         notified: Dict[str, str] = {}
         while True:
@@ -165,7 +184,7 @@ class Runtime:
                 sessions.set_status(a, "ok" if res["ok"] else "caida", res["detail"])
                 if not res["ok"] and notified.get(a) != res["detail"]:
                     notified[a] = res["detail"]
-                    await alerts.alert("sesion_caida", f"🔒 Cuenta {a}: {res['detail']}. Cargar cookies nuevas.")
+                    await alerts.alert("sesion_caida", f"[SESIÓN] Cuenta {a}: {res['detail']}. Cargar cookies nuevas.")
                 elif res["ok"]:
                     notified.pop(a, None)
             await asyncio.sleep(300)

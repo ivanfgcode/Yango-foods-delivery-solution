@@ -1,16 +1,22 @@
-# Pedidos propios (Yango Foods): guía para agentes
+# carta.bo (pedidos propios con Yango): guía para agentes
 
 Lee [README.md](README.md) primero. Proyecto hermano: `ivanfgcode/restotec-yango` (mismo estilo de bot y operación).
 
 ## Reglas
 * Los precios y el envío se calculan siempre en el servidor (menú sincronizado + cotización de Yango). Nunca confiar en el navegador.
-* El bot no resuelve captchas ni inicia sesión por SMS: las sesiones entran como cookies JSON (Admin → Cuentas).
+* El bot no resuelve captchas. Sesiones: login asistido por teléfono (el operador escribe el SMS y resuelve el captcha desde Admin → Cuentas) o cookies JSON.
+* Mapa: Yandex Maps (los datos de Yango Maps). Nunca reutilizar la clave de mapas de food.yango.com.
+* Panel del partner (carta.bo): `app/templates/portal.html` + `app/static/portal.css`; plan y acuerdo en `app/billing.py` (si cambia el texto del acuerdo, subir `TERMS_VERSION`).
+* Admin: lenguaje «Instrumental» del picker de restotec-yango (`app/static/admin.css` + lienzos en `app/static/charts.js`). Los números del Resumen salen de `app/dashboard.py`.
+* Íconos: Lucide en `app/static/icons.svg` (`<use href="/static/icons.svg#nombre">`). Sin emojis en la interfaz ni en las alertas.
 * El bot nunca pulsa nada de `order.never_click` ni paga con tarjeta. Pago siempre efectivo/QR al mensajero.
+* La sucursal la decide Yango con la dirección (`app/branches.py`); el servidor la recalcula al crear el pedido. Lo configurado (más vendidos, TikTok) usa ids de la sucursal principal y se traduce por nombre.
+* Seguimiento (`app/tracking.py`): la vendor app se usa solo para leer estados, nunca se pulsa nada en ella. Avisos al cliente por Web Push (`app/push.py`, `app/static/sw.js`).
 * Un bot (cuenta Yango) por cadena; todos sus locales lo comparten. Un pedido a la vez por cuenta (carrito único).
   Las consultas (catálogo, menú, geocodificación) sí en paralelo.
 * Modelo: envío por tramos de distancia (`app/pricing.py`) y comisión del 3 % sin cargos fijos. Los pedidos de la
   web y de la cabina de operadores pasan por `app/checkout.py`: no duplicar el cálculo en otro lado.
-* Columnas nuevas en tablas existentes van en `db.MIGRATIONS` (la base de Railway ya tiene datos).
+* Columnas nuevas en tablas existentes van en `db.ADDED_COLUMNS` (la base de Railway ya tiene datos).
 * Lo que viene de food.yango.com se valida con fixtures reales en `tests/fixtures/`. Si cambia el formato, actualizar fixture y parser juntos.
 * Nunca commitear `.env`, `data/` (base, sesiones, subidas) ni credenciales. Secretos en variables de Railway.
 * Valores del tema que se inyectan en CSS pasan por `themes.validate` / `themes.validate_pdf` (hex, listas cerradas, https).

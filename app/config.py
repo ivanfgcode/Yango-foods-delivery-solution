@@ -37,6 +37,8 @@ class Settings:
 
         self.public_base_url = os.getenv("PUBLIC_BASE_URL", "http://127.0.0.1:8000").rstrip("/")
         self.admin_key = os.getenv("ADMIN_KEY", "dev-admin")
+        # Claves de admin adicionales (separadas por coma), p. ej. una por operador; se revocan borrando la variable.
+        self.admin_keys_extra = [k.strip() for k in os.getenv("ADMIN_KEYS_EXTRA", "").split(",") if len(k.strip()) >= 24]
         self.secret_key = os.getenv("SECRET_KEY", "dev-secret-change-me")
 
         # mock = Yango simulado (desarrollo y tests) | yango_web = food.yango.com real con Playwright
@@ -70,6 +72,16 @@ class Settings:
         self.quote_cache_seconds = _int("QUOTE_CACHE_SECONDS", 90)
         self.quote_precision = _int("QUOTE_PRECISION", 4)  # decimales de lat/lon para la caché (~11 m)
         self.menu_sync_minutes = _int("MENU_SYNC_MINUTES", 15)
+        # Plan de carta.bo (valores por defecto para cada partner nuevo; el equipo los ajusta en el admin).
+        self.plan_price_bs = _float("PLAN_PRICE_BS", 150.0)
+        self.plan_sponsored_months = _int("PLAN_SPONSORED_MONTHS", 3)
+        self.plan_min_paid_months = _int("PLAN_MIN_PAID_MONTHS", 3)
+        self.sales_whatsapp = os.getenv("SALES_WHATSAPP", "")  # número de ventas para el botón de la landing (591...)
+        self.plan_payment_info = os.getenv("PLAN_PAYMENT_INFO", "Te enviamos el QR de pago por WhatsApp al inicio de cada mes.")
+        # Upselling: pedidos de los últimos N días, mínimo de veces juntos para sugerir, caché de las cuentas.
+        self.upsell_days = _int("UPSELL_DAYS", 90)
+        self.upsell_min_pairs = _int("UPSELL_MIN_PAIRS", 2)
+        self.upsell_cache_seconds = _int("UPSELL_CACHE_SECONDS", 300)
 
         # Zona de servicio (Bolivia). Fuera de esto ni se consulta a Yango.
         self.bounds = (
@@ -80,9 +92,17 @@ class Settings:
         self.currency = os.getenv("CURRENCY_SYMBOL", "Bs")
         self.timezone = os.getenv("TZ_NAME", "America/La_Paz")
 
+        # Mapa del checkout: Yandex Maps (los datos de Yango Maps). La clave es opcional pero recomendada en producción.
         self.yandex_maps_api_key = os.getenv("YANDEX_MAPS_API_KEY", "")
+        self.yandex_maps_lang = os.getenv("YANDEX_MAPS_LANG", "es_ES")
         self.telegram_bot_token = os.getenv("TELEGRAM_BOT_TOKEN", "")
         self.telegram_chat_id = os.getenv("TELEGRAM_CHAT_ID", "")
+
+        # Seguimiento de pedidos (vendor app del local o cuenta cliente) y avisos Web Push al cliente.
+        self.tracking_seconds = _int("TRACKING_SECONDS", 30)
+        self.tracking_hours = _int("TRACKING_HOURS", 4)   # después de esto se deja de seguir un pedido
+        self.vapid_private_key = os.getenv("VAPID_PRIVATE_KEY", "")  # PEM; sin ella se genera data/vapid.json
+        self.vapid_subject = os.getenv("VAPID_SUBJECT", "mailto:soporte@carta.bo")
 
         # Anti abuso: pedidos por IP en la ventana.
         self.orders_per_ip = _int("ORDERS_PER_IP", 8)

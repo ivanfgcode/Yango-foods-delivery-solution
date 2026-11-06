@@ -2,34 +2,131 @@
 <html lang="es">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Admin · Pedidos propios</title>
-<link rel="stylesheet" href="/static/panel.css">
+<title>Admin · carta.bo</title>
+<link rel="icon" href="/static/favicon.svg?v={{ v }}" type="image/svg+xml">
+<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="/static/admin.css?v={{ v }}">
+<script>try { if (localStorage.getItem("pp_tema") === "claro") document.documentElement.dataset.tema = "claro"; } catch (e) {}</script>
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="glifo" viewBox="0 0 24 24"><path d="M3 12.5h18a9 9 0 0 1-18 0z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M8 9c0-1.6 1.2-2 1.2-3.6M12 9c0-1.6 1.2-2 1.2-3.6M16 9c0-1.6 1.2-2 1.2-3.6" fill="none" stroke="var(--in-nar)" stroke-width="1.7" stroke-linecap="round"/></symbol>
+</svg>
+<main class="in-escena is-entra" id="escena">
+<div class="in-fondo" aria-hidden="true"><i class="in-resplandor"></i><i class="in-grano"></i></div>
 {% if not logged %}
-<div class="login card"><h2>Admin · Pedidos propios</h2>
-  <form id="f"><label class="f"><span>Clave de administrador</span><input type="password" id="k" required></label>
-  <button class="btn acc" style="width:100%">Entrar</button><div class="msg bad" id="m"></div></form></div>
+<section class="in-panel acceso">
+  <div class="in-ident"><span class="in-glifo" aria-hidden="true"><svg viewBox="0 0 32 32"><use href="#glifo"/></svg></span>
+    <div><h1>carta.bo</h1><p class="in-sub">Admin · delivery con Yango</p></div></div>
+  <form id="f"><input type="password" id="k" required placeholder="Clave de administrador" autocomplete="current-password" aria-label="Clave de administrador">
+  <button class="btn acc">Entrar</button><div class="msg bad" id="m"></div></form></section>
 <script>
 document.getElementById("f").onsubmit = async (e) => { e.preventDefault();
   const r = await fetch("/api/admin/login", {method: "POST", headers: {"content-type": "application/json"}, body: JSON.stringify({key: document.getElementById("k").value})});
   if (r.ok) location.reload(); else document.getElementById("m").textContent = "Clave incorrecta"; };
 </script>
 {% else %}
-<div class="bar"><b>Pedidos propios · Admin</b> <a class="btn ghost sm" href="/operador" target="_blank" rel="noopener">Cabina ↗</a>
-  <div class="tabs" id="tabs"><button class="on" data-t="orders">Pedidos</button><button data-t="partners">Restaurantes</button><button data-t="chains">Cadenas</button><button data-t="accounts">Cuentas Yango</button><button data-t="commissions">Comisiones</button><button data-t="features">Funciones</button><button data-t="events">Eventos</button></div>
-  <div class="sp"></div><span class="muted" id="src"></span></div>
-<div class="page">
-  <div class="stats" id="stats" style="margin-bottom:16px"></div>
+<header class="barra">
+  <div class="in-ident"><span class="in-glifo" aria-hidden="true"><svg viewBox="0 0 32 32"><use href="#glifo"/></svg></span>
+    <div><h1>carta.bo</h1><p class="in-sub" id="src">—</p></div></div>
+  <nav class="tabs" id="tabs" aria-label="Secciones"><i class="pildora" aria-hidden="true"></i><button class="on" data-t="summary">Resumen</button><button data-t="orders">Pedidos</button><button data-t="store">Tienda</button><button data-t="partners">Restaurantes</button><button data-t="chains">Cadenas</button><button data-t="accounts">Cuentas Yango</button><button data-t="commissions">Comisiones</button><button data-t="features">Funciones</button><button data-t="events">Eventos</button></nav>
+  <a class="btn ghost sm" href="/operador" target="_blank" rel="noopener">Cabina ↗</a>
+  <div class="in-cab-der">
+    <button class="in-chip" id="chipBot" type="button" aria-label="Estado de las cuentas Yango"><i class="in-punto" aria-hidden="true"></i><span id="chipTxt">Cuentas</span></button>
+    <button class="in-redondo" type="button" id="btnTema" aria-label="Cambiar entre tema claro y oscuro">
+      <svg class="in-i-luna" viewBox="0 0 24 24"><path d="M19.5 14.2A7.8 7.8 0 0 1 9.8 4.5a7.8 7.8 0 1 0 9.7 9.7z"/></svg>
+      <svg class="in-i-sol" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 3v2M12 19v2M3 12h2M19 12h2M5.6 5.6L7 7M17 17l1.4 1.4M5.6 18.4L7 17M17 7l1.4-1.4"/></svg>
+    </button>
+  </div>
+</header>
+<div class="pila">
 
-  <section id="t-orders">
-    <div class="card"><div class="row" style="margin-bottom:10px"><h2 style="margin:0;flex:1">Pedidos</h2>
+  <section id="t-summary" class="in-panel" aria-labelledby="tRes">
+    <header class="in-cab">
+      <div><h2 id="tRes">Resumen</h2><p class="in-sub" id="resSub">—</p></div>
+      <div class="filtros">
+        <label class="campo"><select id="fPartner" aria-label="Restaurante"><option value="">Todos los restaurantes</option></select></label>
+        <div class="rango" role="radiogroup" aria-label="Periodo" id="rango">
+          <i class="pildora" aria-hidden="true"></i>
+          <button type="button" role="radio" data-d="1">Hoy</button>
+          <button type="button" role="radio" data-d="7">7 d</button>
+          <button type="button" role="radio" data-d="30">30 d</button>
+          <button type="button" role="radio" data-d="90">90 d</button>
+          <button type="button" role="radio" data-d="0">Todo</button>
+        </div>
+      </div>
+    </header>
+    <div class="in-rejilla" id="rejilla">
+      <button class="in-celda" type="button" data-m="ventas" style="--k:0"><span class="in-c-cab"><span class="in-c-nombre">Ventas</span><i class="in-c-abre"></i></span><span class="in-c-valor"><b data-v>—</b><small>Bs</small></span><span class="in-c-viz"><canvas></canvas></span></button>
+      <button class="in-celda" type="button" data-m="pedidos" style="--k:1"><span class="in-c-cab"><span class="in-c-nombre">Pedidos</span><i class="in-c-abre"></i></span><span class="in-c-valor"><b data-v>—</b><small data-s>pedidos</small></span><span class="in-c-viz"><canvas></canvas></span></button>
+      <button class="in-celda" type="button" data-m="atender" style="--k:2"><span class="in-c-cab"><span class="in-c-nombre">Por atender</span><i class="in-c-abre"></i></span><span class="in-c-valor"><b data-v>—</b><small data-s>manual + revisión</small></span><span class="in-c-viz"><canvas></canvas></span></button>
+      <button class="in-celda" type="button" data-m="ticket" style="--k:3"><span class="in-c-cab"><span class="in-c-nombre">Ticket medio</span><i class="in-c-abre"></i></span><span class="in-c-valor"><b data-v>—</b><small>Bs / pedido</small></span><span class="in-c-viz"><canvas></canvas></span></button>
+      <button class="in-celda" type="button" data-m="envio" style="--k:4"><span class="in-c-cab"><span class="in-c-nombre">Envío medio</span><i class="in-c-abre"></i></span><span class="in-c-valor"><b data-v>—</b><small>Bs (lo gana Yango)</small></span><span class="in-c-viz"><canvas></canvas></span></button>
+      <button class="in-celda" type="button" data-m="top" style="--k:5"><span class="in-c-cab"><span class="in-c-nombre">Más vendido</span><i class="in-c-abre"></i></span><span class="in-c-valor"><b data-v class="txt">—</b></span><span class="in-c-viz"><canvas></canvas></span></button>
+      <button class="in-celda" type="button" data-m="restaurantes" style="--k:6"><span class="in-c-cab"><span class="in-c-nombre">Restaurantes</span><i class="in-c-abre"></i></span><span class="in-c-valor"><b data-v>—</b><small data-s>con pedidos</small></span><span class="in-c-viz"><canvas></canvas></span></button>
+      <button class="in-celda" type="button" data-m="horas" style="--k:7"><span class="in-c-cab"><span class="in-c-nombre">Hora pico</span><i class="in-c-abre"></i></span><span class="in-c-valor"><b data-v>—</b><small data-s></small></span><span class="in-c-viz"><canvas></canvas></span></button>
+      <button class="in-celda" type="button" data-m="semana" style="--k:8"><span class="in-c-cab"><span class="in-c-nombre">Mejor día</span><i class="in-c-abre"></i></span><span class="in-c-valor"><b data-v class="txt">—</b><small data-s></small></span><span class="in-c-viz"><canvas></canvas></span></button>
+
+      <div class="in-det" id="det" role="region" aria-label="Detalle de la métrica">
+        <div class="in-det-clip" id="detClip">
+          <div class="in-det-cuerpo">
+            <header class="in-d-cab in-r" style="--r:0">
+              <div><h2 class="in-d-nombre" id="dNombre">—</h2><p class="in-d-desc" id="dDesc"></p></div>
+              <button class="in-cierra" type="button" id="dCierra" aria-label="Cerrar el detalle"><svg viewBox="0 0 24 24"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg></button>
+            </header>
+            <div class="in-d-cols">
+              <aside class="in-d-lect in-r" style="--r:1">
+                <p class="in-d-actual"><b id="dValor">—</b><small id="dUnidad"></small></p>
+                <p class="in-d-delta" id="dDelta"></p>
+                <dl class="in-lecturas" id="dLect"></dl>
+                <p class="in-d-pista"><kbd>Esc</kbd> cierra el detalle</p>
+              </aside>
+              <div class="in-d-graf in-r" style="--r:2" id="dGraf"><canvas id="dLienzo"></canvas></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div class="fila-sub"><span id="resPie">—</span><span id="resCot"></span></div>
+  </section>
+
+  <section id="t-orders" hidden>
+    <div class="card"><div class="row"><h2 style="flex:1">Pedidos</h2>
       <select id="fStatus" style="width:auto"><option value="">Todos</option><option>manual</option><option>revision</option><option>en_cola</option><option>colocando</option><option>colocado</option><option>cancelado</option></select>
       <button class="btn ghost sm" id="reload">Actualizar</button></div>
       <div class="tw"><table><thead><tr><th>Hora</th><th>N°</th><th>Restaurante / cuenta</th><th>Cliente y dirección</th><th>Productos</th><th>Total</th><th>Estado</th><th></th></tr></thead><tbody id="ob"></tbody></table></div></div>
   </section>
 
-  <section id="t-partners" hidden>
+  <section id="t-store" class="sec" hidden>
+    <div class="card">
+      <div class="in-cab"><div><h2>Tienda</h2><p class="in-sub">lo que ve el cliente arriba del menú: «Más vendidos» y, debajo, los videos de TikTok</p></div>
+        <label class="campo"><select id="stPartner" aria-label="Restaurante"></select></label></div>
+      <label class="row" style="gap:10px;cursor:pointer"><input type="checkbox" id="stGlass">
+        <span><b>Botones de vidrio (estilo iPhone)</b><br><span class="muted">carrito flotante, botones de arriba y pie del carrito y del pago en vidrio translúcido</span></span>
+        <span class="msg" id="stGlassMsg"></span></label>
+    </div>
+
+    <div class="card">
+      <div class="in-cab"><div><h2>Más vendidos</h2><p class="in-sub" id="bsSub">—</p></div>
+        <div class="seg" id="bsMode" style="min-width:280px"><button type="button" data-mode="auto">Automático (pedidos)</button><button type="button" data-mode="manual">Elegidos a mano</button></div></div>
+      <div class="chosen" id="bsList"></div>
+      <div id="bsManual" class="row"><button class="btn sm" type="button" id="bsPick"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg?v={{ v }}#plus"></use></svg>Elegir productos</button><span class="msg" id="bsMsg"></span></div>
+    </div>
+
+    <div class="card">
+      <div class="in-cab"><div><h2>Videos de TikTok</h2><p class="in-sub">pega el enlace (vt./vm.tiktok.com sirven) y etiqueta los productos que aparecen · máx. 12</p></div></div>
+      <div class="tt-new">
+        <label class="f" style="margin:0"><span>Enlace del video</span><input id="vUrl" type="url" placeholder="https://vt.tiktok.com/…"></label>
+        <div><span class="lbl">Productos que aparecen</span><div class="chosen sm" id="vItems"></div>
+          <button class="btn sm" type="button" id="vPick"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg?v={{ v }}#plus"></use></svg>Elegir productos</button></div>
+        <div class="row"><button class="btn acc" type="button" id="vAdd">Agregar video</button><span class="msg" id="vMsg"></span></div>
+      </div>
+      <div class="vids" id="vList"></div>
+    </div>
+  </section>
+
+  <section id="t-partners" class="sec" hidden>
     <div class="card"><h2>Nuevo restaurante</h2>
       <form id="np" class="row" style="align-items:flex-end">
         <label class="f" style="flex:1 1 160px"><span>Nombre</span><input name="name" required></label>
@@ -40,19 +137,47 @@ document.getElementById("f").onsubmit = async (e) => { e.preventDefault();
         <label class="f" style="flex:1 1 140px"><span>Contraseña portal</span><input name="password" type="password" minlength="8"></label>
         <button class="btn acc" style="margin-bottom:12px">Crear</button>
       </form><div class="msg" id="npMsg"></div></div>
-    <div class="card"><h2>Restaurantes</h2><div class="tw"><table><thead><tr><th>Restaurante</th><th>Cadena / cuenta (bot)</th><th>Local Yango</th><th>Menú</th><th>Comisión</th><th>Estado</th><th></th></tr></thead><tbody id="pb"></tbody></table></div></div>
+    <div class="card"><h2>Restaurantes</h2><div class="tw"><table><thead><tr><th>Restaurante</th><th>Cadena / cuenta (bot)</th><th>Local Yango</th><th>Menú</th><th>Plan / comisión</th><th>Estado</th><th></th></tr></thead><tbody id="pb"></tbody></table></div></div>
   </section>
 
-  <section id="t-accounts" hidden>
-    <div class="card"><h2>Cargar sesión (cookies JSON)</h2>
-      <p class="muted">Entra a food.yango.com con la cuenta en tu navegador (teléfono + SMS), exporta las cookies con la extensión «Cookie-Editor» (Export → JSON) y pégalas aquí. Una cuenta (bot) por cadena: todos sus locales la comparten.</p>
-      <label class="f"><span>Cuenta</span><input id="acName" placeholder="wrap_roll"></label>
-      <label class="f"><span>Cookies (JSON)</span><textarea id="acJson" style="min-height:120px" placeholder='[{"name":"Session_id","value":"...","domain":".yango.com",...}]'></textarea></label>
-      <button class="btn acc" id="acSave">Cargar sesión</button><div class="msg" id="acMsg"></div></div>
+  <section id="t-accounts" class="sec" hidden>
+    <div class="card" id="enterCard"><h2>Entrar a una cuenta Yango</h2>
+      <div class="row" style="align-items:flex-end">
+        <label class="f" style="flex:1 1 200px"><span>Cuenta</span><input id="lgName" placeholder="wrap_roll"></label>
+        <div class="seg" id="enterMode" style="flex:1 1 260px;margin-bottom:12px"><button type="button" class="on" data-mode="sms"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg?v={{ v }}#smartphone"></use></svg>Con SMS</button><button type="button" data-mode="cookie"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg?v={{ v }}#copy"></use></svg>Con cookie</button></div>
+      </div>
+
+      <div id="mode-sms">
+        <p class="muted">El bot abre Yango ID y pide el SMS al celular de la cuenta. Escribe aquí el código que llegue. Si Yango muestra captcha, resuélvelo tocando la captura y escribiendo el texto: el bot no lo resuelve solo.</p>
+        <div class="row" style="align-items:flex-end">
+          <label class="f" style="flex:1 1 200px"><span>Celular de la cuenta</span><input id="lgPhone" inputmode="tel" placeholder="7XXXXXXX"></label>
+          <button class="btn acc" id="lgStart" style="margin-bottom:12px"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg?v={{ v }}#log-in"></use></svg>Enviar SMS</button>
+        </div>
+        <div class="msg" id="lgMsg"></div>
+        <div id="lgBox" class="login-box" hidden>
+          <img id="lgShot" alt="Pantalla de Yango ID: toca para hacer clic">
+          <div class="login-ctl">
+            <label class="f"><span>Código del SMS</span><input id="lgCode" inputmode="numeric" autocomplete="one-time-code" maxlength="8"></label>
+            <button class="btn acc" id="lgSendCode"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg?v={{ v }}#shield-check"></use></svg>Enviar código</button>
+            <label class="f" style="margin-top:14px"><span>Escribir texto (captcha u otro campo)</span><input id="lgText" maxlength="80"></label>
+            <div class="row"><button class="btn ghost sm" id="lgType">Escribir</button><button class="btn ghost sm" data-key="Enter">Enter</button><button class="btn ghost sm" data-key="Backspace">Borrar</button></div>
+            <div class="row" style="margin-top:14px"><button class="btn ghost sm" id="lgRefresh">Actualizar captura</button><button class="btn ghost sm" id="lgCancel">Cancelar</button></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="mode-cookie" hidden>
+        <p class="muted">Entra a food.yango.com con la cuenta en tu navegador. Luego, una de dos: exporta con la extensión «Cookie-Editor» (Export → JSON) y pega o sube el archivo, o copia la línea <span class="mono">Cookie:</span> de una petición a food.yango.com (herramientas del navegador → Red). Después se prueba la sesión sola.</p>
+        <label class="f"><span>Cookies (JSON o línea Cookie:)</span><textarea id="acJson" style="min-height:120px" placeholder='[{"name":"Session_id","value":"...","domain":".yango.com",...}]   o   Session_id=...; yandexuid=...'></textarea></label>
+        <div class="row"><label class="btn ghost sm" style="cursor:pointer"><input type="file" id="acFile" accept=".json,.txt,application/json,text/plain" hidden>Subir archivo</label>
+          <button class="btn acc" id="acSave"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg?v={{ v }}#log-in"></use></svg>Entrar con cookie</button></div>
+        <div class="msg" id="acMsg"></div>
+      </div>
+    </div>
     <div class="card"><h2>Cuentas</h2><div class="tw"><table><thead><tr><th>Cuenta (bot)</th><th>Cadena / restaurantes</th><th>Celular de login</th><th>Estado</th><th>Detalle</th><th>Sesión cargada</th><th></th></tr></thead><tbody id="ab"></tbody></table></div></div>
   </section>
 
-  <section id="t-chains" hidden>
+  <section id="t-chains" class="sec" hidden>
     <div class="card"><h2>Nueva cadena</h2>
       <p class="muted">Cada cadena tiene <b>un bot</b> (una cuenta cliente de Yango) para todos sus locales y un <b>usuario y contraseña</b> para entrar a <a href="/cadena" target="_blank" rel="noopener">/cadena</a> y ver sus locales, pedidos y comisiones.</p>
       <form id="nc" class="row" style="align-items:flex-end">
@@ -67,7 +192,7 @@ document.getElementById("f").onsubmit = async (e) => { e.preventDefault();
     <div class="card"><h2>Cadenas</h2><div class="tw"><table><thead><tr><th>Cadena</th><th>Bot (cuenta Yango)</th><th>Usuario</th><th>Locales</th><th></th></tr></thead><tbody id="cb"></tbody></table></div></div>
   </section>
 
-  <section id="t-commissions" hidden>
+  <section id="t-commissions" class="sec" hidden>
     <div class="card"><div class="row" style="margin-bottom:10px"><h2 style="margin:0;flex:1">Comisión a pagar a Yango</h2>
       <input type="month" id="cMonth" style="width:auto"></div>
       <p class="muted" id="cInfo"></p>
@@ -75,7 +200,7 @@ document.getElementById("f").onsubmit = async (e) => { e.preventDefault();
     <div class="card"><h2>Envío por distancia</h2><p class="muted" id="tierInfo"></p><div class="tw"><table><thead><tr><th>Distancia</th><th>Mínimo</th><th>Máximo</th></tr></thead><tbody id="tb"></tbody></table></div></div>
   </section>
 
-  <section id="t-features" hidden>
+  <section id="t-features" class="sec" hidden>
     <div class="tabs sub" id="ftabs"><button class="on" data-f="pdf">Menú PDF</button><button data-f="ops">Operadores</button><button data-f="script">Guion de llamadas</button></div>
 
     <div id="f-pdf" class="grid2" style="margin-top:12px">
@@ -140,6 +265,15 @@ document.getElementById("f").onsubmit = async (e) => { e.preventDefault();
 
   <section id="t-events" hidden><div class="card"><h2>Eventos</h2><div class="tw"><table><thead><tr><th>Hora</th><th>Tipo</th><th>Cuenta</th><th>Detalle</th></tr></thead><tbody id="eb"></tbody></table></div></div></section>
 </div>
+<div class="picker-fondo" id="pkFondo" hidden></div>
+<section class="picker" id="picker" role="dialog" aria-modal="true" aria-labelledby="pkTitle" hidden>
+  <header class="in-cab"><div><h2 id="pkTitle">Elegir productos</h2><p class="in-sub" id="pkSub">toca para marcar · el orden es el de selección</p></div>
+    <button class="in-cierra" type="button" id="pkClose" aria-label="Cerrar"><svg viewBox="0 0 24 24"><path d="M6.5 6.5l11 11M17.5 6.5l-11 11"/></svg></button></header>
+  <input id="pkQ" type="search" placeholder="Buscar producto…" autocomplete="off" aria-label="Buscar producto">
+  <div class="pk-grid" id="pkGrid"></div>
+  <div class="row" style="justify-content:flex-end"><span class="msg" id="pkCount"></span><button class="btn acc" type="button" id="pkOk">Listo</button></div>
+</section>
+<script src="/static/charts.js?v={{ v }}"></script>
 <script>
 (() => {
   const CUR = {{ currency | tojson }};
@@ -148,28 +282,203 @@ document.getElementById("f").onsubmit = async (e) => { e.preventDefault();
   const api = (p, opt) => fetch(`/api/admin${p}`, opt).then(async (r) => { const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.detail || "Error"); return d; });
   const post = (p, body, method = "POST") => api(p, {method, headers: {"content-type": "application/json"}, body: JSON.stringify(body)});
   const when = (s) => s ? new Date(s).toLocaleString("es-BO", {dateStyle: "short", timeStyle: "short"}) : "";
-  let tab = "orders";
+  let tab = "summary", H = {};
 
-  async function stats() {
-    const h = await api("/health");
-    $("#src").textContent = `fuente: ${h.source.source}${h.order_placement_enabled ? " · colocación automática ON" : " · colocación automática OFF (manual)"}`;
-    const o = h.orders;
-    COMM = h.commission_rate;
-    $("#stats").innerHTML = [["Por cargar a mano", o.manual || 0], ["En revisión", o.revision || 0], ["En cola", (o.en_cola || 0) + (o.colocando || 0)], ["Colocados", o.colocado || 0],
-      [`Comisión del mes (${(h.commission_rate * 100).toLocaleString("es-BO")} %)`, `${CUR}${h.commission_month}`],
-      ["Cotizaciones (caché / Yango)", `${h.quotes.hits} / ${h.quotes.misses}`]].map(([l, v]) => `<div class="stat"><b>${esc(v)}</b><span>${esc(l)}</span></div>`).join("");
+  // ---------------------------------------------------------------- cabecera: fuente, cuentas, tema
+  const mem = {get: (k) => { try { return localStorage.getItem(k); } catch (e) { return null; } }, set: (k, v) => { try { localStorage.setItem(k, v); } catch (e) {} }};
+  function pildora(grupo, sel) {
+    const on = grupo.querySelector(sel), pl = grupo.querySelector(".pildora"); if (!on || !pl) return;
+    pl.style.width = on.offsetWidth + "px"; pl.style.transform = `translateX(${on.offsetLeft - 3}px)`;
   }
+  async function stats() {
+    const h = await api("/health"); H = h; COMM = h.commission_rate;
+    const pl = Object.values(h.placement || {}), on = pl.filter(Boolean).length;
+    const modo = !pl.length ? (h.order_placement_enabled ? "ON" : "OFF (manual)") : on === pl.length ? "ON" : on ? `ON en ${on} de ${pl.length}` : "OFF (manual)";
+    const pend = (h.orders.manual || 0) + (h.orders.revision || 0);
+    $("#src").textContent = `${h.source.source === "mock" ? "Yango simulado" : "food.yango.com"} · colocación automática ${modo}${pend ? ` · ${pend} pedido${pend > 1 ? "s" : ""} por cargar a mano` : ""}`;
+    if (tab !== "summary") chipCuentas(await api("/accounts"));
+  }
+  function chipCuentas(accs) {
+    const caidas = accs.filter((a) => a.status !== "ok");
+    $("#chipBot").classList.toggle("is-alerta", caidas.length > 0);
+    $("#chipTxt").textContent = !accs.length ? "Sin cuentas" : caidas.length ? `${caidas.length} cuenta${caidas.length > 1 ? "s" : ""} sin sesión` : "Cuentas activas";
+  }
+  $("#chipBot").onclick = () => irA("accounts");
+  $("#btnTema").onclick = () => {
+    const claro = document.documentElement.dataset.tema !== "claro";
+    if (claro) document.documentElement.dataset.tema = "claro"; else delete document.documentElement.dataset.tema;
+    mem.set("pp_tema", claro ? "claro" : "oscuro"); if (res) pintarTodo();
+  };
+
+  // ---------------------------------------------------------------- resumen
+  const F = IN.fmt, DIAS = ["Domingo", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"], DCORTO = ["Do", "Lu", "Ma", "Mi", "Ju", "Vi", "Sá"];
+  const fechaL = (d) => d ? new Date(d + "T12:00:00").toLocaleDateString("es-BO", {day: "numeric", month: "short"}) : "—";
+  let res = null, dias = +(mem.get("pp_dias") || 30), abierta = null;
+  function serie(clave) {
+    const d = res.daily; if (!d.length) return [];
+    const fin = res.today, ini = res.days ? new Date(new Date(fin + "T12:00:00").getTime() - (res.days - 1) * 864e5).toISOString().slice(0, 10) : d[0].day;
+    const m = Object.fromEntries(d.map((x) => [x.day, x[clave] || 0])), out = [];
+    for (let t = new Date(ini + "T12:00:00"); out.length < 800; t.setDate(t.getDate() + 1)) {
+      const k = t.toISOString().slice(0, 10); if (k > fin) break; out.push({x: k, v: m[k] || 0});
+    }
+    return out;
+  }
+  const M = {
+    ventas: () => ({v: F(res.revenue), dibuja: (cv) => IN.linea(cv, serie("revenue"))}),
+    pedidos: () => ({v: F(res.orders), s: res.status.cancelado ? `+ ${res.status.cancelado} cancelados` : "pedidos", dibuja: (cv) => IN.barras(cv, serie("orders").slice(-45))}),
+    atender: () => ({v: F(res.pending), alerta: res.pending > 0, s: res.in_flight ? `${res.in_flight} en cola del bot` : "manual + revisión",
+      dibuja: (cv) => IN.tramos(cv, [res.status.manual || 0, res.status.revision || 0, res.in_flight, res.status.colocado || 0],
+        res.orders ? `${F(res.placed_rate, 1)}% ya colocados en Yango` : "")}),
+    ticket: () => { const tk = serie("revenue").map((p, i) => { const o = serie("orders")[i].v; return o ? p.v / o : 0; });
+      return {v: F(res.avg_ticket, 1), dibuja: (cv) => IN.dial(cv, res.avg_ticket / (Math.max(...tk, res.avg_ticket) || 1))}; },
+    envio: () => ({v: F(res.avg_delivery, 1), dibuja: (cv) => IN.linea(cv, serie("delivery"))}),
+    top: () => ({v: res.top[0]?.name || "—", dibuja: (cv) => IN.hbarras(cv, res.top.map((x) => ({l: x.name, v: x.revenue})))}),
+    restaurantes: () => ({v: F(res.partners.length), dibuja: (cv) => IN.tramos(cv, res.partners.map((x) => x.revenue))}),
+    horas: () => { const h = res.hourly, mx = Math.max(...h), pico = h.indexOf(mx);
+      return {v: mx ? String(pico).padStart(2, "0") + ":00" : "—", s: mx ? `${h[pico]} pedidos` : "", dibuja: (cv) => IN.calor(cv, h)}; },
+    semana: () => { const d = res.weekday, orden = [1, 2, 3, 4, 5, 6, 0], best = d.indexOf(Math.max(...d));
+      return {v: Math.max(...d) ? DIAS[best] : "—", s: Math.max(...d) ? F(d[best]) + " Bs" : "", dibuja: (cv) => IN.barras(cv, orden.map((i) => ({x: i, v: d[i]})))}; },
+  };
+  function pintarCeldas() {
+    $$(".in-celda").forEach((el) => {
+      const r = M[el.dataset.m]();
+      el.querySelector("[data-v]").textContent = r.v;
+      if (r.s != null && el.querySelector("[data-s]")) el.querySelector("[data-s]").textContent = r.s;
+      el.classList.toggle("is-alerta", !!r.alerta);
+      r.dibuja(el.querySelector("canvas"));
+    });
+  }
+  function pintarTodo() { if (!res) return; pintarCeldas(); if (abierta) llenarDet(abierta); }
+  let rz = null; window.addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(() => { pintarTodo(); pildora($("#tabs"), "button.on"); pildora($("#rango"), '[aria-checked="true"]'); }, 120); });
+
+  async function summary() {
+    const part = $("#fPartner").value;
+    res = await api(`/dashboard?days=${dias}${part ? `&partner=${encodeURIComponent(part)}` : ""}`);
+    chipCuentas(res.accounts);
+    const periodo = dias === 1 ? "hoy" : dias ? `últimos ${dias} días` : "todo el historial";
+    $("#resSub").textContent = `${periodo} · ${part ? $("#fPartner").selectedOptions[0].textContent : "todos los restaurantes"} · ventas = total cobrado (productos + envío)`;
+    $("#resPie").innerHTML = `<b>${F(res.revenue)} Bs</b> en <b>${F(res.orders)}</b> pedidos · efectivo ${F(res.payments.cash || 0)} · QR ${F(res.payments.qr || 0)}`;
+    $("#resCot").textContent = `cotizaciones: ${F(res.quotes.hits)} desde caché · ${F(res.quotes.misses)} a Yango`;
+    pintarTodo();
+  }
+  function iniciarRango() {
+    const g = $("#rango");
+    const marcar = () => { $$("#rango button").forEach((b) => b.setAttribute("aria-checked", String(+b.dataset.d === dias))); pildora(g, '[aria-checked="true"]'); };
+    $$("#rango button").forEach((b) => (b.onclick = () => { dias = +b.dataset.d; mem.set("pp_dias", dias); marcar(); summary(); }));
+    marcar();
+  }
+  async function cargarRestaurantes() {
+    const ps = await api("/partners");
+    $("#fPartner").innerHTML = `<option value="">Todos los restaurantes</option>` + ps.map((x) => `<option value="${esc(x.slug)}">${esc(x.name)}</option>`).join("");
+  }
+  $("#fPartner").onchange = summary;
+
+  // Detalle: crece desde la celda (clip-path) hasta cubrir la rejilla, como en el picker.
+  $$(".in-celda").forEach((el) => el.addEventListener("click", () => abrirDet(el)));
+  $("#dCierra").onclick = () => cerrarDet();
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape") cerrarDet(); });
+  function abrirDet(el) {
+    if (!res) return;
+    const det = $("#det"), clip = $("#detClip"), rej = $("#rejilla");
+    abierta = el.dataset.m; llenarDet(abierta);
+    const C = el.getBoundingClientRect(), d = det.getBoundingClientRect();
+    const desde = window.innerWidth <= 860 || matchMedia("(prefers-reduced-motion: reduce)").matches ? null
+      : `inset(${C.top - d.top}px ${d.right - C.right}px ${d.bottom - C.bottom}px ${C.left - d.left}px round 18px)`;
+    det.classList.add("is-vivo"); rej.classList.add("is-abierta");
+    clip.style.transition = "none"; clip.style.clipPath = desde || "inset(0 round 24px)"; clip.style.opacity = desde ? 1 : 0;
+    requestAnimationFrame(() => requestAnimationFrame(() => {
+      clip.style.transition = "clip-path .75s cubic-bezier(.3,1.25,.4,1), opacity .3s";
+      clip.style.clipPath = "inset(14px round 24px)"; clip.style.opacity = 1;
+      det.classList.add("is-abierto"); setTimeout(() => abierta && llenarDet(abierta), 380);
+    }));
+    det._desde = desde;
+  }
+  function cerrarDet() {
+    const det = $("#det"), clip = $("#detClip"); if (!det.classList.contains("is-vivo")) return;
+    det.classList.remove("is-abierto"); $("#rejilla").classList.remove("is-abierta");
+    clip.style.transition = "clip-path .45s cubic-bezier(.22,1,.36,1), opacity .35s";
+    if (det._desde) clip.style.clipPath = det._desde; else clip.style.opacity = 0;
+    setTimeout(() => det.classList.remove("is-vivo"), 450); abierta = null;
+  }
+  function lecturas(pares) { $("#dLect").innerHTML = pares.map(([a, b]) => `<div><dt>${esc(a)}</dt><dd>${esc(b)}</dd></div>`).join(""); }
+  function lista(html) {
+    const g = $("#dGraf"); g.querySelector("canvas").classList.add("oculto");
+    let l = g.querySelector(".in-d-lista"); if (!l) { l = document.createElement("div"); l.className = "in-d-lista"; g.appendChild(l); }
+    l.innerHTML = html; l.classList.remove("oculto");
+  }
+  function grafico() { const g = $("#dGraf"); g.querySelector("canvas").classList.remove("oculto"); g.querySelector(".in-d-lista")?.classList.add("oculto"); return $("#dLienzo"); }
+  function ranking(items, val, sub, unidad = "Bs") {
+    const max = Math.max(...items.map(val)) || 1;
+    return items.map((it, i) => `<div class="rank"><span class="pos">${String(i + 1).padStart(2, "0")}</span>
+      <span class="nom">${esc(it.name)}<small>${esc(sub(it))}</small></span><span class="val">${F(val(it))}<small>${unidad}</small></span>
+      <span class="barra"><i style="width:${val(it) / max * 100}%; animation-delay:${i * 40}ms"></i></span></div>`).join("") || '<p class="vacio muted">sin datos</p>';
+  }
+  function stat(vals) { const v = vals.filter((x) => x != null); if (!v.length) return {}; return {prom: v.reduce((a, b) => a + b, 0) / v.length, min: Math.min(...v), max: Math.max(...v)}; }
+  function llenarDet(m) {
+    const periodo = dias === 1 ? "hoy" : dias ? `últimos ${dias} días` : "todo el historial";
+    const set = (n, d, v, u, delta) => { $("#dNombre").textContent = n; $("#dDesc").textContent = d; $("#dValor").textContent = v; $("#dUnidad").textContent = u; $("#dDelta").textContent = delta || ""; };
+    const fv0 = (v, ax) => ax && v >= 1000 ? F(v / 1000, 1) + "k" : F(v), fvBs = (v, ax) => fv0(v, ax) + (ax ? "" : " Bs");
+    if (m === "ventas" || m === "pedidos" || m === "envio") {
+      const c = {ventas: "revenue", pedidos: "orders", envio: "delivery"}[m], s = serie(c), st = stat(s.map((p) => p.v));
+      const mitad = Math.floor(s.length / 2), a = s.slice(0, mitad).reduce((x, p) => x + p.v, 0), b = s.slice(mitad).reduce((x, p) => x + p.v, 0);
+      const pico = s.reduce((x, p) => p.v > x.v ? p : x, {v: -1});
+      set({ventas: "Ventas por día", pedidos: "Pedidos por día", envio: "Envío cobrado por día"}[m],
+        `${periodo} · ${m === "envio" ? "lo que cobra Yango por el delivery" : "sin cancelados"}`,
+        m === "ventas" ? F(res.revenue) : m === "pedidos" ? F(res.orders) : F(res.delivery), m === "pedidos" ? "pedidos" : "Bs",
+        a ? `${b >= a ? "▲" : "▼"} ${F(Math.abs(b - a) / a * 100, 1)} % en la segunda mitad del periodo` : "");
+      lecturas([["Promedio diario", F(st.prom, 1)], ["Mínimo", F(st.min)], ["Máximo", F(st.max)], ["Día pico", pico.x ? fechaL(pico.x) : "—"]]);
+      (m === "pedidos" ? IN.barras : IN.linea)(grafico(), s, {ejes: true, fv: m === "pedidos" ? fv0 : fvBs, etq: fechaL});
+    } else if (m === "ticket") {
+      const o = serie("orders"), tk = serie("revenue").map((p, i) => ({x: p.x, v: o[i].v ? p.v / o[i].v : 0})).filter((p) => p.v), st = stat(tk.map((p) => p.v));
+      set("Ticket medio", `${periodo} · total cobrado entre pedidos`, F(res.avg_ticket, 1), "Bs / pedido", `${F(res.revenue)} Bs en ${F(res.orders)} pedidos`);
+      lecturas([["Promedio diario", F(st.prom, 1)], ["Mínimo", F(st.min, 1)], ["Máximo", F(st.max, 1)], ["Productos / pedido", F(res.orders ? res.units / res.orders : 0, 1)]]);
+      IN.linea(grafico(), tk, {ejes: true, fv: (v, ax) => F(v, ax ? 0 : 1) + (ax ? "" : " Bs"), etq: fechaL});
+    } else if (m === "atender") {
+      const s = res.status;
+      set("Estado de los pedidos", `${periodo} · «manual» y «revisión» los carga o revisa un operador en Yango`, F(res.pending), "por atender",
+        res.oldest_pending ? `el más antiguo: ${new Date(res.oldest_pending).toLocaleString("es-BO", {dateStyle: "short", timeStyle: "short"})}` : "nada pendiente");
+      lecturas([["Manual", F(s.manual || 0)], ["Revisión", F(s.revision || 0)], ["En cola / colocando", F(res.in_flight)], ["Colocados", F(s.colocado || 0)], ["Cancelados", F(s.cancelado || 0)]]);
+      const est = [["manual", "Manual: cargar a mano"], ["revision", "Revisión"], ["en_cola", "En cola del bot"], ["colocando", "Colocando"], ["colocado", "Colocado en Yango"], ["cancelado", "Cancelado"]];
+      lista(ranking(est.map(([k, n]) => ({name: n, v: s[k] || 0})), (x) => x.v, () => "", "pedidos") +
+        `<p style="margin-top:14px"><button class="btn sm" type="button" id="dVer">Ver pedidos por atender</button></p>`);
+      $("#dVer").onclick = () => { cerrarDet(); $("#fStatus").value = s.manual ? "manual" : "revision"; irA("orders"); };
+    } else if (m === "top") {
+      set("Lo más vendido", `${periodo} · por venta en Bs (productos, sin envío)`, F(res.top[0]?.revenue), "Bs · " + (res.top[0]?.name || ""), `${F(res.products)} productos distintos · ${F(res.units)} unidades`);
+      lecturas([["Unidades", F(res.units)], ["Productos", F(res.products)], ["Uds / pedido", F(res.orders ? res.units / res.orders : 0, 1)], ["Top 8", F(res.top.reduce((a, x) => a + x.revenue, 0)) + " Bs"]]);
+      lista(ranking(res.top, (x) => x.revenue, (x) => `${F(x.units)} uds · ${F(x.orders)} pedidos`) +
+        (res.pairs.length ? `<h3 class="in-c-nombre" style="margin:18px 4px 6px">Se piden juntos (base del upselling)</h3>` +
+          ranking(res.pairs.map((x) => ({...x, name: `${x.a} + ${x.b}`})), (x) => x.orders, () => "en el mismo pedido", "pedidos") : ""));
+    } else if (m === "restaurantes") {
+      const ps = res.partners;
+      set("Ventas por restaurante", `${periodo} · total cobrado`, F(ps.length), "restaurantes", ps[0] ? `el mayor: ${ps[0].name}` : "");
+      lecturas([["Ventas", F(res.revenue) + " Bs"], ["Promedio / restaurante", F(res.revenue / (ps.length || 1)) + " Bs"], ["Pedidos", F(res.orders)], ["Envío", F(res.delivery) + " Bs"]]);
+      lista(ranking(ps, (x) => x.revenue, (x) => `${F(x.orders)} pedidos`));
+    } else if (m === "horas") {
+      const h = res.hourly, pico = h.indexOf(Math.max(...h)), suma = (a, b) => h.slice(a, b).reduce((x, y) => x + y, 0);
+      set("Pedidos por hora", `${periodo} · hora local (${"Bolivia"})`, Math.max(...h) ? String(pico).padStart(2, "0") + ":00" : "—", "hora pico", `${F(h[pico])} pedidos a esa hora`);
+      lecturas([["Mañana 6–12", F(suma(6, 12))], ["Mediodía 12–15", F(suma(12, 15))], ["Tarde 15–19", F(suma(15, 19))], ["Noche 19–6", F(suma(19, 24) + suma(0, 6))]]);
+      IN.barras(grafico(), h.map((x, i) => ({x: i, v: x})), {ejes: true, fv: fv0, etq: (x) => String(x).padStart(2, "0") + ":00", etqEje: (x) => String(x).padStart(2, "0")});
+    } else if (m === "semana") {
+      const d = res.weekday, orden = [1, 2, 3, 4, 5, 6, 0], best = d.indexOf(Math.max(...d));
+      set("Ventas por día de la semana", `${periodo} · total cobrado`, Math.max(...d) ? DIAS[best] : "—", Math.max(...d) ? F(d[best]) + " Bs" : "",
+        "");
+      lecturas(orden.slice(0, 4).map((i) => [DIAS[i], F(d[i]) + " Bs"]));
+      IN.barras(grafico(), orden.map((i) => ({x: i, v: d[i]})), {ejes: true, fv: fvBs, etq: (x) => DIAS[x], etqEje: (x) => DCORTO[x]});
+    }
+  }
+
   async function orders() {
     const rows = await api(`/orders${$("#fStatus").value ? `?status=${$("#fStatus").value}` : ""}`);
     $("#ob").innerHTML = rows.map((o) => `<tr>
       <td>${esc(when(o.created_at))}</td><td class="mono">${esc(o.number)}</td>
       <td>${esc(o.partner_name)}<br><span class="muted mono">${esc(o.account)}</span></td>
-      <td>${esc(o.customer.first_name)} ${esc(o.customer.last_name)} · ${esc(o.customer.phone)}<br><span class="muted">${esc(o.address.text)} · ${esc(o.address.reference)}</span><br>
-        <a class="muted" target="_blank" rel="noopener" href="https://yandex.com/maps/?pt=${o.address.lon},${o.address.lat}&z=17">📍 ${o.address.lat}, ${o.address.lon}</a></td>
+      <td>${esc(o.customer.first_name)} ${esc(o.customer.last_name)} · ${esc(o.customer.phone)}${o.customer.nit ? `<br><span class="muted">Factura: NIT ${esc(o.customer.nit)} · ${esc(o.customer.razon_social)}</span>` : ""}<br><span class="muted">${esc(o.address.text)} · ${esc(o.address.reference)}</span><br>
+        <a class="muted" target="_blank" rel="noopener" href="https://yandex.com/maps/?pt=${o.address.lon},${o.address.lat}&z=17"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg?v={{ v }}#map-pin"></use></svg>${o.address.lat}, ${o.address.lon}</a></td>
       <td>${o.items.map((i) => `${i.quantity}× ${esc(i.name)}${i.options.length ? ` <span class="muted">(${esc(i.options.map((x) => x.name).join(", "))})</span>` : ""}`).join("<br>")}</td>
       <td>${CUR}${o.total}<br><span class="muted">envío ${CUR}${o.delivery_fee}${o.yango_fee != null && o.yango_fee !== o.delivery_fee ? ` (Yango ${CUR}${o.yango_fee})` : ""} · ${esc(o.payment.label)}<br>comisión ${CUR}${o.commission}${o.channel === "telefono" ? ` · 📞 ${esc(o.operator || "")}` : ""}</span></td>
       <td><span class="pill ${esc(o.status)}">${esc(o.status)}</span>${o.yango_order_nr ? `<br><span class="mono">${esc(o.yango_order_nr)}</span>` : ""}${o.error ? `<br><span class="muted">${esc(o.error)}</span>` : ""}</td>
-      <td style="white-space:nowrap">${["manual", "revision"].includes(o.status) ? `<button class="btn sm" data-a="colocado" data-t="${esc(o.token)}">Marcar colocado</button> <button class="btn ghost sm" data-a="reintentar" data-t="${esc(o.token)}">Reintentar bot</button><br>
+      <td style="white-space:nowrap">${["manual", "revision"].includes(o.status) ? `<button class="btn sm" data-a="colocado" data-t="${esc(o.token)}">Marcar colocado</button> <button class="btn ghost sm" data-a="reintentar" data-t="${esc(o.token)}">Reintentar bot</button>
+        <button class="btn ghost sm" data-dry="${esc(o.token)}" title="Hace todo en Yango menos el botón final">Probar en Yango</button><br>
         <button class="btn ghost sm" data-copy="${esc(o.yango_comment)}" style="margin-top:4px">Copiar comentario</button> ` : ""}
         ${o.status !== "cancelado" && o.status !== "colocado" ? `<button class="btn ghost sm" data-a="cancelar" data-t="${esc(o.token)}" style="margin-top:4px">Cancelar</button>` : ""}</td></tr>`).join("")
       || `<tr><td colspan="8" class="muted">Sin pedidos.</td></tr>`;
@@ -179,7 +488,139 @@ document.getElementById("f").onsubmit = async (e) => { e.preventDefault();
       if (body.action === "cancelar" && !confirm("¿Cancelar este pedido? (si ya está en Yango, cancélalo también allí)")) return;
       try { await post(`/orders/${b.dataset.t}/status`, body); refresh(); } catch (e) { alert(e.message); }
     }));
-    $$("[data-copy]").forEach((b) => (b.onclick = () => { navigator.clipboard.writeText(b.dataset.copy); b.textContent = "Copiado ✓"; }));
+    $$("[data-dry]").forEach((b) => (b.onclick = async () => {
+      b.disabled = true; b.textContent = "Probando…";
+      try { const r = await post(`/orders/${b.dataset.dry}/dry-run`, {}); alert(`Prueba correcta, sin pedir. Total en Yango ${CUR}${r.yango_total}, envío ${CUR}${r.delivery_fee}.\n${r.yango_order_nr}`); }
+      catch (e) { alert(e.message); }
+      b.disabled = false; b.textContent = "Probar en Yango";
+    }));
+    $$("[data-copy]").forEach((b) => (b.onclick = () => { navigator.clipboard.writeText(b.dataset.copy); b.textContent = "Copiado"; }));
+  }
+  // ---------------------------------------------------------------- Tienda: más vendidos y videos de TikTok
+  let st = {slug: null, menu: null, best: null, vids: [], newItems: []};
+  const prodChip = (id, removable) => {
+    const it = st.menu.items[id]; if (!it) return "";
+    return `<span class="pchip${it.available ? "" : " off"}" data-id="${esc(id)}">${it.image ? `<img src="${esc(it.image)}" alt="">` : `<i>${esc(it.name[0] || "")}</i>`}
+      <span><b>${esc(it.name)}</b><small>${CUR}${esc(it.promo_price ?? it.price)}${it.available ? "" : " · agotado"}</small></span>
+      ${removable ? `<button type="button" class="px" data-rm="${esc(id)}" aria-label="Quitar ${esc(it.name)}"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg?v={{ v }}#x"></use></svg></button>` : ""}</span>`;
+  };
+  const portal = (p, opt) => fetch(`/api/${encodeURIComponent(st.slug)}/portal${p}`, opt).then(async (r) => { const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.detail || "Error"); return d; });
+  const pjson = (method, body) => ({method, headers: {"content-type": "application/json"}, body: JSON.stringify(body)});
+  async function storeTab() {
+    if (!$("#stPartner").options.length) {
+      const ps = await api("/partners");
+      $("#stPartner").innerHTML = ps.map((x) => `<option value="${esc(x.slug)}">${esc(x.name)}</option>`).join("");
+    }
+    st.slug = $("#stPartner").value; if (!st.slug) return;
+    st.menu = await fetch(`/api/${encodeURIComponent(st.slug)}/menu`).then((r) => r.ok ? r.json() : null).catch(() => null);
+    if (!st.menu) { $("#bsSub").textContent = "el menú todavía no se sincronizó desde Yango"; return; }
+    st.best = await portal("/bestsellers");
+    const me = await portal("/me");
+    $("#stGlass").checked = me.theme.glass !== false;
+    st.vids = me.profile?.tiktok || [];
+    st.vids = st.vids.map((v) => ({...v, item_ids: v.item_ids || (v.item_id ? [v.item_id] : [])}));
+    renderBest(); renderVids(); renderNew();
+  }
+  $("#stPartner").onchange = storeTab;
+  $("#stGlass").onchange = async (e) => {
+    try { await portal("/theme", pjson("PUT", {glass: e.target.checked})); $("#stGlassMsg").className = "msg ok"; $("#stGlassMsg").textContent = "Guardado"; }
+    catch (err) { $("#stGlassMsg").className = "msg bad"; $("#stGlassMsg").textContent = err.message; e.target.checked = !e.target.checked; }
+  };
+  function renderBest() {
+    const b = st.best, manual = b.mode === "manual";
+    $$("#bsMode button").forEach((x) => x.classList.toggle("on", x.dataset.mode === b.mode));
+    $("#bsManual").hidden = !manual;
+    $("#bsSub").textContent = manual ? "tú eliges qué sale y en qué orden" : `automático · fuente: ${b.auto.source || "sin datos todavía"}`;
+    const ids = manual ? b.items : b.auto.items;
+    $("#bsList").innerHTML = ids.map((id) => prodChip(id, manual)).join("") || `<p class="muted">${manual ? "Elige productos." : "Todavía no hay pedidos ni categoría «Populares»."}</p>`;
+    $$("[data-rm]", $("#bsList")).forEach((x) => (x.onclick = () => saveBest("manual", b.items.filter((i) => i !== x.dataset.rm))));
+  }
+  async function saveBest(mode, items) {
+    try { st.best = await portal("/bestsellers", pjson("PUT", {mode, items})); $("#bsMsg").className = "msg ok"; $("#bsMsg").textContent = "Guardado"; }
+    catch (e) { $("#bsMsg").className = "msg bad"; $("#bsMsg").textContent = e.message; }
+    renderBest();
+  }
+  $$("#bsMode button").forEach((x) => (x.onclick = () => saveBest(x.dataset.mode, st.best.items.length ? st.best.items : st.best.auto.items)));
+  $("#bsPick").onclick = () => pick(st.best.items, 12, (ids) => saveBest("manual", ids));
+
+  function renderNew() {
+    $("#vItems").innerHTML = st.newItems.map((id) => prodChip(id, true)).join("") || `<span class="muted">ninguno</span>`;
+    $$("[data-rm]", $("#vItems")).forEach((x) => (x.onclick = () => { st.newItems = st.newItems.filter((i) => i !== x.dataset.rm); renderNew(); }));
+  }
+  $("#vPick").onclick = () => pick(st.newItems, 6, (ids) => { st.newItems = ids; renderNew(); });
+  $("#vAdd").onclick = async () => {
+    const m = $("#vMsg"); m.className = "msg"; m.textContent = "Buscando el video en TikTok…"; $("#vAdd").disabled = true;
+    try { st.vids = await portal("/tiktok", pjson("POST", {url: $("#vUrl").value, item_ids: st.newItems})); $("#vUrl").value = ""; st.newItems = [];
+      m.className = "msg ok"; m.textContent = "Video agregado"; renderNew(); renderVids(); }
+    catch (e) { m.className = "msg bad"; m.textContent = e.message; }
+    $("#vAdd").disabled = false;
+  };
+  function renderVids() {
+    $("#vList").innerHTML = st.vids.map((v, i) => {
+      const first = st.menu.items[v.item_ids[0]], poster = v.poster || (first && first.image) || "";
+      return `<article class="vid">
+        <button type="button" class="vid-prev" data-play="${i}" aria-label="Ver video">${poster ? `<img src="${esc(poster)}" alt="">` : ""}<span class="vid-play"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg?v={{ v }}#play"></use></svg></span></button>
+        <div class="vid-bd"><div class="vid-cab"><a href="${esc(v.url)}" target="_blank" rel="noopener" class="mono">${v.author ? "@" + esc(v.author) : "video"} · ${esc(v.id)}</a>
+          <div class="row"><button class="btn sm" data-up="${i}" ${i ? "" : "disabled"}>Subir</button><button class="btn sm" data-down="${i}" ${i < st.vids.length - 1 ? "" : "disabled"}>Bajar</button><button class="btn sm" data-del="${i}">Quitar</button></div></div>
+          ${v.title ? `<p class="muted">${esc(v.title)}</p>` : ""}
+          <div class="chosen sm">${v.item_ids.map((id) => prodChip(id, true)).join("") || `<span class="muted">sin productos</span>`}</div>
+          <button class="btn sm" type="button" data-edit="${i}"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg?v={{ v }}#plus"></use></svg>Productos</button></div></article>`;
+    }).join("") || `<p class="muted">Todavía no hay videos.</p>`;
+    const mover = (i, j) => { [st.vids[i], st.vids[j]] = [st.vids[j], st.vids[i]]; saveVids(); };
+    $$("[data-up]", $("#vList")).forEach((x) => (x.onclick = () => mover(+x.dataset.up, +x.dataset.up - 1)));
+    $$("[data-down]", $("#vList")).forEach((x) => (x.onclick = () => mover(+x.dataset.down, +x.dataset.down + 1)));
+    $$("[data-del]", $("#vList")).forEach((x) => (x.onclick = () => { if (confirm("¿Quitar este video de la tienda?")) { st.vids.splice(+x.dataset.del, 1); saveVids(); } }));
+    $$("[data-edit]", $("#vList")).forEach((x) => (x.onclick = () => { const v = st.vids[+x.dataset.edit]; pick(v.item_ids, 6, (ids) => { v.item_ids = ids; saveVids(); }); }));
+    $$(".vid", $("#vList")).forEach((el, i) => $$("[data-rm]", el).forEach((x) => (x.onclick = () => { st.vids[i].item_ids = st.vids[i].item_ids.filter((id) => id !== x.dataset.rm); saveVids(); })));
+    $$("[data-play]", $("#vList")).forEach((x) => (x.onclick = () => {
+      const v = st.vids[+x.dataset.play];
+      x.outerHTML = `<div class="vid-prev"><iframe src="https://www.tiktok.com/player/v1/${encodeURIComponent(v.id)}?autoplay=1&description=0&music_info=0&rel=0" allow="autoplay; encrypted-media; fullscreen" allowfullscreen title="Vista previa"></iframe></div>`;
+    }));
+  }
+  async function saveVids() {
+    try { st.vids = await portal("/tiktok", pjson("PUT", {videos: st.vids.map((v) => ({id: v.id, item_ids: v.item_ids}))})); }
+    catch (e) { alert(e.message); }
+    renderVids();
+  }
+
+  // Selector de productos con foto, nombre y precio; devuelve los ids en el orden en que se marcaron.
+  let pk = null;
+  function pick(selected, max, done) {
+    pk = {sel: [...selected], max, done};
+    $("#pkQ").value = ""; $("#picker").hidden = false; $("#pkFondo").hidden = false; renderPick(); $("#pkQ").focus();
+  }
+  function cerrarPick() { $("#picker").hidden = true; $("#pkFondo").hidden = true; pk = null; }
+  const normal = (s) => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+  function renderPick() {
+    const q = normal($("#pkQ").value.trim());
+    const seen = new Set();  // un producto puede estar en varias categorías: se muestra en la primera
+    const cats = st.menu.categories.map((c) => ({...c, its: c.items.map((id) => st.menu.items[id])
+      .filter((it) => it && !seen.has(it.id) && (!q || normal(it.name + " " + it.description).includes(q)) && seen.add(it.id))})).filter((c) => c.its.length);
+    $("#pkGrid").innerHTML = cats.map((c) => `<h3>${esc(c.name)}</h3><div class="pk-row">${c.its.map((it) => {
+      const n = pk.sel.indexOf(it.id);
+      return `<button type="button" class="pk-it${n >= 0 ? " on" : ""}${it.available ? "" : " off"}" data-pk="${esc(it.id)}">
+        ${it.image ? `<img loading="lazy" src="${esc(it.image)}" alt="">` : `<i>${esc(it.name[0] || "")}</i>`}${n >= 0 ? `<em>${n + 1}</em>` : ""}
+        <b>${esc(it.name)}</b><small>${CUR}${esc(it.promo_price ?? it.price)}${it.available ? "" : " · agotado"}</small></button>`;
+    }).join("")}</div>`).join("") || `<p class="muted">Nada coincide.</p>`;
+    $("#pkCount").textContent = `${pk.sel.length} / ${pk.max}`;
+    $$("[data-pk]", $("#pkGrid")).forEach((x) => (x.onclick = () => {
+      const id = x.dataset.pk, n = pk.sel.indexOf(id);
+      if (n >= 0) pk.sel.splice(n, 1); else if (pk.sel.length < pk.max) pk.sel.push(id); else return;
+      renderPick();
+    }));
+  }
+  $("#pkQ").oninput = () => pk && renderPick();
+  $("#pkOk").onclick = () => { const p = pk; cerrarPick(); p.done(p.sel); };
+  $("#pkClose").onclick = cerrarPick; $("#pkFondo").onclick = cerrarPick;
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && pk) cerrarPick(); });
+
+  const PLAN = {patrocinado: ["ok", "pagado por Yango"], activo: ["ok", "activo"], pago_pendiente: ["manual", "pago pendiente"], sin_aceptar: ["revision", "sin aceptar"], cortesia: ["ok", "gratis permanente"]};
+  function planCell(b) {
+    if (!b) return "—";
+    const [cls, txt] = PLAN[b.state] || ["", b.state];
+    return `<span class="pill ${cls}">${txt}</span><br><span class="muted">${b.branches} suc. · ${CUR}${b.monthly_bs}/mes · Yango hasta ${esc(b.sponsored_until)}</span>
+      ${b.free_forever ? `<br><span class="muted">cortesía${b.free_note ? `: ${esc(b.free_note)}` : ""}</span>` : ""}
+      ${b.due_bs ? `<br><span class="pill manual">debe ${CUR}${b.due_bs}</span>` : ""}${b.accepted_name ? `<br><span class="muted">aceptó: ${esc(b.accepted_name)}</span>` : ""}`;
   }
   let CHAINS = [], COMM = 0.03;
   const chainName = (id) => (CHAINS.find((c) => c.id === id) || {}).name || `#${id}`;
@@ -193,19 +634,90 @@ document.getElementById("f").onsubmit = async (e) => { e.preventDefault();
     const rows = await api("/partners");
     $("#pb").innerHTML = rows.map((p) => `<tr>
       <td><b>${esc(p.name)}</b><br><a href="/${esc(p.slug)}" target="_blank" rel="noopener" class="mono">/${esc(p.slug)}</a> · <a href="/${esc(p.slug)}/portal" target="_blank" rel="noopener">portal</a></td>
-      <td>${p.chain_id ? `<b>${esc(chainName(p.chain_id))}</b><br>` : `<span class="muted">sin cadena</span><br>`}<span class="mono">${esc(p.account)}</span></td>
+      <td>${p.chain_id ? `<b>${esc(chainName(p.chain_id))}</b><br>` : ""}<span class="mono">${esc(p.account)}</span><br><button class="btn ghost sm" data-vendor="${esc(p.slug)}" data-cur="${esc(p.vendor_account || "")}" title="Cuenta de la vendor app del local: de ahí se lee el estado de los pedidos">${p.vendor_account ? `vendor: ${esc(p.vendor_account)}` : "+ vendor app"}</button></td>
       <td>${p.place_slug ? `<span class="mono">${esc(p.place_slug)}</span><br><span class="muted">${esc(p.place_address || "")}</span>` : `<span class="muted">sin resolver</span>`}<br><a class="muted" href="${esc(p.yango_url || "#")}" target="_blank" rel="noopener">${esc((p.yango_url || "").slice(0, 60))}</a></td>
       <td>${p.menu ? `${esc(when(p.menu.synced_at))}${p.menu.error ? `<br><span class="pill error">${esc(p.menu.error)}</span>` : ""}` : `<span class="muted">—</span>`}</td>
-      <td>${p.commission_rate != null ? `${(p.commission_rate * 100).toLocaleString("es-BO")} %` : `<span class="muted">${(COMM * 100).toLocaleString("es-BO")} % (general)</span>`}<br><button class="btn ghost sm" data-comm="${esc(p.slug)}">Cambiar</button></td>
-      <td><span class="pill ${p.enabled ? "ok" : "cancelado"}">${p.enabled ? "activo" : "inactivo"}</span> ${p.accepting_orders ? "" : `<span class="pill manual">pausado</span>`}</td>
-      <td style="white-space:nowrap"><button class="btn sm" data-sync="${esc(p.slug)}">Sincronizar</button> <button class="btn ghost sm" data-pw="${esc(p.slug)}">Contraseña</button> <button class="btn ghost sm" data-toggle="${esc(p.slug)}" data-on="${p.enabled ? 1 : 0}">${p.enabled ? "Desactivar" : "Activar"}</button></td></tr>`).join("")
+      <td>${planCell(p.billing)}<div class="muted" style="margin-top:4px">Comisión ${p.commission_rate != null ? `${(p.commission_rate * 100).toLocaleString("es-BO")} %` : `${(COMM * 100).toLocaleString("es-BO")} % (general)`} <button class="btn ghost sm" data-comm="${esc(p.slug)}">Cambiar</button></div></td>
+      <td><span class="pill ${p.enabled ? "ok" : "cancelado"}">${p.enabled ? "activo" : "inactivo"}</span> ${p.accepting_orders ? "" : `<span class="pill manual">pausado</span>`}
+        <br><span class="pill ${p.placement_enabled ? "ok" : "manual"}" title="${p.auto_place === null ? "Sigue el ajuste general" : "Ajuste propio del restaurante"}">${p.placement_enabled ? "bot coloca" : "carga manual"}</span></td>
+      <td style="white-space:nowrap"><button class="btn sm acc" data-editp="${esc(p.slug)}">Editar</button> <button class="btn sm" data-plan="${esc(p.slug)}">Plan</button> <button class="btn sm" data-sync="${esc(p.slug)}">Sincronizar</button> <button class="btn ghost sm" data-pw="${esc(p.slug)}">Contraseña</button> <button class="btn ghost sm" data-toggle="${esc(p.slug)}" data-on="${p.enabled ? 1 : 0}">${p.enabled ? "Desactivar" : "Activar"}</button></td></tr>`).join("")
       || `<tr><td colspan="7" class="muted">Sin restaurantes.</td></tr>`;
+    $$("[data-editp]").forEach((b) => (b.onclick = () => {
+      const tr = b.closest("tr"), next = tr.nextElementSibling;
+      if (next && next.classList.contains("edit-row")) return next.remove();
+      if (next && next.classList.contains("plan-row")) next.remove();
+      const p = rows.find((x) => x.slug === b.dataset.editp);
+      const ap = p.auto_place === null || p.auto_place === undefined ? "" : String(p.auto_place);
+      tr.insertAdjacentHTML("afterend", `<tr class="edit-row"><td colspan="7"><form class="row" style="align-items:flex-end">
+        <label class="f" style="flex:1 1 180px;margin:0"><span>Nombre</span><input name="name" required maxlength="80" value="${esc(p.name)}"></label>
+        <label class="f" style="flex:1 1 150px;margin:0"><span>Cuenta Yango (coloca)</span><input name="account" required maxlength="40" value="${esc(p.account)}"></label>
+        <label class="f" style="flex:1 1 150px;margin:0"><span>Cuenta vendor app</span><input name="vendor_account" maxlength="40" value="${esc(p.vendor_account || "")}" placeholder="vacío = cuenta cliente"></label>
+        <label class="f" style="flex:3 1 320px;margin:0"><span>URL en food.yango.com</span><input name="yango_url" type="url" value="${esc(p.yango_url || "")}"></label>
+        <label class="f" style="width:130px;margin:0"><span>Pedido mínimo (Bs)</span><input name="min_order" type="number" min="0" step="0.5" value="${p.min_order ?? ""}" placeholder="el de Yango"></label>
+        <label class="f" style="width:190px;margin:0"><span>Pedidos a Yango</span><select name="auto_place">
+          <option value="" ${ap === "" ? "selected" : ""}>General (${H.order_placement_enabled ? "bot" : "manual"})</option>
+          <option value="1" ${ap === "1" ? "selected" : ""}>Bot automático</option>
+          <option value="0" ${ap === "0" ? "selected" : ""}>Carga manual</option></select></label>
+        <label class="f" style="width:150px;margin:0"><span>Tienda</span><select name="accepting_orders">
+          <option value="1" ${p.accepting_orders ? "selected" : ""}>Recibe pedidos</option>
+          <option value="0" ${p.accepting_orders ? "" : "selected"}>Pausada</option></select></label>
+        <button class="btn acc sm">Guardar</button><span class="msg"></span></form>
+        <p class="muted" style="margin:8px 0 0">«Bot automático» crea el pedido en Yango con la cuenta de arriba apenas llega. «Carga manual» lo deja en Pedidos para cargarlo a mano.
+        Si cambias la URL, pulsa Sincronizar para resolver el local y el menú nuevos.</p></td></tr>`);
+      const form = tr.nextElementSibling.querySelector("form");
+      form.onsubmit = async (e) => {
+        e.preventDefault();
+        const body = Object.fromEntries(new FormData(form));
+        if (body.auto_place === "1" && p.auto_place !== 1 && !confirm("Con «Bot automático» los pedidos se crean de verdad en Yango con la cuenta " + body.account + ". ¿Seguir?")) return;
+        try { await post(`/partners/${p.slug}`, body, "PUT"); partnersTab(); stats(); }
+        catch (err) { const m = form.querySelector(".msg"); m.className = "msg bad"; m.textContent = err.message; }
+      };
+    }));
+    $$("[data-plan]").forEach((b) => (b.onclick = () => {
+      const tr = b.closest("tr"), next = tr.nextElementSibling;
+      if (next && next.classList.contains("edit-row")) next.remove();
+      if (next && next.classList.contains("plan-row")) return next.remove();
+      const pb = rows.find((x) => x.slug === b.dataset.plan).billing;
+      tr.insertAdjacentHTML("afterend", `<tr class="plan-row"><td colspan="7"><div class="row" style="align-items:flex-end">
+        <label class="f" style="width:130px;margin:0"><span>Bs por sucursal</span><input name="price_bs" type="number" min="0" step="1" value="${pb.price_bs}"></label>
+        <label class="f" style="width:130px;margin:0"><span>Sucursales (vacío = auto)</span><input name="branches" type="number" min="1" value="${pb.branches_contracted ?? ""}" placeholder="${pb.branches}"></label>
+        <label class="f" style="width:130px;margin:0"><span>Meses pagados por Yango</span><input name="sponsored_months" type="number" min="0" value="${pb.sponsored_months}"></label>
+        <label class="f" style="width:130px;margin:0"><span>Permanencia (meses)</span><input name="min_paid_months" type="number" min="0" value="${pb.min_paid_months}"></label>
+        <label class="f" style="width:150px;margin:0"><span>Inicio</span><input name="start_date" type="date" value="${pb.start_date}"></label>
+        <label class="f" style="width:150px;margin:0"><span>Pagado hasta</span><input name="paid_until" type="date" value="${pb.paid_until || ""}"></label>
+        <button class="btn acc sm" data-save-plan="${esc(b.dataset.plan)}">Guardar</button><span class="msg"></span></div>
+        <div class="row" style="margin-top:12px">
+          <span class="muted">Meses gratis (Yango hasta ${esc(pb.sponsored_until)}):</span>
+          <button class="btn sm" data-ext="1">+1 mes</button><button class="btn sm" data-ext="3">+3 meses</button><button class="btn sm" data-ext="6">+6 meses</button><button class="btn ghost sm" data-ext="-1">−1 mes</button>
+          <span style="width:16px"></span>
+          <input name="free_note" placeholder="Motivo de la cortesía (opcional)" value="${esc(pb.free_note || "")}" style="width:240px">
+          <button class="btn sm ${pb.free_forever ? "" : "acc"}" data-free="${pb.free_forever ? 0 : 1}">${pb.free_forever ? "Quitar gratis permanente" : "Gratis permanente"}</button>
+        </div></td></tr>`);
+      const row = tr.nextElementSibling;
+      const quick = async (body) => { try { await post(`/partners/${b.dataset.plan}/billing`, body, "PUT"); partnersTab(); } catch (e) { const m = row.querySelector(".msg"); m.className = "msg bad"; m.textContent = e.message; } };
+      row.querySelectorAll("[data-ext]").forEach((x) => (x.onclick = () => quick({extend_months: +x.dataset.ext})));
+      row.querySelector("[data-free]").onclick = (e) => {
+        const on = e.currentTarget.dataset.free === "1";
+        if (on && !confirm("¿Dejar el plan de este restaurante gratis de forma permanente? No se le generarán cobros hasta que lo quites.")) return;
+        quick({free_forever: on, free_note: row.querySelector("input[name=free_note]").value});
+      };
+      row.querySelector("[data-save-plan]").onclick = async () => {
+        const body = Object.fromEntries([...row.querySelectorAll("input:not([name=free_note])")].map((i) => [i.name, i.value === "" ? null : (i.type === "number" ? +i.value : i.value)]));
+        try { await post(`/partners/${b.dataset.plan}/billing`, body, "PUT"); partnersTab(); }
+        catch (e) { const m = row.querySelector(".msg"); m.className = "msg bad"; m.textContent = e.message; }
+      };
+    }));
     $$("[data-comm]").forEach((b) => (b.onclick = async () => {
       const v = prompt("Comisión para este restaurante en % (vacío = la general)", ""); if (v === null) return;
       try { await post(`/partners/${b.dataset.comm}`, {commission_rate: v.trim() === "" ? null : Number(v.replace(",", ".")) / 100}, "PUT"); partnersTab(); } catch (e) { alert(e.message); }
     }));
     $$("[data-sync]").forEach((b) => (b.onclick = async () => { b.disabled = true; b.textContent = "…"; try { const r = await post(`/partners/${b.dataset.sync}/sync`, {}); alert(`Menú: ${r.items} productos en ${r.categories} categorías`); } catch (e) { alert(e.message); } partnersTab(); }));
     $$("[data-pw]").forEach((b) => (b.onclick = async () => { const pw = prompt("Nueva contraseña del portal (mín. 8)"); if (!pw) return; try { await post(`/partners/${b.dataset.pw}/password`, {password: pw}); alert("Listo"); } catch (e) { alert(e.message); } }));
+    $$("[data-vendor]").forEach((b) => (b.onclick = async () => {
+      const v = prompt("Cuenta de la vendor app de este local (vendor.yango.com). Carga sus cookies en Cuentas Yango con el mismo nombre. Vacío = seguir con la cuenta cliente.", b.dataset.cur);
+      if (v === null) return;
+      try { await post(`/partners/${b.dataset.vendor}`, {vendor_account: v.trim()}, "PUT"); partnersTab(); } catch (e) { alert(e.message); }
+    }));
     $$("[data-toggle]").forEach((b) => (b.onclick = async () => { await post(`/partners/${b.dataset.toggle}`, {enabled: b.dataset.on === "1" ? 0 : 1}, "PUT"); partnersTab(); }));
   }
   $("#np").onsubmit = async (e) => {
@@ -221,16 +733,57 @@ document.getElementById("f").onsubmit = async (e) => { e.preventDefault();
     $("#ab").innerHTML = rows.map((a) => { const ch = CHAINS.find((c) => c.account === a.name); return `<tr><td class="mono">${esc(a.name)}</td><td>${ch ? `<b>${esc(ch.name)}</b><br>` : ""}${a.partners.map(esc).join(", ")}</td>
       <td><span class="mono">${esc(a.yango_phone || "—")}</span><br><button class="btn ghost sm" data-phone="${esc(a.name)}" data-v="${esc(a.yango_phone || "")}">Editar</button></td><td><span class="pill ${esc(a.status)}">${esc(a.status)}</span></td>
       <td class="muted">${esc(a.detail || "")}<br>${esc(when(a.checked_at))}</td><td>${a.has_session ? esc(when(a.session_imported_at)) : `<span class="muted">no</span>`}</td>
-      <td><button class="btn sm" data-check="${esc(a.name)}">Probar</button> <button class="btn ghost sm" data-load="${esc(a.name)}">Cargar cookies</button></td></tr>`; }).join("");
+      <td><button class="btn sm" data-check="${esc(a.name)}">Probar</button> <button class="btn ghost sm" data-enter="sms" data-acc="${esc(a.name)}">Entrar con SMS</button> <button class="btn ghost sm" data-enter="cookie" data-acc="${esc(a.name)}">Entrar con cookie</button></td></tr>`; }).join("");
     $$("[data-phone]").forEach((b) => (b.onclick = async () => { const v = prompt("Celular con el que se entra a Yango con esta cuenta (login por SMS)", b.dataset.v); if (v === null) return; await post(`/accounts/${encodeURIComponent(b.dataset.phone)}`, {yango_phone: v}, "PUT"); accounts(); }));
-    $$("[data-check]").forEach((b) => (b.onclick = async () => { b.textContent = "…"; try { const r = await post(`/accounts/${b.dataset.check}/check`, {}); alert(r.ok ? "Sesión activa ✓" : `Sesión caída: ${r.detail}`); } catch (e) { alert(e.message); } accounts(); }));
-    $$("[data-load]").forEach((b) => (b.onclick = () => { $("#acName").value = b.dataset.load; $("#acJson").focus(); }));
+    $$("[data-check]").forEach((b) => (b.onclick = async () => { b.textContent = "…"; try { const r = await post(`/accounts/${b.dataset.check}/check`, {}); alert(r.ok ? "Sesión activa" : `Sesión caída: ${r.detail}`); } catch (e) { alert(e.message); } accounts(); }));
+    $$("[data-enter]").forEach((b) => (b.onclick = () => {
+      $("#lgName").value = b.dataset.acc; setMode(b.dataset.enter);
+      $("#enterCard").scrollIntoView({behavior: "smooth"}); (b.dataset.enter === "sms" ? $("#lgPhone") : $("#acJson")).focus({preventScroll: true});
+    }));
   }
+  function setMode(m) {
+    $$("#enterMode button").forEach((b) => b.classList.toggle("on", b.dataset.mode === m));
+    $("#mode-sms").hidden = m !== "sms"; $("#mode-cookie").hidden = m !== "cookie";
+  }
+  $$("#enterMode button").forEach((b) => (b.onclick = () => setMode(b.dataset.mode)));
+  $("#acFile").onchange = async (e) => { const f = e.target.files[0]; if (f) $("#acJson").value = await f.text(); e.target.value = ""; };
   $("#acSave").onclick = async () => {
-    const name = $("#acName").value.trim();
-    try { const r = await api(`/accounts/${encodeURIComponent(name)}/cookies`, {method: "POST", headers: {"content-type": "application/json"}, body: $("#acJson").value});
-      $("#acMsg").className = "msg ok"; $("#acMsg").textContent = `Sesión cargada (${r.cookies} cookies).`; $("#acJson").value = ""; accounts(); }
-    catch (e) { $("#acMsg").className = "msg bad"; $("#acMsg").textContent = e.message; }
+    const name = lgAcc(), msg = $("#acMsg");
+    if (!name) { msg.className = "msg bad"; msg.textContent = "Escribe el nombre de la cuenta"; return; }
+    msg.className = "msg"; msg.textContent = "Cargando y probando la sesión en Yango…";
+    try {
+      const r = await api(`/accounts/${encodeURIComponent(name)}/cookies`, {method: "POST", headers: {"content-type": "text/plain"}, body: $("#acJson").value});
+      $("#acJson").value = "";
+      const c = await post(`/accounts/${encodeURIComponent(name)}/check`, {});
+      msg.className = `msg ${c.ok ? "ok" : "bad"}`;
+      msg.textContent = c.ok ? `Listo: sesión activa (${r.cookies} cookies).` : `Cookies cargadas (${r.cookies}), pero Yango no reconoce la sesión: ${c.detail}`;
+    } catch (e) { msg.className = "msg bad"; msg.textContent = e.message; }
+    accounts();
+  };
+  // Login asistido: captura de la pantalla de Yango ID; un toque en la imagen es un clic en esa posición.
+  const lgAcc = () => $("#lgName").value.trim();
+  function lgShow(s) {
+    $("#lgBox").hidden = !s.screenshot || s.state === "listo";
+    if (s.screenshot) { $("#lgShot").src = s.screenshot; $("#lgShot").dataset.w = s.viewport.width; }
+    const bad = s.state === "error", ok = s.state === "listo";
+    $("#lgMsg").className = `msg ${bad ? "bad" : ok ? "ok" : ""}`;
+    $("#lgMsg").textContent = `${s.phone} · ${s.detail}${s.url ? ` (${s.url})` : ""}`;
+    if (ok || bad) { $("#lgBox").hidden = true; accounts(); }
+  }
+  async function lgDo(path, body, method = "POST") {
+    $("#lgMsg").className = "msg"; $("#lgMsg").textContent = "Esperando a Yango…";
+    try { lgShow(await post(`/accounts/${encodeURIComponent(lgAcc())}/login${path}`, body, method)); }
+    catch (e) { $("#lgMsg").className = "msg bad"; $("#lgMsg").textContent = e.message; }
+  }
+  $("#lgStart").onclick = () => lgDo("", {phone: $("#lgPhone").value});
+  $("#lgSendCode").onclick = () => { lgDo("/action", {type: "code", code: $("#lgCode").value}); $("#lgCode").value = ""; };
+  $("#lgType").onclick = () => { lgDo("/action", {type: "text", text: $("#lgText").value}); $("#lgText").value = ""; };
+  $$("[data-key]").forEach((b) => (b.onclick = () => lgDo("/action", {type: "key", key: b.dataset.key})));
+  $("#lgRefresh").onclick = () => lgDo("/action", {type: "refresh"});
+  $("#lgCancel").onclick = async () => { await api(`/accounts/${encodeURIComponent(lgAcc())}/login`, {method: "DELETE"}).catch(() => {}); $("#lgBox").hidden = true; $("#lgMsg").textContent = "Cancelado"; };
+  $("#lgShot").onclick = (e) => {
+    const img = e.currentTarget, r = img.getBoundingClientRect(), k = +img.dataset.w / r.width;
+    lgDo("/action", {type: "click", x: Math.round((e.clientX - r.left) * k), y: Math.round((e.clientY - r.top) * k)});
   };
   async function events() {
     const rows = await api("/events?limit=300");
@@ -368,13 +921,21 @@ document.getElementById("f").onsubmit = async (e) => { e.preventDefault();
     catch (e) { $("#scMsg").className = "msg bad"; $("#scMsg").textContent = e.message; }
   };
 
-  const loaders = {orders, partners: partnersTab, chains: chainsTab, accounts, commissions: commissionsTab, features: featuresTab, events};
+  const loaders = {summary, orders, store: storeTab, partners: partnersTab, chains: chainsTab, accounts, commissions: commissionsTab, features: featuresTab, events};
   function refresh() { stats(); loaders[tab](); }
-  $$("#tabs button").forEach((b) => (b.onclick = () => { tab = b.dataset.t; $$("#tabs button").forEach((x) => x.classList.toggle("on", x === b)); Object.keys(loaders).forEach((t) => ($(`#t-${t}`).hidden = t !== tab)); refresh(); }));
+  function irA(t) {
+    tab = t; $$("#tabs button").forEach((x) => x.classList.toggle("on", x.dataset.t === t)); pildora($("#tabs"), "button.on");
+    Object.keys(loaders).forEach((k) => ($(`#t-${k}`).hidden = k !== t)); refresh();
+  }
+  $$("#tabs button").forEach((b) => (b.onclick = () => irA(b.dataset.t)));
   $("#fStatus").onchange = orders; $("#reload").onclick = refresh;
-  refresh(); setInterval(() => { if (tab === "orders") refresh(); }, 15000);
+  pildora($("#tabs"), "button.on"); iniciarRango();
+  document.fonts?.ready.then(() => { pildora($("#tabs"), "button.on"); pildora($("#rango"), '[aria-checked="true"]'); pintarTodo(); });
+  cargarRestaurantes().catch(() => {}); refresh();
+  setInterval(() => { if (tab === "orders" || tab === "summary") refresh(); }, 30000);
 })();
 </script>
 {% endif %}
+</main>
 </body>
 </html>

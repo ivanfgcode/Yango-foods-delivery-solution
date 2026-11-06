@@ -47,6 +47,24 @@ def parse_finalsuggest(raw: Dict[str, Any]) -> Optional[Dict[str, Any]]:
     }
 
 
+def parse_suggest(raw: Dict[str, Any], lat: float, lon: float, max_km: float = 40.0,
+                  limit: int = 6) -> List[Dict[str, Any]]:
+    """Búsqueda por texto → direcciones cercanas a la sucursal (Yango mezcla otras ciudades y países)."""
+    out = []
+    for r in raw.get("results") or []:
+        pos = r.get("position") or []
+        if len(pos) != 2:
+            continue
+        rlon, rlat = float(pos[0]), float(pos[1])
+        if not in_bounds(rlat, rlon) or haversine_km(lat, lon, rlat, rlon) > max_km:
+            continue
+        out.append({"title": (r.get("title") or {}).get("text") or "", "subtitle": (r.get("subtitle") or {}).get("text") or "",
+                    "lat": rlat, "lon": rlon, "exact": r.get("action") == "search"})
+        if len(out) >= limit:
+            break
+    return out
+
+
 def validate_address(a: Dict[str, Any]) -> Dict[str, Any]:
     """Normaliza y valida lo que manda el checkout. Lanza AddressError con un mensaje para el cliente."""
     try:

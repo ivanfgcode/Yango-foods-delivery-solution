@@ -5,6 +5,7 @@
   const $ = (s, el = document) => el.querySelector(s);
   const $$ = (s, el = document) => [...el.querySelectorAll(s)];
   const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({"&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;"}[c]));
+  const icon = (n) => `<svg class="ic" aria-hidden="true"><use href="/static/icons.svg?v=${S.v}#${n}"></use></svg>`;
   const money = (n) => `${S.currency}${Number(n).toLocaleString("es-BO", {maximumFractionDigits: 2})}`;
   const round2 = (n) => Math.round(n * 100) / 100;
   const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -18,6 +19,8 @@
   let cart = store.get(CART_KEY, []);
   let view = "cart";
   let point = null, quote = null, quoteSeq = 0, addrDirty = false, map = null;
+  let branch = null;  // sucursal que atiende la dirección del cliente (la asigna Yango)
+  const tr = (id) => (menu && menu.alias && menu.alias[id]) || id;  // ids configurados (principal) → esta sucursal
 
   // ------------------------------------------------------------------ util
   function toast(msg) { const t = $("#toast"); t.textContent = msg; t.classList.add("on"); clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove("on"), 1800); }
@@ -29,7 +32,10 @@
   }
   function debounce(fn, ms) { let h; return (...a) => { clearTimeout(h); h = setTimeout(() => fn(...a), ms); }; }
   function open(el) { $("#scrim").classList.add("on"); el.classList.add("on"); document.body.style.overflow = "hidden"; }
-  function closeAll() { $$(".sheet.on").forEach((e) => e.classList.remove("on")); $("#scrim").classList.remove("on"); document.body.style.overflow = ""; }
+  function closeAll() {
+    $$(".sheet.on").forEach((e) => e.classList.remove("on")); $("#scrim").classList.remove("on"); document.body.style.overflow = "";
+    if ($("#ttFrame").src) $("#ttFrame").removeAttribute("src");  // detiene el video
+  }
   function showErr(el, msg) { el.textContent = msg; el.classList.remove("shake"); void el.offsetWidth; if (msg) el.classList.add("shake"); }
   $("#scrim").onclick = closeAll;
   $$("[data-close]").forEach((b) => (b.onclick = closeAll));
@@ -158,11 +164,14 @@
       if (g.max > 1 && checked.length > g.max) { e.target.checked = false; toast(`Máximo ${g.max}`); checked = checked.filter((c) => c !== e.target); }
       cur.sel[g.id] = checked.map((c) => c.value);
       const need = Math.max(g.min, g.required ? 1 : 0), tag = $(".grp-h span", gEl);
-      if (need) { const ok = cur.sel[g.id].length >= need; tag.classList.toggle("done", ok); tag.classList.toggle("req", !ok); tag.textContent = ok ? "✓ Listo" : tag.dataset.rule; }
+      if (need) { const ok = cur.sel[g.id].length >= need; tag.classList.toggle("done", ok); tag.classList.toggle("req", !ok); tag.innerHTML = ok ? `${icon("check")}Listo` : esc(tag.dataset.rule); }
       refreshItem();
     }));
+    $("#itemBody").insertAdjacentHTML("beforeend", `<div class="ups" id="itemUps"></div>`);
+    loadUpsell([it.id], "item", $("#itemUps"));
     showErr($("#itemErr"), "");
-    refreshItem(); open($("#itemSheet")); $("#itemBody").scrollTop = 0;
+    if (!$("#itemSheet").classList.contains("on")) open($("#itemSheet"));
+    refreshItem(); $("#itemBody").scrollTop = 0;
   }
   function missingGroup() {
     for (const g of cur.it.groups) { const need = Math.max(g.min, g.required ? 1 : 0); if ((cur.sel[g.id] || []).length < need) return g; }
@@ -199,6 +208,76 @@
     setTimeout(() => { f.remove(); bump(); }, 720);
   }
 
+  // ------------------------------------------------------------------ upselling («otras personas lo combinaron con»)
+  const needsChoice = (it) => it.groups.some((g) => Math.max(g.min, g.required ? 1 : 0) > 0);
+  const upsCache = {};
+  async function loadUpsell(ids, context, box) {
+    const key = `${context}:${[...new Set(ids)].sort().join(",")}`;
+    const b = branch ? `&branch=${encodeURIComponent(branch.slug)}` : "";
+    try { upsCache[key + b] = upsCache[key + b] || await api(`/upsell?context=${context}&items=${encodeURIComponent([...new Set(ids)].join(","))}${b}`); }
+    catch (e) { return; }
+    const recs = upsCache[key + b].items.map((r) => ({...r, it: menu.items[r.item_id]})).filter((r) => r.it && r.it.available);
+    if (!recs.length || !box.isConnected) return;
+    const drinks = recs.every((r) => r.reason === "bebida");
+    const title = context === "cart" ? (drinks ? "¿Algo para tomar?" : "Otras personas también pidieron") : (drinks ? "Acompáñalo con una bebida" : "Otras personas lo combinaron con");
+    box.innerHTML = `<h4>${icon(drinks ? "cup-soda" : "sparkles")}${title}</h4><div class="ups-list">${recs.map((r) => `
+      <button type="button" class="ups-it" data-ups="${esc(r.it.id)}">
+        ${r.it.image ? `<img loading="lazy" src="${esc(r.it.image)}" alt="">` : `<span class="noimg">${esc(r.it.name[0] || "")}</span>`}
+        <span class="nm">${esc(r.it.name)}<b>${money(itemPrice(r.it))}</b></span>
+        <span class="ups-add" aria-label="Agregar ${esc(r.it.name)}">${icon("plus")}</span></button>`).join("")}</div>`;
+    $$("[data-ups]", box).forEach((b) => (b.onclick = () => quickAdd(b.dataset.ups, b)));
+  }
+  function quickAdd(id, el) {
+    const it = menu.items[id]; if (!it) return;
+    if (needsChoice(it)) return openItem(id);  // tiene opciones obligatorias: se eligen en su ficha
+    const key = id + "|[]", same = cart.find((l) => l.key === key);
+    if (same) same.quantity = Math.min(50, same.quantity + 1); else cart.push({key, item_id: id, quantity: 1, options: {}});
+    flyToCart($("img", el) || el, it.image); saveCart(); toast(`${it.name} agregado`);
+    if (view === "cart" && $("#cartSheet").classList.contains("on")) renderCart();
+  }
+
+  // ------------------------------------------------------------------ TikTok: videos elegidos por el restaurante con su producto
+  // «Más vendidos»: lo calcula el servidor (pedidos de la web o elegidos a mano en el admin).
+  function renderBest() {
+    const its = (S.bestsellers || []).map((id) => menu.items[tr(id)]).filter((it) => it && it.available);
+    $("#best").hidden = its.length < 2;
+    if (its.length < 2) return;
+    $("#bestRail").innerHTML = its.map(card).join("");
+    $$(".card[data-id]", $("#bestRail")).forEach((el) => (el.onclick = () => openItem(el.dataset.id)));
+    reveal($("#best"));
+  }
+  const videoItems = (v) => (v.item_ids || []).map((id) => menu.items[tr(id)]).filter((it) => it && it.available);
+  function renderTikTok() {
+    const vids = (S.tiktok || []).filter((v) => /^\d+$/.test(v.id));
+    $("#tt").hidden = !vids.length;
+    if (!vids.length) return;
+    $("#ttRail").innerHTML = vids.map((v, i) => {
+      const its = videoItems(v), it = its[0], poster = v.poster || (it && it.image) || "";
+      return `<div class="tt-card reveal" data-v="${i}" role="button" tabindex="0" aria-label="Ver video${it ? ` de ${esc(it.name)}` : ""}">
+        ${poster ? `<img loading="lazy" src="${esc(poster)}" alt="">` : ""}<span class="tt-play">${icon("play")}</span>
+        ${it ? `<button type="button" class="tt-chip" data-item="${esc(it.id)}"><span>${esc(it.name)}</span><b>${money(itemPrice(it))}${its.length > 1 ? ` <small>+${its.length - 1} más</small>` : ""}</b></button>` : ""}</div>`;
+    }).join("");
+    $$(".tt-card", $("#ttRail")).forEach((c) => {
+      const go = () => openVideo(vids[+c.dataset.v]);
+      c.onclick = (e) => { if (!e.target.closest(".tt-chip")) go(); };
+      c.onkeydown = (e) => { if (e.key === "Enter") go(); };
+    });
+    $$(".tt-chip", $("#ttRail")).forEach((b) => (b.onclick = () => { const v = vids[+b.closest(".tt-card").dataset.v]; videoItems(v).length > 1 ? openVideo(v) : openItem(b.dataset.item); }));
+    reveal($("#tt"));
+  }
+  function openVideo(v) {
+    const its = videoItems(v);
+    $("#ttFrame").src = `https://www.tiktok.com/player/v1/${encodeURIComponent(v.id)}?autoplay=1&description=0&music_info=0&rel=0&native_context_menu=0`;
+    const pedir = (id) => { closeAll(); setTimeout(() => openItem(id), 220); };
+    // Tarjetas de vidrio flotando sobre el video (una por producto; con varios, se deslizan).
+    $("#ttFoot").className = `tt-glass${its.length > 1 ? " many" : ""}`;
+    $("#ttFoot").innerHTML = its.map((it) => `<button type="button" class="tt-glass-it" data-tt-it="${esc(it.id)}">
+        ${it.image ? `<img src="${esc(it.image)}" alt="">` : `<span class="noimg">${esc(it.name[0] || "")}</span>`}
+        <span class="nm">${esc(it.name)}<b>${money(itemPrice(it))}</b></span><span class="tt-go">Pedir</span></button>`).join("");
+    $$("[data-tt-it]", $("#ttFoot")).forEach((b) => (b.onclick = () => pedir(b.dataset.ttIt)));
+    open($("#ttSheet"));
+  }
+
   // ------------------------------------------------------------------ carrito
   function saveCart() {
     cart = cart.filter((l) => menu.items[l.item_id] && menu.items[l.item_id].available);
@@ -224,8 +303,9 @@
       $("#cartView").innerHTML = cart.length ? cart.map((l, i) => { const it = menu.items[l.item_id]; return `<div class="line" style="animation-delay:${i * 40}ms">
         ${it.image ? `<img src="${esc(it.image)}" alt="">` : `<span class="noimg"></span>`}
         <div class="nm"><b>${esc(it.name)}</b>${optionNames(l) ? `<small>${esc(optionNames(l))}</small>` : ""}<small>${money(lineAmount(l))}</small></div>
-        <div class="qty"><button type="button" data-d="-1" data-i="${i}" aria-label="Menos">${l.quantity === 1 ? "🗑" : "−"}</button><span>${l.quantity}</span><button type="button" data-d="1" data-i="${i}" aria-label="Más">+</button></div></div>`; }).join("")
-        : `<div class="empty-cart"><div class="ico">🛍️</div><p>Tu carrito está vacío</p><p class="note">Agrega algo rico del menú</p></div>`;
+        <div class="qty"><button type="button" data-d="-1" data-i="${i}" aria-label="Menos">${icon(l.quantity === 1 ? "trash-2" : "minus")}</button><span>${l.quantity}</span><button type="button" data-d="1" data-i="${i}" aria-label="Más">${icon("plus")}</button></div></div>`; }).join("")
+        : `<div class="empty-cart"><div class="ico">${icon("shopping-bag")}</div><p>Tu carrito está vacío</p><p class="note">Agrega algo rico del menú</p></div>`;
+      if (cart.length) { $("#cartView").insertAdjacentHTML("beforeend", `<div class="ups cart-ups" id="cartUps"></div>`); loadUpsell(cart.map((l) => l.item_id), "cart", $("#cartUps")); }
       $$("[data-d]", $("#cartView")).forEach((b) => (b.onclick = () => {
         const l = cart[+b.dataset.i]; l.quantity += +b.dataset.d; if (l.quantity <= 0) cart.splice(+b.dataset.i, 1); saveCart();
       }));
@@ -253,15 +333,16 @@
   const openCart = () => { view = "cart"; renderCart(); open($("#cartSheet")); };
   $("#openCart").onclick = openCart; $("#floatCartBtn").onclick = openCart;
   $("#backBtn").onclick = () => { view = "cart"; renderCart(); };
-  $("#addrPill").onclick = () => { if (!cart.length) return toast("Agrega productos para elegir la entrega"); view = "checkout"; renderCart(); open($("#cartSheet")); initMap(); };
+  $("#addrPill").onclick = () => openLoc(false);
 
-  // ------------------------------------------------------------------ mapa y cotización
+  // ------------------------------------------------------------------ sucursal, mapa y cotización
   // Rango mín–máx del tramo de distancia (el precio exacto depende de distancia y demanda).
   function rangeText(q) {
     const r = q && q.fee_range; if (!r || q.fee_mode !== "model") return "";
     return ` <span class="range">(${esc(r.label.toLowerCase())}: ${money(r.min)}–${money(r.max)}${q.distance_km ? ` · estás a ${String(q.distance_km).replace(".", ",")} km` : ""})</span>`;
   }
   function setQuoteBox(cls, text) { $("#quoteBox").className = `quote ${cls}`; $("#quoteText").innerHTML = text; }
+  const savePoint = (p) => store.set(POINT_KEY, {lat: p.lat, lon: p.lon, label: p.label || "", branch: branch && branch.slug});
   const onPointChange = debounce(async (lat, lon) => {
     point = {lat, lon};
     const seq = ++quoteSeq;
@@ -272,70 +353,232 @@
       const txt = g.address.short_text || g.address.text || "";
       if (!addrDirty) $("#fAddr").value = txt;
       $("#addrPillText").textContent = txt || "Mi dirección";
-      store.set(POINT_KEY, {lat, lon, label: txt});
+      savePoint({lat, lon, label: txt});
     }).catch(() => {});
     await refreshQuote(seq);
   }, 380);
   async function refreshQuote(seq = ++quoteSeq) {
     if (!point) return;
     try {
-      const q = await api("/quote", {lat: point.lat, lon: point.lon, subtotal: round2(subtotal())});
+      const q = await api("/quote", {lat: point.lat, lon: point.lon, subtotal: round2(subtotal()), branch: branch && branch.slug});
       if (seq !== quoteSeq) return;
       quote = q;
-      if (!q.available) setQuoteBox("bad", q.reason === "cerrado" ? "El restaurante está cerrado ahora" : "No llegamos a esta dirección. Mueve el pin o prueba otra.");
+      if (!q.available) { setQuoteBox("bad", unavailableText(q)); otherBranch(seq); }
       else if (q.below_min_order) setQuoteBox("bad", `El pedido mínimo es <b>${money(q.min_order)}</b>`);
       else if (q.delivery_fee == null) setQuoteBox("bad", "No pudimos calcular el envío para este pedido");
       else setQuoteBox("ok", `Envío <b>${q.delivery_fee ? money(q.delivery_fee) : "gratis"}</b>${rangeText(q)}${q.eta_min ? ` · llega en ${q.eta_min}–${q.eta_max} min` : ""}${q.surge ? " · alta demanda" : ""}`);
-      if (q.available && q.eta_min) $("#metaEta").innerHTML = `🛵 <b>${q.eta_min}–${q.eta_max} min</b>`;
+      if (q.available && q.eta_min) $("#metaEta").innerHTML = `${icon("bike")}<b>${q.eta_min}–${q.eta_max} min</b>`;
     } catch (e) {
       if (seq !== quoteSeq) return;
       quote = null; setQuoteBox("bad", esc(e.message));
     }
     renderFoot();
   }
+  // El pin se movió a una zona que atiende otra sucursal: se ofrece cambiar (menú y precios de esa sucursal).
+  async function otherBranch(seq) {
+    try {
+      const {branch: b} = await api(`/branch?lat=${point.lat}&lon=${point.lon}`);
+      if (seq !== quoteSeq || !b || !branch || b.slug === branch.slug) return;
+      setQuoteBox("bad", `Esta dirección la atiende <b>${esc(b.name)}</b>. <button type="button" class="linkbtn" id="swBranch">Cambiar de sucursal</button>`);
+      $("#swBranch").onclick = async () => {
+        setQuoteBox("loading", "Cargando el menú de esa sucursal…");
+        try { await loadMenu(b.slug); savePoint({...point, label: $("#fAddr").value}); } catch (e) { toast(e.message); }
+        refreshQuote();
+      };
+    } catch (e) {}
+  }
+  function unavailableText(q) {
+    if (q.reason === "zona_cerrada") return "Por alta demanda no llegamos a esta zona ahora. Prueba más tarde.";
+    if (q.reason === "cerrado") {
+      const t = q.opens_at && new Date(q.opens_at);
+      return `El restaurante está cerrado ahora${t && !isNaN(t) ? ` · abre a las ${t.toLocaleTimeString("es-BO", {hour: "2-digit", minute: "2-digit"})}` : ""}`;
+    }
+    return "No llegamos a esta dirección. Mueve el pin o prueba otra.";
+  }
   function loadScript(src) { return new Promise((ok, ko) => { const s = document.createElement("script"); s.src = src; s.onload = ok; s.onerror = ko; document.head.appendChild(s); }); }
   function loadCss(href) { const l = document.createElement("link"); l.rel = "stylesheet"; l.href = href; document.head.appendChild(l); }
+  const primaryColor = () => getComputedStyle(document.body).getPropertyValue("--primary").trim() || "#E8402F";
+  // Mapa de Yandex (los mismos datos que usan Yango y Yango Maps: calles y números de casa de Bolivia).
+  // La clave YANDEX_MAPS_API_KEY es opcional; sin ella también carga. Leaflet/OSM queda solo de respaldo.
+  async function yandexMap(id, center, lift, onMoved) {
+    if (!window.ymaps) {
+      const key = S.yandexKey ? `apikey=${encodeURIComponent(S.yandexKey)}&` : "";
+      await loadScript(`https://api-maps.yandex.ru/2.1/?${key}lang=${encodeURIComponent(S.mapLang || "es_ES")}`);
+    }
+    await new Promise((ok, ko) => { ymaps.ready(ok, ko); setTimeout(() => ko(new Error("ymaps timeout")), 12000); });
+    const m = new ymaps.Map(id, {center, zoom: 17, controls: ["zoomControl"]},
+      {suppressMapOpenBlock: true, yandexMapDisablePoiInteractivity: true, zoomControlSize: "small", zoomControlPosition: {left: 10, top: 10}});
+    let mark = null;
+    m.events.add("actionbegin", () => lift(true));
+    m.events.add("actionend", () => { lift(false); const [la, lo] = m.getCenter(); onMoved(la, lo); });
+    return {setCenter: (la, lo) => m.setCenter([la, lo], 17, {duration: 300}), resize: () => m.container.fitToViewport(),
+      setBranch: (b) => {
+        if (mark) m.geoObjects.remove(mark);
+        mark = b && b.lat != null ? new ymaps.Placemark([b.lat, b.lon], {hintContent: b.name, iconCaption: b.name}, {preset: "islands#foodCircleIcon", iconColor: primaryColor()}) : null;
+        if (mark) m.geoObjects.add(mark);
+      }};
+  }
+  async function leafletMap(id, center, lift, onMoved) {
+    if (!window.L) {
+      loadCss("https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css");
+      await loadScript("https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js");
+    }
+    $(`#${id}`).innerHTML = "";
+    const m = L.map(id, {zoomControl: true}).setView(center, 16);
+    L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {maxZoom: 19, subdomains: "abcd", attribution: "© OpenStreetMap © CARTO"}).addTo(m);
+    let mark = null;
+    m.on("movestart", () => lift(true));
+    m.on("moveend", () => { lift(false); const c = m.getCenter(); onMoved(c.lat, c.lng); });
+    setTimeout(() => m.invalidateSize(), 350);
+    return {setCenter: (la, lo) => m.flyTo([la, lo], 17, {duration: 0.6}), resize: () => m.invalidateSize(),
+      setBranch: (b) => {
+        if (mark) mark.remove();
+        mark = b && b.lat != null ? L.marker([b.lat, b.lon], {title: b.name, icon: L.divIcon({className: "branch-pin", html: icon("map-pin"), iconSize: [30, 30], iconAnchor: [15, 28]})}).addTo(m) : null;
+      }};
+  }
+  async function makeMap(id, center, onMoved) {
+    const box = $(`#${id}`).parentElement, pin = $(".pin", box), dot = $(".pin-dot", box);
+    const lift = (up) => { pin.classList.toggle("up", up); dot.classList.toggle("up", up); };
+    try { return await yandexMap(id, center, lift, onMoved); } catch (e) { return leafletMap(id, center, lift, onMoved); }
+  }
   async function initMap() {
+    showBranch();
     if (map) { setTimeout(() => map.resize(), 60); if (point) refreshQuote(); return; }
     const saved = store.get(POINT_KEY, null);
     const center = saved ? [saved.lat, saved.lon] : S.center;
-    const pin = $("#pin"), dot = $(".pin-dot");
-    const lift = (up) => { pin.classList.toggle("up", up); dot.classList.toggle("up", up); };
     try {
-      if (S.yandexKey) {
-        await loadScript(`https://api-maps.yandex.ru/2.1/?apikey=${encodeURIComponent(S.yandexKey)}&lang=es_ES`);
-        await new Promise((r) => ymaps.ready(r));
-        const m = new ymaps.Map("map", {center, zoom: 16, controls: ["zoomControl"]}, {suppressMapOpenBlock: true});
-        m.events.add("actionbegin", () => lift(true));
-        m.events.add("actionend", () => { lift(false); const [la, lo] = m.getCenter(); moved(la, lo); });
-        map = {setCenter: (la, lo) => { m.setCenter([la, lo], 17, {duration: 300}); }, resize: () => m.container.fitToViewport()};
-      } else {
-        loadCss("https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css");
-        await loadScript("https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js");
-        const m = L.map("map", {zoomControl: true}).setView(center, 16);
-        L.tileLayer("https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png", {maxZoom: 19, subdomains: "abcd", attribution: "© OpenStreetMap © CARTO"}).addTo(m);
-        m.on("movestart", () => lift(true));
-        m.on("moveend", () => { lift(false); const c = m.getCenter(); moved(c.lat, c.lng); });
-        map = {setCenter: (la, lo) => m.flyTo([la, lo], 17, {duration: 0.6}), resize: () => m.invalidateSize()};
-        setTimeout(() => m.invalidateSize(), 350);
-      }
+      map = await makeMap("map", center, moved);
+      map.setBranch(branch);
       moved(center[0], center[1]);
-      if (!saved) locate(true);
+      if (!saved) locate(true, map);
     } catch (e) { setQuoteBox("bad", "No se pudo cargar el mapa. Revisa tu conexión."); }
   }
   function moved(la, lo) { addrDirty = false; onPointChange(la, lo); }
-  function locate(silent) {
+  function locate(silent, m) {
     if (!navigator.geolocation) return silent || toast("Tu navegador no permite ubicarte");
-    navigator.geolocation.getCurrentPosition((p) => map && map.setCenter(p.coords.latitude, p.coords.longitude),
-      () => silent || toast("No pudimos obtener tu ubicación"), {enableHighAccuracy: true, timeout: 8000});
+    navigator.geolocation.getCurrentPosition((p) => m && m.setCenter(p.coords.latitude, p.coords.longitude),
+      (e) => silent || toast(e.code === 1 ? "Activa la ubicación para este sitio en tu navegador" : "No pudimos ubicarte, escribe tu calle o mueve el mapa"),
+      {enableHighAccuracy: true, timeout: 10000, maximumAge: 60000});
   }
-  $("#locateBtn").onclick = () => locate(false);
+  // Buscador de dirección: lo que se escribe se busca en Yango y al elegir, el mapa va ahí (el pin sigue mandando).
+  function bindSearch(input, list, onPick) {
+    let seq = 0;
+    const show = (on) => { list.hidden = !on; input.setAttribute("aria-expanded", String(on)); };
+    const search = debounce(async () => {
+      const q = input.value.trim(), my = ++seq;
+      if (q.length < 3) return show(false);
+      try {
+        const {results} = await api("/address-search", {q});
+        if (my !== seq) return;
+        list.innerHTML = results.map((r, i) => `<button type="button" role="option" data-s="${i}">${icon("map-pin")}<span><b>${esc(r.title)}</b><small>${esc(r.subtitle)}</small></span></button>`).join("")
+          || `<p class="note">Sin resultados. Mueve el mapa hasta tu puerta.</p>`;
+        $$("[data-s]", list).forEach((b) => (b.onmousedown = (e) => {
+          e.preventDefault(); const r = results[+b.dataset.s];
+          show(false); input.value = r.title; onPick(r);
+        }));
+        show(true);
+      } catch (e) { show(false); }
+    }, 350);
+    input.addEventListener("input", search);
+    input.addEventListener("blur", () => setTimeout(() => show(false), 150));
+    input.addEventListener("keydown", (e) => { if (e.key === "Escape") show(false); });
+  }
+  bindSearch($("#fAddr"), $("#addrSugg"), (r) => map && map.setCenter(r.lat, r.lon));
+  $("#locateBtn").onclick = () => locate(false, map);
   $("#fAddr").addEventListener("input", () => (addrDirty = true));
   $$('input[name="pay"]').forEach((r) => r.addEventListener("change", () => { $("#changeField").hidden = $('input[name="pay"]:checked').value !== "cash"; }));
+
+  // ------------------------------------------------------------------ ubicación primero: qué sucursal te atiende
+  let locMap = null, locPoint = null, locBranch = null, locSeq = 0;
+  const locStatus = (cls, html) => { $("#locStatus").className = `quote ${cls}`; $("#locText").innerHTML = html; };
+  async function openLoc(first) {
+    $("#locSkip").hidden = !first;
+    open($("#locSheet"));
+    const saved = store.get(POINT_KEY, null), c = saved ? [saved.lat, saved.lon] : S.center;
+    if (locMap) return setTimeout(() => locMap.resize(), 60);
+    try { locMap = await makeMap("locMap", c, locMoved); } catch (e) { return locStatus("bad", "No se pudo cargar el mapa. Revisa tu conexión."); }
+    locMoved(c[0], c[1]);
+    if (!saved) locate(true, locMap);
+  }
+  const locMoved = debounce(async (lat, lon) => {
+    const seq = ++locSeq;
+    locPoint = {lat, lon}; locBranch = null; $("#locOk").disabled = true;
+    locStatus("loading", "Buscando la sucursal que te atiende…");
+    api("/geocode", {lat, lon}).then((g) => {
+      if (seq !== locSeq || !g.ok || !g.address) return;
+      locPoint.label = g.address.short_text || g.address.text || ""; locPoint.geocoded = g.address;
+      if (document.activeElement !== $("#locQ")) $("#locQ").value = locPoint.label;
+    }).catch(() => {});
+    try {
+      const {branch: b} = await api(`/branch?lat=${lat}&lon=${lon}`);
+      if (seq !== locSeq) return;
+      locBranch = b; if (locMap) locMap.setBranch(b);
+      if (!b) return locStatus("bad", "Por ahora no llegamos a esta dirección. Prueba otra.");
+      locStatus(b.available ? "ok" : "bad", b.available ? `Te atiende <b>${esc(b.name)}</b>${b.eta_min ? ` · ${b.eta_min}–${b.eta_max} min` : ""}`
+        : `<b>${esc(b.name)}</b> no está llegando a esta zona ahora. Puedes ver su menú y pedir más tarde.`);
+      $("#locOk").disabled = false;
+    } catch (e) { if (seq === locSeq) locStatus("bad", esc(e.message)); }
+  }, 400);
+  bindSearch($("#locQ"), $("#locSugg"), (r) => locMap && locMap.setCenter(r.lat, r.lon));
+  $("#locLocate").onclick = () => locate(false, locMap);
+  $("#locSkip").onclick = () => closeAll();
+  $("#locOk").onclick = async () => {
+    if (!locBranch) return;
+    const p = {...locPoint};
+    point = {lat: p.lat, lon: p.lon, geocoded: p.geocoded};
+    $("#addrPillText").textContent = p.label || "Mi dirección";
+    $("#fAddr").value = p.label || ""; addrDirty = false;
+    closeAll();
+    if (!branch || branch.slug !== locBranch.slug) { try { await loadMenu(locBranch.slug); } catch (e) { toast(e.message); } }
+    savePoint(p);
+    if (map) map.setCenter(p.lat, p.lon);
+    refreshEta(p);
+  };
+  function showBranch() {
+    if (!branch) return;
+    $("#branchLine").hidden = false; $("#branchName").textContent = branch.name;
+    $("#metaBranch").hidden = false; $("#metaBranchName").textContent = branch.name.replace(/^.*?\s[-–]\s/, "");
+    if (map) map.setBranch(branch);
+  }
+  function refreshEta(p) {
+    api("/quote", {lat: p.lat, lon: p.lon, subtotal: 0, branch: branch && branch.slug}).then((q) => {
+      if (q.available && q.eta_min) $("#metaEta").innerHTML = `${icon("bike")}<b>${q.eta_min}–${q.eta_max} min</b>`;
+    }).catch(() => {});
+  }
+  // Menú de la sucursal; si cambia, el carrito pasa a la nueva sucursal buscando cada producto por su nombre.
+  async function loadMenu(slug) {
+    const prev = menu;
+    const m = await api(`/menu${slug ? `?branch=${encodeURIComponent(slug)}` : ""}`);
+    menu = m; branch = m.branch;
+    if (prev && prev.branch && prev.branch.slug !== branch.slug) moveCart(prev, m);
+    renderMenu(); saveCart(); renderBest(); renderTikTok(); showBranch();
+  }
+  function moveCart(prev, next) {
+    const byName = {}; Object.values(next.items).forEach((it) => { byName[norm(it.name)] = byName[norm(it.name)] || it; });
+    let lost = 0;
+    cart = cart.map((l) => {
+      const old = prev.items[l.item_id], it = old && byName[norm(old.name)];
+      if (!it) { lost++; return null; }
+      const options = {};
+      for (const g of old.groups) {
+        const ids = l.options[g.id]; if (!ids || !ids.length) continue;
+        const ng = it.groups.find((x) => norm(x.name) === norm(g.name));
+        const nids = (ids || []).map((oid) => { const o = g.options.find((x) => x.id === oid); const no = o && ng && ng.options.find((x) => norm(x.name) === norm(o.name)); return no && no.id; });
+        if (!ng || nids.some((x) => !x)) { lost++; return null; }
+        options[ng.id] = nids;
+      }
+      return {...l, item_id: it.id, options, key: it.id + "|" + JSON.stringify(Object.keys(options).sort().map((k) => [k, [...options[k]].sort()]))};
+    }).filter(Boolean);
+    toast(lost ? `Te atiende ${next.branch.name}: ${lost} producto(s) no están en esta sucursal` : `Te atiende ${next.branch.name}`);
+  }
 
   // ------------------------------------------------------------------ pedido
   const prof = store.get(PROFILE_KEY, {});
   $("#fFirst").value = prof.first_name || ""; $("#fLast").value = prof.last_name || ""; $("#fPhone").value = prof.phone || "";
+  // Factura (opcional): NIT o CI y razón social; se recuerdan para el próximo pedido.
+  $("#fNit").value = prof.nit || ""; $("#fRazon").value = prof.razon_social || "";
+  $("#fInv").checked = !!prof.nit; $("#invFields").hidden = !prof.nit;
+  $("#fInv").onchange = () => { $("#invFields").hidden = !$("#fInv").checked; if ($("#fInv").checked) $("#fNit").focus(); };
   const savedPoint = store.get(POINT_KEY, null);
   if (savedPoint && savedPoint.label) $("#addrPillText").textContent = savedPoint.label;
   async function placeOrder() {
@@ -344,16 +587,19 @@
     const checks = [[!point, "Marca tu ubicación en el mapa", null], [$("#fAddr").value.trim().length < 3, "Escribe la dirección", "#fAddr"],
       [$("#fRef").value.trim().length < 3, "Agrega número de casa o una referencia", "#fRef"], [$("#fFirst").value.trim().length < 2, "Escribe tu nombre", "#fFirst"],
       [$("#fLast").value.trim().length < 2, "Escribe tu apellido", "#fLast"], [!/^[67]\d{7}$/.test(phone.replace(/^591/, "")), "Escribe un celular válido (8 dígitos)", "#fPhone"]];
+    const inv = $("#fInv").checked, nit = $("#fNit").value.replace(/[\s.]/g, "");
+    if (inv) checks.push([!/^\d{4,15}(-?[0-9A-Za-z]{1,3})?$/.test(nit), "Escribe un NIT o CI válido", "#fNit"], [$("#fRazon").value.trim().length < 2, "Escribe la razón social para la factura", "#fRazon"]);
     const bad = checks.find((c) => c[0]);
     if (bad) { showErr(err, bad[1]); if (bad[2]) { $(bad[2]).focus({preventScroll: true}); $(bad[2]).scrollIntoView({behavior: "smooth", block: "center"}); } return; }
     showErr(err, "");
     const method = $('input[name="pay"]:checked').value;
     const body = {
-      customer: {first_name: $("#fFirst").value.trim(), last_name: $("#fLast").value.trim(), phone},
+      customer: {first_name: $("#fFirst").value.trim(), last_name: $("#fLast").value.trim(), phone,
+        ...(inv ? {nit, razon_social: $("#fRazon").value.trim()} : {})},
       address: {lat: point.lat, lon: point.lon, text: $("#fAddr").value.trim(), reference: $("#fRef").value.trim(), comment: $("#fNote").value.trim(), geocoded: point.geocoded || null},
       payment: {method, change_for: method === "cash" && $("#fChange").value.trim() ? $("#fChange").value.replace(",", ".") : null},
       items: cart.map((l) => ({item_id: l.item_id, quantity: l.quantity, options: l.options})),
-      expected_total: quote.total,
+      expected_total: quote.total, branch: branch && branch.slug,
     };
     const btn = $("#placeBtn"); btn.disabled = true; btn.textContent = "Enviando…";
     try {
@@ -370,9 +616,35 @@
     for (const [k, v] of Object.entries(e.data.vars || {})) if (/^--[a-z-]+$/.test(k)) document.documentElement.style.setProperty(k, String(v));
     if (e.data.layout) document.body.classList.toggle("grid-layout", e.data.layout === "grid");
   });
-  if (savedPoint) api("/quote", {lat: savedPoint.lat, lon: savedPoint.lon, subtotal: 0}).then((q) => {
-    if (q.available && q.eta_min) $("#metaEta").innerHTML = `🛵 <b>${q.eta_min}–${q.eta_max} min</b>`;
-  }).catch(() => {});
-  api("/menu").then((m) => { menu = m; renderMenu(); saveCart(); })
-    .catch((e) => { $("#menu").innerHTML = `<p class="note" style="padding:40px 0">${esc(e.message)}</p>`; });
+  // Web instalable (PWA) y aviso del último pedido en curso, que lleva a su seguimiento.
+  if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js", {scope: "/"}).catch(() => {});
+  try {
+    const last = JSON.parse(localStorage.getItem(`carta:last:${S.slug}`) || "null");
+    if (last && Date.now() - last.at < 4 * 3600e3) {
+      const a = document.createElement("a");
+      a.className = "live-order"; a.href = `/${S.slug}/pedido/${encodeURIComponent(last.token)}`;
+      a.innerHTML = `<svg class="ic" aria-hidden="true"><use href="/static/icons.svg?v=${S.v}#bike"></use></svg><span>Pedido #${esc(last.number)} en curso</span><b>Ver estado</b>`;
+      document.body.appendChild(a);
+      fetch(`/api/${S.slug}/orders/${encodeURIComponent(last.token)}`).then((r) => r.ok ? r.json() : null).then((x) => {
+        if (!x || x.status === "cancelado" || x.stage === "entregado" || x.stage === "cancelado") a.remove();
+        else a.querySelector("span").textContent = x.status_text;
+      }).catch(() => {});
+    }
+  } catch (e) {}
+  // Ubicación primero: con la dirección guardada se entra directo a su sucursal; sin ella se pregunta.
+  (async () => {
+    const saved = savedPoint && savedPoint.branch ? savedPoint : null;
+    try { await loadMenu(saved && saved.branch); }
+    catch (e) {
+      try { if (!saved) throw e; await loadMenu(null); }
+      catch (e2) { $("#menu").innerHTML = `<p class="note" style="padding:40px 0">${esc(e2.message)}</p>`; return; }
+    }
+    if (!saved) return new URLSearchParams(location.search).has("preview") ? undefined : openLoc(true);  // vista previa del portal: sin preguntar
+    point = {lat: saved.lat, lon: saved.lon};
+    refreshEta(saved);
+    // La sucursal asignada puede cambiar (horarios, zonas): se revisa sin molestar.
+    api(`/branch?lat=${saved.lat}&lon=${saved.lon}`).then(async ({branch: b}) => {
+      if (b && branch && b.slug !== branch.slug) { await loadMenu(b.slug); savePoint(saved); }
+    }).catch(() => {});
+  })();
 })();

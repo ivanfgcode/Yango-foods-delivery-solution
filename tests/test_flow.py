@@ -74,6 +74,27 @@ def test_quote_near_and_far(client):
     assert out["reason"] == "fuera_de_zona"
 
 
+def test_quote_zone_closed_vs_restaurant_closed(client, monkeypatch):
+    from app import runtime
+    src = runtime.get_runtime().source
+    runtime.get_runtime().quotes._cache.clear()
+    monkeypatch.setattr(src, "zone_closed_beyond_km", 0.5)  # NEAR está a ~1 km: zona cerrada, el local abierto
+    q = client.post("/api/wrap-roll/quote", json={**NEAR, "subtotal": 43}).json()
+    assert q["reason"] == "zona_cerrada" and not q["can_order"]
+    runtime.get_runtime().quotes._cache.clear()
+    monkeypatch.setattr(src, "closed", True)  # el local mismo no atiende: cerrado de verdad
+    q = client.post("/api/wrap-roll/quote", json={**NEAR, "subtotal": 43}).json()
+    assert q["reason"] == "cerrado" and "opens_at" in q
+
+
+def test_store_shows_branch_and_address_search(client):
+    page = client.get("/wrap-roll").text
+    assert '"branch": {"name": "' in page and 'id="branchLine"' in page
+    r = client.post("/api/wrap-roll/address-search", json={"q": "Rafael Peña 100"}).json()["results"]
+    assert r and r[0]["title"] == "Rafael Peña, 100"
+    assert client.post("/api/wrap-roll/address-search", json={"q": "ab"}).json() == {"results": []}
+
+
 def test_order_manual_when_placement_off(client, monkeypatch):
     monkeypatch.setattr(settings, "order_placement_enabled", False)
     r = client.post("/api/wrap-roll/orders", json=order_body(client))
@@ -123,7 +144,7 @@ def test_bot_retries_then_manual(client, monkeypatch):
 
 def test_order_validation(client):
     bad = client.post("/api/wrap-roll/orders", json=order_body(client, address={**FAR, "text": "x y z", "reference": "casa 1"}))
-    assert bad.status_code == 422 and "no entrega" in bad.json()["detail"]
+    assert bad.status_code == 422 and "no llegamos" in bad.json()["detail"]
     item = cart_item(client)
     bad = client.post("/api/wrap-roll/orders", json=order_body(client, items=[{**item, "options": {}}]))
     assert bad.status_code == 422
@@ -169,6 +190,32 @@ def test_session_import(client):
     assert bad.status_code == 422
     bad = client.post("/api/admin/accounts/..%2Fx/cookies", headers=ADMIN, content=json.dumps(cookies))
     assert bad.status_code in (404, 422)
+
+
+def test_session_import_cookie_header(client):
+    r = client.post("/api/admin/accounts/cuenta_demo/cookies", headers=ADMIN,
+                    content="Cookie: Session_id=3:abc.def; yandexuid=123; i=x/y==")
+    assert r.status_code == 200 and r.json()["cookies"] == 3
+    state = json.loads((settings.sessions_dir / "cuenta_demo.json").read_text())
+    assert {c["name"]: c["value"] for c in state["cookies"]}["i"] == "x/y=="
+    assert all(c["domain"] == ".yango.com" for c in state["cookies"])
+    bad = client.post("/api/admin/accounts/cuenta_demo/cookies", headers=ADMIN, content="hola que tal")
+    assert bad.status_code == 422
+
+
+def test_dashboard_summary(client, monkeypatch):
+    monkeypatch.setattr(settings, "order_placement_enabled", False)
+    for _ in range(2):
+        assert client.post("/api/wrap-roll/orders", json=order_body(client)).status_code == 200
+    assert client.get("/api/admin/dashboard").status_code == 401
+    d = client.get("/api/admin/dashboard?days=7", headers=ADMIN).json()
+    assert d["orders"] == 2 and d["pending"] == 2 and d["status"] == {"manual": 2}
+    assert d["revenue"] == round(d["avg_ticket"] * 2, 2) and d["revenue"] > d["delivery"]
+    assert sum(d["hourly"]) == 2 and len(d["weekday"]) == 7 and d["daily"][0]["orders"] == 2
+    assert d["top"][0]["units"] == 2 and d["partners"][0]["name"] == "Wrap & Roll"
+    assert d["payments"] == {"qr": 2}
+    other = client.get("/api/admin/dashboard?partner=no-existe&days=0", headers=ADMIN).json()
+    assert other["orders"] == 2  # restaurante desconocido = todos
 
 
 def test_quote_cache_and_dedupe():
@@ -301,3 +348,71 @@ def test_commission_report(client):
     assert rep["rate"] == 0.03 and rep["rows"][0]["commission"] == 1.29 and rep["rows"][0]["orders"] == 1
     h = client.get("/api/admin/health", headers=ADMIN).json()
     assert h["commission_month"] == 1.29 and len(h["delivery_tiers"]) == 3
+
+
+def test_glass_theme_and_versioned_assets(client):
+    page = client.get("/wrap-roll").text
+    assert 'class="motion glass' in page  # vidrio activado por defecto
+    assert "/static/store.js?v=" in page and "/static/icons.svg?v=" in page
+    r = client.put("/api/wrap-roll/portal/theme", headers=ADMIN, json={"glass": False})
+    assert r.status_code == 200 and r.json()["glass"] is False
+    assert 'class="motion glass' not in client.get("/wrap-roll").text
+
+
+def test_order_with_invoice(client, monkeypatch):
+    """NIT y razón social: opcionales, juntos, validados; van al comentario de Yango y a la vista del pedido."""
+    monkeypatch.setattr(settings, "order_placement_enabled", True)
+    from app import runtime
+    src = runtime.get_runtime().source
+    bad = order_body(client)
+    bad["customer"] = {**bad["customer"], "nit": "12AB", "razon_social": "Juan"}
+    assert client.post("/api/wrap-roll/orders", json=bad).status_code == 422
+    bad["customer"] = {**bad["customer"], "nit": "1234567", "razon_social": ""}
+    assert "razón social" in client.post("/api/wrap-roll/orders", json=bad).json()["detail"]
+    body = order_body(client)
+    body["customer"] = {**body["customer"], "nit": "1.234.567", "razon_social": "Pérez SRL"}
+    r = client.post("/api/wrap-roll/orders", json=body)
+    o = wait_status(client, r.json()["token"], {"colocado"})
+    assert o["invoice"] == {"nit": "1234567", "razon_social": "Pérez SRL"}
+    assert "FACTURA: NIT 1234567 a nombre de Pérez SRL" in src.placed[-1]["comment"]
+    r = client.post("/api/wrap-roll/orders", json=order_body(client))
+    assert r.json()["order"]["invoice"] is None
+
+
+def test_extra_admin_key(client, monkeypatch):
+    monkeypatch.setattr(settings, "admin_keys_extra", ["k" * 32])
+    assert client.get("/api/admin/partners", headers={"x-admin-key": "k" * 32}).status_code == 200
+    assert client.get("/api/admin/partners", headers={"x-admin-key": "k" * 31}).status_code == 401
+
+
+def test_admin_dry_run(client):
+    """«Probar en Yango»: corre el checkout sin el botón final y no cambia el estado del pedido."""
+    r = client.post("/api/wrap-roll/orders", json=order_body(client))
+    token = r.json()["token"]
+    res = client.post(f"/api/admin/orders/{token}/dry-run", headers=ADMIN).json()
+    assert res["dry_run"] is True and res["yango_order_nr"].startswith("PRUEBA-")
+    assert client.get(f"/api/wrap-roll/orders/{token}").json()["status"] in ("en_cola", "manual")
+    assert client.post(f"/api/admin/orders/{token}/dry-run").status_code == 401
+
+
+def test_admin_edits_partner_and_placement(client, monkeypatch):
+    """Admin → Restaurantes → Editar: datos del restaurante y si el bot coloca sus pedidos (aunque el general esté apagado)."""
+    monkeypatch.setattr(settings, "order_placement_enabled", False)
+    r = client.put("/api/admin/partners/wrap-roll", headers=ADMIN,
+                   json={"name": "Wrap & Roll SC", "min_order": "30", "accepting_orders": "1", "auto_place": "1",
+                         "account": "cuenta_demo", "vendor_account": ""})
+    assert r.status_code == 200, r.text
+    p = r.json()
+    assert p["name"] == "Wrap & Roll SC" and p["min_order"] == 30 and p["auto_place"] == 1 and p["placement_enabled"]
+    assert client.get("/api/admin/health", headers=ADMIN).json()["placement"]["wrap-roll"] is True
+    from app import runtime
+    src = runtime.get_runtime().source
+    r = client.post("/api/wrap-roll/orders", json=order_body(client))
+    assert wait_status(client, r.json()["token"], {"colocado"})["status"] == "colocado"
+    assert src.placed[-1]["account"] == "cuenta_demo"
+    # Vuelve al ajuste general (apagado): manual.
+    assert client.put("/api/admin/partners/wrap-roll", headers=ADMIN, json={"auto_place": ""}).json()["placement_enabled"] is False
+    r = client.post("/api/wrap-roll/orders", json=order_body(client))
+    assert wait_status(client, r.json()["token"], {"manual"})["status"] == "manual"
+    for bad in ({"account": "con espacio"}, {"min_order": "abc"}, {"name": " "}, {"yango_url": "http://x"}):
+        assert client.put("/api/admin/partners/wrap-roll", headers=ADMIN, json=bad).status_code == 422

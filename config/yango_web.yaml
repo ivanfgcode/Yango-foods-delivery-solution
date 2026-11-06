@@ -9,9 +9,18 @@ home_path: "/{locale}"                     # página que mantiene abierta cada p
 endpoints:
   # URL de marca → local concreto (slug, id, coordenadas). La web la pide al abrir /r/<brand_slug>.
   brand_place_regex: "eats-catalog/v2/brand/place"
+  # Sucursal de la marca que atiende un punto (verificado 2026-10-30: centro → Equipetrol, sur → Palmas...;
+  # 404 BRAND_NOT_FOUND si ninguna llega).
+  brand_place: "/eats/v1/eats-catalog/v2/brand/place?brand_slug={brand_slug}&latitude={lat}&longitude={lon}"
   catalog: "/api/v2/catalog/{place_slug}?latitude={lat}&longitude={lon}&shippingType=delivery"
   menu: "/api/v2/menu/retrieve/{place_slug}?latitude={lat}&longitude={lon}&autoTranslate=false"
   finalsuggest: "/eats/v1/persuggest/v1/finalsuggest"
+  suggest: "/eats/v1/persuggest/v1/suggest"   # búsqueda por texto (verificado 2026-10-30, sin sesión)
+  # Seguimiento de los pedidos de la cuenta cliente. POR VERIFICAR con sesión (tools/record_traffic.py): el parser
+  # busca el número de pedido en cualquier parte del JSON y toma su status (app/tracking.find_status).
+  order_tracking: "/api/v2/orders/tracking"   # VERIFICADO 2026-10-30 con sesión: payload.trackedOrders
+  # NIT guardado en la cuenta (VERIFICADO 2026-10-30): queda para el pedido siguiente; DELETE lo borra (204).
+  profile_tin: "/api/v1/user/profile/tin?country_code=BO"
   cart: "/api/v1/cart?longitude={lon}&latitude={lat}&screen=menu&shippingType=delivery&autoTranslate=false"
 
 session:
@@ -19,14 +28,30 @@ session:
   logged_out_texts: ["Log in", "Iniciar sesión", "Войти"]
   captcha_texts: ["Please enter the characters", "Introduce los caracteres", "captcha"]
 
+login:
+  # Inicio de sesión asistido (Admin → Cuentas → Iniciar sesión con teléfono). VERIFICADO (2026-10-29) hasta la
+  # pantalla del teléfono: al borrar el +1 y escribir +591... Yango cambia solo a Bolivia. El resto (captcha, código,
+  # pantallas extra) lo completa el operador sobre la captura; el código se escribe en el primer campo visible.
+  url: "https://passport.yango.com/pwl/auth/phone?origin=food.yango.com&retpath={retpath}"
+  phone_input: "[data-testid=text-field-input]"
+  phone_next: "[data-testid=phone-next]"
+  code_input: "input[autocomplete=one-time-code], input[inputmode=numeric], input[type=tel], input[type=number], input[type=text]"
+  cookie_accept_selectors: ["[data-id=button-all]"]
+  cookie_accept: ["Aceptar", "Accept", "Aceptar todo"]
+  session_cookies: ["Session_id", "sessionid2"]   # cookies de Yango ID tras entrar (por confirmar con una cuenta)
+
 order:
-  verified: false                  # true cuando se grabe un pedido real y se ajusten los pasos
+  # VERIFICADO con un pedido real (2026-10-30, web #XRFEMD → Yango 261031-BO8213937, Bs73 = Bs73): 2 productos, uno
+  # con 4 opciones, NIT nativo (eater_tin), Efectivo (payment_type cash), comentario completo; colocado en 11 s.
+  # Teléfono de contacto del checkout = el de la cuenta; el del cliente va en el comentario.
+  verified: true
   # 1) Vaciar el carrito de la cuenta (cada cuenta = un restaurante, un pedido a la vez).
-  clear_cart: {method: DELETE, path: "/api/v1/cart"}
-  # 2) Agregar cada plato. Placeholders: {item_id} {quantity} {place_slug} {item_options} (lista JSON).
+  #    VERIFICADO 2026-10-30: no hay «vaciar» (DELETE /api/v1/cart da 405); se borra cada línea del carrito.
+  clear_cart: {items_path: "items", id_path: "id", method: DELETE, path: "/api/v1/cart/{cart_item_id}?longitude={lon}&latitude={lat}&screen=menu&shippingType=delivery&autoTranslate=false"}
+  # 2) Agregar cada plato (VERIFICADO 2026-10-30: mismo cuerpo que manda la web al pulsar «Añadir»). Placeholders: {item_id} {quantity} {place_slug} {item_options} (lista JSON).
   add_item:
     method: POST
-    path: "/api/v1/cart"
+    path: "/api/v1/cart?longitude={lon}&latitude={lat}&screen=menu&shippingType=delivery&autoTranslate=false"   # sin la ubicación Yango responde 400
     body: {item_id: "{item_id}", quantity: "{quantity}", place_slug: "{place_slug}",
            place_business: "restaurant", item_options: "{item_options}"}
   # 3) Leer el carrito en la dirección del cliente y comparar con lo cotizado (subtotal y envío).
@@ -36,14 +61,41 @@ order:
   # 4) Checkout en la web (UI). Cada paso: goto | click | fill | press | wait_text | capture.
   #    {address_text} {reference} {comment} {lat} {lon} {place_slug} {locale} se reemplazan.
   checkout_steps:
+    # Antes de abrir el checkout el bot pone el punto del cliente (cookie eda_web: la web lo geocodifica y lo manda a
+    # go-checkout) y borra el NIT guardado en la cuenta. Todo VERIFICADO en seco 2026-10-30 (sin pulsar «Pagar»).
     - {action: goto, path: "/{locale}/checkout"}
-    - {action: click, names: ["Dirección", "Address", "Cambiar dirección", "Change address"], optional: true}
-    - {action: fill, labels: ["Calle y número", "Street and house", "Dirección", "Address"], value: "{address_text}"}
-    - {action: click, names: ["{address_text}"], optional: true}
-    - {action: fill, labels: ["Departamento", "Apartment", "Depto"], value: "{reference}", optional: true}
-    - {action: fill, labels: ["Comentario para el mensajero", "Comment for courier", "Comentario", "Comment"], value: "{comment}"}
-    - {action: click, names: ["Efectivo", "Cash", "Наличные"]}
-    - {action: click, names: ["Hacer pedido", "Realizar pedido", "Place order", "Pedir", "Оформить заказ"]}
+    - {action: wait_text, text: "Método de pago", timeout: 45000}
+    # Comentario al mensajero (Yango deja la etiqueta en ruso): fila → «Instrucciones para el mensajero» → cerrar.
+    - {action: click, names: ["Комментарий курьеру", "Comentario para el mensajero", "Comment for courier"]}
+    - {action: fill, labels: ["Instrucciones para el mensajero"], value: "{comment}"}
+    - {action: click, names: ["Cerrar cuadro de diálogo"]}
+    - {action: fill, labels: ["Comentario para el restaurante"], value: "{comment}"}
+    # Factura: fila «NIT» → «Nombre y apellido» + «NIT» → «Listo». El local lo ve como «Usuario» / «NIT del usuario».
+    - {action: click, if: nit, names: ["NIT"]}
+    - {action: fill, if: nit, labels: ["Nombre y apellido"], value: "{razon_social}"}
+    - {action: fill, if: nit, labels: ["NIT"], value: "{nit}"}
+    - {action: click, if: nit, names: ["Listo"]}
+    # Pago: la cuenta tiene tarjeta y «Código QR» por defecto. SOLO Efectivo: se elige y se comprueba antes de pagar.
+    - {action: click, names: ["Editar"]}
+    - {action: click, names: ["Efectivo"]}
+    - {action: click, names: ["Seleccionar"]}
+    - {action: require_after, label: "Método de pago", value: "Efectivo"}
+    # «final»: en modo prueba el bot se detiene aquí. Después de este paso nunca se reintenta (evita pedidos dobles).
+    - {action: click, final: true, names: ["Order", "Pagar", "Hacer pedido", "Realizar pedido"]}   # con Efectivo dice «Order»
+    # La web crea el pedido con POST /api/v1/orders (visto en su código: payment_method_id, change_on, phone,
+    # address{…comment}, place_slug, request_id). El bot guarda esa petición en data/debug para pasar a colocar por API.
     - {action: capture, response_regex: "/api/v1/orders|eats-orders|order_nr", json_paths: ["order_nr", "orderNr", "order.order_nr"]}
   # Botones que el bot NUNCA pulsa.
-  never_click: ["Cancelar pedido", "Cancel order", "Pagar con tarjeta", "Card", "Agregar tarjeta"]
+  never_click: ["Cancelar pedido", "Cancel order", "Pagar con tarjeta", "Card", "Agregar tarjeta", "Vincular nueva tarjeta",
+                "USDT", "Código QR", "Prioridad"]
+
+# Vendor app del restaurante (cuenta del local, partners.vendor_account). VERIFICADO 2026-10-30 con una cuenta de
+# 57 locales: la sesión es el token de localStorage persist:auth (cabeceras x-oauth y x-partner-id). Igual que restotec-yango
+# (bot/sources/yango_web.py, docs/VENDOR_APP.md, verificado 2026-10-04/07). Solo lectura: nunca se pulsa nada.
+vendor:
+  base_url: "https://vendor.yango.com"
+  home_path: "/home"                       # la web pide los pedidos activos cada pocos segundos desde aquí
+  api_prefix: "/4.0/restapp-front"
+  active: "/eats-restapp-orders/v2/active"  # orders_by_status[].orders[] {order_nr, status: new|accepted|ready|in_delivery}
+  order: "/eats-restapp-orders/v1/order?order_nr={order_nr}"   # detalle: status final (released/given o refused)
+  logged_out_url_regex: "passport\\.|/auth"

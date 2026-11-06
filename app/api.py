@@ -1,8 +1,10 @@
 """API y páginas: tienda pública (dominio.com/<slug>), portal del partner y panel de admin."""
 import asyncio
+import hashlib
 import hmac
 import json
 import logging
+import re
 import os
 import secrets
 import time
@@ -15,13 +17,26 @@ from fastapi.responses import HTMLResponse, JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 
-from app import (auth, checkout, db, geo, menu as menu_mod, orders, partners, pricing, quotes,
-                 runtime as runtime_mod, themes)
+from app import (alerts, auth, billing, branches, checkout, dashboard, db, geo, menu as menu_mod, orders, partners,
+                 pricing, push, quotes, runtime as runtime_mod, themes, tiktok, upsell)
 from app.config import ROOT, settings
 from bot import sessions
+from bot.login import LoginError
 
 log = logging.getLogger("api")
 templates = Jinja2Templates(directory=str(ROOT / "app" / "templates"))
+
+
+def _asset_version() -> str:
+    """Huella de app/static: va en las URLs (?v=) para que el navegador no use una versión vieja tras publicar."""
+    h = hashlib.sha1()
+    for f in sorted((ROOT / "app" / "static").rglob("*")):
+        if f.is_file():
+            h.update(f.name.encode()); h.update(f.read_bytes())
+    return h.hexdigest()[:10]
+
+
+templates.env.globals["v"] = _asset_version()
 
 
 def seed_demo() -> None:
@@ -65,6 +80,19 @@ def script_json(data: Any) -> str:
     return json.dumps(data, ensure_ascii=False).replace("</", "<\\/")
 
 
+def _store_videos(p: Dict[str, Any]) -> list:
+    """Videos para la tienda; los guardados antes con un solo producto (item_id) pasan a item_ids."""
+    return [{**v, "item_ids": v.get("item_ids") or ([v["item_id"]] if v.get("item_id") else [])}
+            for v in (p["profile"] or {}).get("tiktok") or []]
+
+
+def _bestsellers(p: Dict[str, Any]) -> Dict[str, Any]:
+    m = menu_mod.load(p["id"])
+    if not m:
+        return {"items": [], "source": ""}
+    return upsell.bestsellers(p["id"], m, (p["profile"] or {}).get("bestsellers"))
+
+
 def rt() -> runtime_mod.Runtime:
     return runtime_mod.get_runtime()
 
@@ -96,7 +124,36 @@ async def health():
 
 @app.get("/", response_class=HTMLResponse)
 async def home(request: Request):
-    return templates.TemplateResponse(request, "home.html", {})
+    """Landing de carta.bo para vender el servicio a restaurantes."""
+    demo = next((p["slug"] for p in partners.all_partners() if p["enabled"]), None)
+    return templates.TemplateResponse(request, "landing.html", {
+        "price": settings.plan_price_bs, "sponsored": settings.plan_sponsored_months,
+        "min_paid": settings.plan_min_paid_months, "currency": settings.currency, "demo": demo,
+        "whatsapp": re.sub(r"\D", "", settings.sales_whatsapp)})
+
+
+_lead_hits: Dict[str, Deque[float]] = defaultdict(deque)
+
+
+@app.post("/api/leads")
+async def api_lead(request: Request, body: Dict[str, Any] = Body(...)):
+    """Formulario de la landing: queda en Eventos (admin) y se avisa por Telegram."""
+    ip = request.headers.get("x-forwarded-for", "").split(",")[0].strip() or (request.client.host if request.client else "")
+    now, dq = time.time(), _lead_hits[ip]
+    while dq and now - dq[0] > 3600:
+        dq.popleft()
+    if len(dq) >= 5:
+        raise HTTPException(429, "Ya recibimos tus datos, te escribimos pronto")
+    clean = lambda k, n: re.sub(r"[<>]", "", " ".join(str(body.get(k) or "").split()))[:n]  # noqa: E731
+    lead = {"nombre": clean("name", 80), "restaurante": clean("restaurant", 80), "telefono": clean("phone", 20),
+            "sucursales": clean("branches", 4), "mensaje": clean("message", 400)}
+    if len(lead["nombre"]) < 2 or len(lead["restaurante"]) < 2 or len(re.sub(r"\D", "", lead["telefono"])) < 7:
+        raise HTTPException(422, "Escribe tu nombre, tu restaurante y un celular de contacto")
+    dq.append(now)
+    db.event("lead", lead)
+    await alerts.alert("lead", f"Nuevo interesado en carta.bo: {lead['restaurante']} · {lead['nombre']} · "
+                               f"{lead['telefono']} · {lead['sucursales'] or '?'} sucursal(es). {lead['mensaje']}")
+    return {"ok": True}
 
 
 # ---------------------------------------------------------------------------------------------- tienda
@@ -104,14 +161,76 @@ def _store_ctx(p: Dict[str, Any]) -> Dict[str, Any]:
     theme = themes.merge(p["theme"])
     return {"p": p, "theme": theme, "css_vars": themes.css_vars(theme), "fonts_href": themes.fonts_href(theme),
             "profile": p["profile"] or {}, "currency": settings.currency,
-            "yandex_key": settings.yandex_maps_api_key,
             "store_json": script_json({"slug": p["slug"], "name": p["name"], "currency": settings.currency,
                                       "center": [p.get("place_lat") or -17.7833, p.get("place_lon") or -63.1821],
                                       "accepting": bool(p["accepting_orders"]),
+                                      "tiktok": _store_videos(p),
+                                      "bestsellers": _bestsellers(p)["items"],
+                                      "branch": {"name": p.get("place_name") or p["name"], "lat": p.get("place_lat"),
+                                                 "lon": p.get("place_lon")} if p.get("place_lat") is not None else None,
                                       "yandexKey": settings.yandex_maps_api_key,
-                                      "phonePrefix": settings.phone_prefix,
+                                      "mapLang": settings.yandex_maps_lang,
+                                      "phonePrefix": settings.phone_prefix, "v": templates.env.globals["v"],
                                       "deliveryTiers": pricing.public_tiers()}),
             "delivery_tiers": pricing.public_tiers()}
+
+
+@app.get("/sw.js", include_in_schema=False)
+async def service_worker():
+    """Service worker de la web del cliente (en la raíz para que cubra todas las tiendas): avisos push del pedido."""
+    return Response((ROOT / "app" / "static" / "sw.js").read_text(), media_type="application/javascript",
+                    headers={"Service-Worker-Allowed": "/", "Cache-Control": "no-cache"})
+
+
+@app.get("/{slug}/manifest.webmanifest", include_in_schema=False)
+async def web_manifest(slug: str, order: Optional[str] = None):
+    """Manifest para instalar la tienda como app. Con ?order= abre directo en el seguimiento de ese pedido."""
+    p = _partner_or_404(slug)
+    theme = themes.merge(p["theme"])
+    start = f"/{slug}"
+    if order and re.fullmatch(r"[A-Za-z0-9_-]{10,40}", order):
+        o = orders.get(order)
+        if o and o["partner_id"] == p["id"]:
+            start = f"/{slug}/pedido/{order}"
+    icons = [{"src": f"/{slug}/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any"}]
+    if theme.get("logo_url"):
+        icons.insert(0, {"src": theme["logo_url"], "sizes": "512x512", "purpose": "any"})
+    return JSONResponse({"name": p["name"], "short_name": p["name"][:24], "start_url": start, "scope": f"/{slug}",
+                         "id": f"/{slug}", "display": "standalone", "background_color": theme.get("background") or "#ffffff",
+                         "theme_color": theme.get("primary") or "#111111", "lang": "es", "icons": icons},
+                        media_type="application/manifest+json")
+
+
+@app.get("/{slug}/icon.svg", include_in_schema=False)
+async def store_icon(slug: str):
+    """Ícono de la app instalada: inicial del restaurante sobre su color (si no hay logo)."""
+    p = _partner_or_404(slug)
+    theme = themes.merge(p["theme"])
+    color = theme.get("primary") or "#111111"
+    letter = (p["name"][:1] or "C").upper().replace("&", "&amp;").replace("<", "&lt;")
+    svg = (f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512"><rect width="512" height="512" rx="112" '
+           f'fill="{color}"/><text x="256" y="340" text-anchor="middle" font-family="Inter,Arial,sans-serif" '
+           f'font-size="260" font-weight="700" fill="{theme.get("on_primary") or "#fff"}">{letter}</text></svg>')
+    return Response(svg, media_type="image/svg+xml", headers={"Cache-Control": "public, max-age=3600"})
+
+
+@app.get("/api/push/key")
+async def push_key():
+    return {"key": push.keys()["public"]}
+
+
+@app.post("/api/{slug}/orders/{token}/push")
+async def api_order_push(slug: str, token: str, body: Dict[str, Any] = Body(...)):
+    """El cliente activa los avisos de su pedido: guarda la suscripción Web Push del teléfono."""
+    p = _partner_or_404(slug)
+    o = orders.get(token)
+    if not o or o["partner_id"] != p["id"]:
+        raise HTTPException(404, "Pedido no encontrado")
+    try:
+        push.subscribe(token, body)
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+    return {"ok": True, "subscriptions": push.count(token)}
 
 
 @app.get("/{slug}/pedido/{token}", response_class=HTMLResponse)
@@ -126,10 +245,52 @@ async def order_page(request: Request, slug: str, token: str):
     return templates.TemplateResponse(request, "order.html", ctx)
 
 
+def _branch_or_404(p: Dict[str, Any], slug: Optional[str]) -> Dict[str, Any]:
+    b = branches.get(p, slug)
+    if not b:
+        raise HTTPException(404, "Sucursal desconocida")
+    return b
+
+
+async def _branch_menu(p: Dict[str, Any], b: Dict[str, Any]) -> Dict[str, Any]:
+    return await checkout.branch_menu(p, b)
+
+
 @app.get("/api/{slug}/menu")
-async def api_menu(slug: str):
+async def api_menu(slug: str, branch: Optional[str] = None):
+    """Menú de la sucursal (por defecto la principal). `alias`: ids de la principal → ids de esta sucursal,
+    para traducir lo configurado una vez (más vendidos, videos de TikTok)."""
     p = _partner_or_404(slug)
-    return menu_mod.public_menu(_menu_or_503(p))
+    b = _branch_or_404(p, branch)
+    m = await _branch_menu(p, b)
+    out = menu_mod.public_menu(m)
+    out["branch"] = b
+    if not b["primary"]:
+        main = menu_mod.load(p["id"])
+        out["alias"] = branches.alias(main, m) if main else {}
+    return out
+
+
+@app.get("/api/{slug}/branch")
+async def api_branch(slug: str, lat: float, lon: float):
+    """Sucursal de la marca que atiende ese punto (la que Yango asigna). branch=None: ninguna llega."""
+    p = _partner_or_404(slug)
+    if not geo.in_bounds(lat, lon):
+        return {"branch": None}
+    try:
+        return {"branch": await branches.find(rt().source, p, lat, lon)}
+    except Exception as e:
+        log.warning("sucursal %s: %s", slug, e)
+        raise HTTPException(503, "No pudimos consultar la sucursal, intenta de nuevo")
+
+
+@app.get("/api/{slug}/upsell")
+async def api_upsell(slug: str, items: str = "", context: str = "item", branch: Optional[str] = None):
+    """Sugerencias para la ficha de un producto (context=item) o para cerrar el carrito (context=cart)."""
+    p = _partner_or_404(slug)
+    m = await _branch_menu(p, _branch_or_404(p, branch))
+    ids = [i for i in items.split(",") if i][:30]
+    return {"items": upsell.suggest(p["id"], m, ids, "cart" if context == "cart" else "item")}
 
 
 @app.post("/api/{slug}/geocode")
@@ -149,6 +310,22 @@ async def api_geocode(slug: str, body: Dict[str, Any] = Body(...)):
     return {"ok": bool(res), "address": res}
 
 
+@app.post("/api/{slug}/address-search")
+async def api_address_search(slug: str, body: Dict[str, Any] = Body(...)):
+    """Lo que el cliente escribe en «Dirección» → direcciones cercanas (buscador de Yango) para mover el mapa."""
+    p = _partner_or_404(slug)
+    q = re.sub(r"\s+", " ", str(body.get("q") or "")).strip()[:80]
+    if len(q) < 3:
+        return {"results": []}
+    lat, lon = p.get("place_lat") or -17.7833, p.get("place_lon") or -63.1821
+    try:
+        raw = await rt().source.search_address(p["account"], q, lat, lon)
+    except Exception as e:
+        log.warning("búsqueda de dirección %s: %s", slug, e)
+        raise HTTPException(503, "No pudimos buscar la dirección, mueve el mapa hasta tu puerta")
+    return {"results": geo.parse_suggest(raw, lat, lon)}
+
+
 @app.post("/api/{slug}/quote")
 async def api_quote(slug: str, body: Dict[str, Any] = Body(...)):
     p = _partner_or_404(slug)
@@ -161,16 +338,29 @@ async def api_quote(slug: str, body: Dict[str, Any] = Body(...)):
         raise HTTPException(422, "Coordenadas inválidas")
     if not geo.in_bounds(lat, lon):
         return {"available": False, "reason": "fuera_de_zona", "can_order": False}
+    b = _branch_or_404(p, body.get("branch"))
     try:
-        q = await rt().quotes.quote(p["account"], p["place_slug"], lat, lon)
+        q = await rt().quotes.quote(p["account"], b["slug"], lat, lon)
     except Exception as e:
         log.warning("quote %s: %s", slug, e)
         raise HTTPException(503, "No pudimos cotizar el envío, intenta de nuevo")
     out = quotes.price_for(q, subtotal)
+    if out["reason"] == "cerrado" and b.get("lat") is not None:
+        # Yango marca «no disponible por horario» tanto si el local cerró como si cerró la zona por demanda.
+        # El estado real del local es el de su propia ubicación: si ahí atiende, lo que está cerrado es la zona.
+        try:
+            own = await rt().quotes.quote(p["account"], b["slug"], b["lat"], b["lon"])
+            if own["available"]:
+                out["reason"] = "zona_cerrada"
+            else:
+                out["opens_at"] = own.get("available_from")
+        except Exception as e:
+            log.warning("estado de la sucursal %s: %s", slug, e)
     out["min_order"] = max(out.get("min_order") or 0, p.get("min_order") or 0)
     out["below_min_order"] = subtotal < out["min_order"]
     out["can_order"] = out["can_order"] and not out["below_min_order"] and bool(p["accepting_orders"])
     out.pop("surge_info", None)
+    out["branch"] = b["slug"]
     return out
 
 
@@ -267,12 +457,105 @@ async def portal_profile(request: Request, slug: str, body: Dict[str, Any] = Bod
     return partners.set_profile(slug, body)
 
 
+@app.get("/api/{slug}/portal/summary")
+async def portal_summary(request: Request, slug: str, days: int = 30):
+    """Ventas del restaurante para el inicio del portal (mismos números que el resumen del admin)."""
+    auth.require_portal(request, slug)
+    p = _partner_or_404(slug, public=False)
+    return dashboard.summary(max(0, min(days, 3650)), p["id"])
+
+
+@app.get("/api/{slug}/portal/billing")
+async def portal_billing(request: Request, slug: str):
+    auth.require_portal(request, slug)
+    p = _partner_or_404(slug, public=False)
+    return {**billing.summary(p), "payment_info": settings.plan_payment_info}
+
+
+@app.post("/api/{slug}/portal/billing/accept")
+async def portal_billing_accept(request: Request, slug: str, body: Dict[str, Any] = Body(...)):
+    """El partner acepta el acuerdo (nombre de quien acepta, fecha, IP y versión de los términos)."""
+    auth.require_portal(request, slug)
+    p = _partner_or_404(slug, public=False)
+    if body.get("accept") is not True:
+        raise HTTPException(422, "Marca la casilla para aceptar el acuerdo")
+    ip = request.headers.get("x-forwarded-for", "").split(",")[0].strip() or (request.client.host if request.client else "")
+    try:
+        return {**billing.accept(p, str(body.get("name") or ""), ip), "payment_info": settings.plan_payment_info}
+    except ValueError as e:
+        raise HTTPException(422, str(e))
+
+
 @app.put("/api/{slug}/portal/accepting")
 async def portal_accepting(request: Request, slug: str, body: Dict[str, Any] = Body(...)):
     auth.require_portal(request, slug)
     _partner_or_404(slug, public=False)
     partners.update(slug, accepting_orders=1 if body.get("accepting") else 0)
     return {"accepting_orders": bool(body.get("accepting"))}
+
+
+@app.exception_handler(tiktok.TikTokError)
+async def _tiktok_error(request: Request, exc: tiktok.TikTokError):
+    return JSONResponse({"detail": str(exc)}, status_code=422)
+
+
+def _videos(p: Dict[str, Any]) -> list:
+    return list((p["profile"] or {}).get("tiktok") or [])
+
+
+@app.post("/api/{slug}/portal/tiktok")
+async def portal_tiktok_add(request: Request, slug: str, body: Dict[str, Any] = Body(...)):
+    """Agrega un video de TikTok (enlace) etiquetado con el producto que aparece."""
+    auth.require_portal(request, slug)
+    p = _partner_or_404(slug, public=False)
+    videos = _videos(p)
+    if len(videos) >= tiktok.MAX_VIDEOS:
+        raise HTTPException(422, f"Máximo {tiktok.MAX_VIDEOS} videos")
+    v = await tiktok.resolve(str(body.get("url") or ""), slug)
+    v["item_ids"] = _valid_items(p, body.get("item_ids") or ([body["item_id"]] if body.get("item_id") else []))
+    videos = [x for x in videos if x["id"] != v["id"]] + [v]
+    return partners.set_tiktok(slug, videos)
+
+
+@app.put("/api/{slug}/portal/tiktok")
+async def portal_tiktok_update(request: Request, slug: str, body: Dict[str, Any] = Body(...)):
+    """Reordenar y cambiar los productos etiquetados: body {videos: [{id, item_ids}]} en el orden nuevo."""
+    auth.require_portal(request, slug)
+    p = _partner_or_404(slug, public=False)
+    current = {v["id"]: v for v in _videos(p)}
+    out = []
+    for x in body.get("videos") or []:
+        v = current.get(str(x.get("id")))
+        if v:
+            ids = x.get("item_ids") if "item_ids" in x else ([x["item_id"]] if x.get("item_id") else [])
+            out.append({**v, "item_ids": _valid_items(p, ids)})
+    return partners.set_tiktok(slug, out)
+
+
+def _valid_items(p: Dict[str, Any], ids: Any) -> list:
+    m = menu_mod.load(p["id"])
+    if not m or not isinstance(ids, list):
+        return []
+    return [str(i) for i in ids if str(i) in m["items"]]
+
+
+@app.get("/api/{slug}/portal/bestsellers")
+async def portal_bestsellers(request: Request, slug: str):
+    auth.require_portal(request, slug)
+    p = _partner_or_404(slug, public=False)
+    m = menu_mod.load(p["id"])
+    cfg = (p["profile"] or {}).get("bestsellers") or {"mode": "auto", "items": []}
+    auto = upsell.bestsellers(p["id"], m, None) if m else {"items": [], "source": ""}
+    return {**cfg, "auto": auto, "current": _bestsellers(p)}
+
+
+@app.put("/api/{slug}/portal/bestsellers")
+async def portal_bestsellers_set(request: Request, slug: str, body: Dict[str, Any] = Body(...)):
+    """«Más vendidos»: {mode: auto|manual, items: [ids en orden]}."""
+    auth.require_portal(request, slug)
+    p = _partner_or_404(slug, public=False)
+    partners.set_bestsellers(slug, str(body.get("mode") or "auto"), _valid_items(p, body.get("items") or []))
+    return await portal_bestsellers(request, slug)
 
 
 ALLOWED_IMAGES = {"image/png": "png", "image/jpeg": "jpg", "image/webp": "webp"}
@@ -333,8 +616,29 @@ async def admin_health(request: Request):
                   "AND substr(created_at, 1, 7)=?", (month,))["c"]
     return {"source": rt().source.health(), "queues": rt().dispatcher.health(), "quotes": rt().quotes.stats,
             "orders": counts, "order_placement_enabled": settings.order_placement_enabled,
+            "placement": {p["slug"]: partners.placement_enabled(p) for p in partners.all_partners() if p["enabled"]},
             "commission_month": comm, "commission_rate": settings.commission_rate,
             "delivery_fee_mode": settings.delivery_fee_mode, "delivery_tiers": pricing.public_tiers()}
+
+
+@app.get("/api/admin/dashboard")
+async def admin_dashboard(request: Request, days: int = 30, partner: Optional[str] = None):
+    auth.require_admin(request)
+    p = partners.get(partner) if partner else None
+    out = dashboard.summary(max(0, min(days, 3650)), p["id"] if p else None)
+    accounts = [dict(r) for r in db.query("SELECT name, status, detail, checked_at FROM accounts ORDER BY name")]
+    used = {x["account"] for x in partners.all_partners() if x["enabled"]}
+    out["accounts"] = [a for a in accounts if a["name"] in used] or accounts
+    out["pairs"] = []
+    for x in ([p] if p else partners.all_partners()):
+        m = menu_mod.load(x["id"])
+        if m:
+            out["pairs"] += upsell.top_pairs(x["id"], m)
+    out["pairs"] = sorted(out["pairs"], key=lambda r: -r["orders"])[:8]
+    out["quotes"] = rt().quotes.stats
+    out["source"] = rt().source.name
+    out["order_placement_enabled"] = settings.order_placement_enabled
+    return out
 
 
 @app.get("/api/admin/partners")
@@ -345,6 +649,11 @@ async def admin_partners(request: Request):
         m = db.one("SELECT synced_at, error, length(data) n FROM menus WHERE partner_id=?", (p["id"],))
         p.pop("portal_password_hash", None)
         p["menu"] = dict(m) if m else None
+        p["placement_enabled"] = partners.placement_enabled(p)
+        b = billing.summary(p)
+        p["billing"] = {k: b[k] for k in ("state", "branches", "monthly_bs", "price_bs", "sponsored_months", "min_paid_months",
+                                          "start_date", "sponsored_until", "commitment_until", "paid_until", "due_bs",
+                                          "accepted_at", "accepted_name", "branches_contracted", "free_forever", "free_note")}
         out.append(p)
     return out
 
@@ -370,8 +679,21 @@ async def admin_update_partner(request: Request, slug: str, body: Dict[str, Any]
         p = partners.update(slug, **body)
     except (ValueError, TypeError) as e:
         raise HTTPException(422, str(e))
+    db.event("restaurante_editado", {k: body[k] for k in sorted(body) if k != "password"}, partner_id=p["id"])
     p.pop("portal_password_hash", None)
+    p["placement_enabled"] = partners.placement_enabled(p)
     return p
+
+
+@app.put("/api/admin/partners/{slug}/billing")
+async def admin_partner_billing(request: Request, slug: str, body: Dict[str, Any] = Body(...)):
+    """Plan del partner: precio por sucursal, sucursales, meses que paga Yango, permanencia, inicio, pagado hasta."""
+    auth.require_admin(request)
+    p = _partner_or_404(slug, public=False)
+    try:
+        return billing.update(p, body)
+    except (ValueError, TypeError) as e:
+        raise HTTPException(422, f"Dato inválido: {e}")
 
 
 @app.post("/api/admin/partners/{slug}/password")
@@ -401,7 +723,7 @@ async def admin_accounts(request: Request):
     rows = [dict(r) for r in db.query("SELECT * FROM accounts ORDER BY name")]
     for r in rows:
         r["has_session"] = sessions.has_session(r["name"])
-        r["partners"] = [p["slug"] for p in partners.all_partners() if p["account"] == r["name"]]
+        r["partners"] = [p["slug"] for p in partners.all_partners() if r["name"] in (p["account"], p.get("vendor_account"))]
     return rows
 
 
@@ -422,6 +744,40 @@ async def admin_check_account(request: Request, name: str):
     res = await rt().source.check_session(name)
     sessions.set_status(name, "ok" if res["ok"] else "caida", res["detail"])
     return res
+
+
+@app.exception_handler(LoginError)
+async def _login_error(request: Request, exc: LoginError):
+    return JSONResponse({"detail": str(exc)}, status_code=422)
+
+
+@app.post("/api/admin/accounts/{name}/login")
+async def admin_login_start(request: Request, name: str, body: Dict[str, Any] = Body(...)):
+    """Login asistido con el teléfono de la cuenta: el bot pide el SMS, el operador escribe el código."""
+    auth.require_admin(request)
+    try:
+        return await rt().login.start(name, str(body.get("phone") or ""))
+    except sessions.SessionImportError as e:
+        raise HTTPException(422, str(e))
+
+
+@app.get("/api/admin/accounts/{name}/login")
+async def admin_login_status(request: Request, name: str):
+    auth.require_admin(request)
+    return await rt().login.status(name)
+
+
+@app.post("/api/admin/accounts/{name}/login/action")
+async def admin_login_action(request: Request, name: str, body: Dict[str, Any] = Body(...)):
+    auth.require_admin(request)
+    return await rt().login.act(name, body)
+
+
+@app.delete("/api/admin/accounts/{name}/login")
+async def admin_login_cancel(request: Request, name: str):
+    auth.require_admin(request)
+    await rt().login.cancel(name)
+    return {"ok": True}
 
 
 @app.get("/api/admin/orders")
@@ -458,6 +814,24 @@ async def admin_order_status(request: Request, token: str, body: Dict[str, Any] 
         rt().dispatcher.enqueue(o["account"], token)
         return o
     raise HTTPException(422, "Acción inválida")
+
+
+@app.post("/api/admin/orders/{token}/dry-run")
+async def admin_order_dry_run(request: Request, token: str):
+    """Probar en Yango sin pedir: carrito, dirección, comentarios, NIT y Efectivo comprobado, sin el botón final.
+    Usa el carrito de la cuenta: espera su turno en la cola de esa cuenta (un pedido a la vez)."""
+    auth.require_admin(request)
+    o = orders.get(token)
+    if not o:
+        raise HTTPException(404, "Pedido no encontrado")
+    partner = partners.get_by_id(o["partner_id"])
+    try:
+        res = await rt().source.place_order(o["account"], partner, o, dry_run=True)
+    except Exception as e:
+        db.event("prueba_yango_fallo", {"error": str(e)[:300]}, order_token=token, partner_id=o["partner_id"])
+        raise HTTPException(502, f"La prueba falló: {e}")
+    db.event("prueba_yango_ok", res, order_token=token, partner_id=o["partner_id"])
+    return res
 
 
 @app.get("/api/admin/events")

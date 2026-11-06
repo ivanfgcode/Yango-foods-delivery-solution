@@ -80,9 +80,23 @@ def create(slug: str, name: str, account: str, yango_url: str = "", place_slug: 
     return get(slug)
 
 
+def placement_enabled(p: Dict[str, Any]) -> bool:
+    """¿El bot coloca los pedidos de este restaurante? Su ajuste propio o, si no tiene, el general."""
+    from app.config import settings
+    v = p.get("auto_place")
+    return settings.order_placement_enabled if v is None else bool(v)
+
+
+def _flag(v: Any) -> int:
+    if isinstance(v, str):
+        return 1 if v.strip().lower() in ("1", "true", "si", "sí", "on", "yes") else 0
+    return 1 if v else 0
+
+
 def update(slug: str, **fields: Any) -> Dict[str, Any]:
-    allowed = {"name", "yango_url", "place_slug", "place_id", "place_lat", "place_lon", "place_address",
-               "account", "enabled", "accepting_orders", "min_order", "brand_slug", "commission_rate"}
+    allowed = {"name", "yango_url", "place_slug", "place_id", "place_lat", "place_lon", "place_address", "place_name",
+               "account", "enabled", "accepting_orders", "min_order", "brand_slug", "vendor_account", "auto_place",
+               "commission_rate"}
     if "commission_rate" in fields and fields["commission_rate"] not in (None, ""):
         rate = float(fields["commission_rate"])
         if not 0 <= rate <= 0.5:
@@ -94,7 +108,38 @@ def update(slug: str, **fields: Any) -> Dict[str, Any]:
     for k, v in fields.items():
         if k not in allowed:
             continue
+        if k == "name":
+            v = re.sub(r"[<>]", "", str(v or "")).strip()[:80]
+            if not v:
+                raise ValueError("Falta el nombre")
+        if k == "account":
+            v = str(v or "").strip()
+            if not re.match(r"^[A-Za-z0-9_-]{1,40}$", v):
+                raise ValueError("Cuenta Yango inválida: solo letras, números, _ y -")
+        if k in ("enabled", "accepting_orders"):
+            v = _flag(v)
+        if k == "auto_place":
+            v = None if v in (None, "", "general") else _flag(v)
+        if k == "min_order":
+            try:
+                v = None if v in (None, "") else round(float(v), 2)
+            except (TypeError, ValueError):
+                raise ValueError("Pedido mínimo inválido")
+            if v is not None and not 0 <= v <= 10000:
+                raise ValueError("Pedido mínimo inválido")
+        if k == "vendor_account":
+            v = str(v or "").strip() or None
+            if v and not re.match(r"^[A-Za-z0-9_-]{1,40}$", v):
+                raise ValueError("Cuenta vendor inválida: solo letras, números, _ y -")
         if k == "yango_url":
+            v = str(v or "").strip()
+            if v and not v.startswith("https://"):
+                raise ValueError("La URL de Yango debe empezar con https://")
+            cur = get(slug) or {}
+            if v != (cur.get("yango_url") or "") and "place_slug" not in fields:
+                # Otro restaurante en Yango: el bot vuelve a resolver el local al sincronizar.
+                sets += ["place_slug=?", "place_id=?", "place_lat=?", "place_lon=?", "place_address=?", "place_name=?"]
+                vals += [None] * 6
             sets.append("brand_slug=?")
             vals.append(parse_yango_url(v)["brand_slug"])
         sets.append(f"{k}=?")
@@ -103,8 +148,9 @@ def update(slug: str, **fields: Any) -> Dict[str, Any]:
         sets.append("updated_at=?")
         vals.append(db.now_iso())
         db.execute(f"UPDATE partners SET {', '.join(sets)} WHERE slug=?", (*vals, slug))
-        if "account" in fields:
-            db.execute("INSERT OR IGNORE INTO accounts(name) VALUES (?)", (fields["account"],))
+        for k in ("account", "vendor_account"):
+            if fields.get(k):
+                db.execute("INSERT OR IGNORE INTO accounts(name) VALUES (?)", (fields[k],))
     return get(slug)
 
 
@@ -138,6 +184,44 @@ def set_profile(slug: str, patch: Dict[str, Any]) -> Dict[str, Any]:
     db.execute("UPDATE partners SET profile=?, updated_at=? WHERE slug=?",
                (json.dumps(profile, ensure_ascii=False), db.now_iso(), slug))
     return profile
+
+
+def set_tiktok(slug: str, videos: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Videos de TikTok de la tienda: [{id, url, title, author, poster, item_ids}] (máx. 12)."""
+    p = get(slug)
+    profile = dict(p["profile"] or {})
+    clean = []
+    for v in videos[:12]:
+        if not re.fullmatch(r"\d{8,25}", str(v.get("id") or "")):
+            continue
+        clean.append({"id": str(v["id"]), "url": str(v.get("url") or "")[:300],
+                      "title": re.sub(r"[<>]", "", str(v.get("title") or ""))[:150],
+                      "author": re.sub(r"[<>]", "", str(v.get("author") or ""))[:60],
+                      "poster": v.get("poster") if re.fullmatch(r"/uploads/[\w.-]+", str(v.get("poster") or "")) else None,
+                      "item_ids": _ids(v.get("item_ids") or ([v["item_id"]] if v.get("item_id") else []), 6)})
+    profile["tiktok"] = clean
+    db.execute("UPDATE partners SET profile=?, updated_at=? WHERE slug=?",
+               (json.dumps(profile, ensure_ascii=False), db.now_iso(), slug))
+    return clean
+
+
+def _ids(values: Any, limit: int) -> List[str]:
+    out: List[str] = []
+    for v in values if isinstance(values, list) else []:
+        s = str(v)[:40]
+        if re.fullmatch(r"[\w-]+", s) and s not in out:
+            out.append(s)
+    return out[:limit]
+
+
+def set_bestsellers(slug: str, mode: str, items: List[Any]) -> Dict[str, Any]:
+    """«Más vendidos» de la tienda: automático (estadísticas de pedidos) o elegido a mano (máx. 12)."""
+    p = get(slug)
+    profile = dict(p["profile"] or {})
+    profile["bestsellers"] = {"mode": "manual" if mode == "manual" else "auto", "items": _ids(items, 12)}
+    db.execute("UPDATE partners SET profile=?, updated_at=? WHERE slug=?",
+               (json.dumps(profile, ensure_ascii=False), db.now_iso(), slug))
+    return profile["bestsellers"]
 
 
 def set_password(slug: str, password: str) -> None:

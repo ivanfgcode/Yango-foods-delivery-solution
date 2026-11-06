@@ -14,6 +14,7 @@ from app.config import settings
 
 _SAMESITE = {"no_restriction": "None", "none": "None", "lax": "Lax", "strict": "Strict", "unspecified": "Lax"}
 NAME_RE = re.compile(r"^[A-Za-z0-9_-]{1,40}$")
+COOKIE_NAME_RE = re.compile(r"^[!#$%&'*+.^_`|~0-9A-Za-z-]{1,128}$")
 
 
 class SessionImportError(ValueError):
@@ -42,13 +43,31 @@ def _convert_cookie(c: Dict[str, Any]) -> Dict[str, Any]:
     return out
 
 
+def from_cookie_header(text: str) -> List[Dict[str, Any]]:
+    """Línea «Cookie: a=1; b=2» copiada de las herramientas del navegador (pestaña Red) → cookies de .yango.com."""
+    text = text.strip()
+    if text.lower().startswith("cookie:"):
+        text = text[7:]
+    cookies = []
+    for part in text.split(";"):
+        name, sep, value = part.strip().partition("=")
+        if not sep or not COOKIE_NAME_RE.match(name):
+            raise SessionImportError("No es JSON ni una línea «Cookie: nombre=valor; ...»")
+        cookies.append({"name": name, "value": value, "domain": ".yango.com", "path": "/", "secure": True})
+    if not cookies:
+        raise SessionImportError("No hay cookies")
+    return cookies
+
+
 def to_storage_state(raw: Any) -> Dict[str, Any]:
-    """Acepta: lista de cookies (Cookie-Editor / EditThisCookie) o storage_state de Playwright."""
-    if isinstance(raw, (str, bytes)):
+    """Acepta: lista de cookies (Cookie-Editor / EditThisCookie), storage_state de Playwright o línea «Cookie:»."""
+    if isinstance(raw, bytes):
+        raw = raw.decode("utf-8", "replace")
+    if isinstance(raw, str):
         try:
             raw = json.loads(raw)
         except ValueError:
-            raise SessionImportError("El archivo no es JSON")
+            raw = from_cookie_header(raw)
     if isinstance(raw, dict) and isinstance(raw.get("cookies"), list):
         cookies: List[Dict[str, Any]] = raw["cookies"]
         origins = raw.get("origins") or []
@@ -60,6 +79,10 @@ def to_storage_state(raw: Any) -> Dict[str, Any]:
     yango = [c for c in conv if "yango" in c["domain"] or "yandex" in c["domain"]]
     if not yango:
         raise SessionImportError("No hay cookies de yango.com en el archivo")
+    # Yandex Browser (y algunas extensiones) exportan Session_id con la firma tapada: así Yango no la acepta.
+    if any(c["name"] == "Session_id" and "XXXXXXXX" in c["value"] for c in conv):
+        raise SessionImportError("La cookie Session_id viene censurada (termina en XXXX). Expórtala desde Chrome o "
+                                 "Safari, o copia la línea «cookie:» de la pestaña Red de las herramientas del navegador.")
     return {"cookies": conv, "origins": origins}
 
 

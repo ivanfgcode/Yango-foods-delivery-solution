@@ -88,7 +88,7 @@ def require_operator(request: Request) -> str:
 
 def is_admin(request: Request) -> bool:
     key = request.headers.get("x-admin-key")
-    if key and hmac.compare_digest(key, settings.admin_key):
+    if key and any(hmac.compare_digest(key, k) for k in [settings.admin_key, *settings.admin_keys_extra]):
         return True
     data = verify(request.cookies.get(ADMIN_COOKIE))
     return bool(data and data.get("admin"))

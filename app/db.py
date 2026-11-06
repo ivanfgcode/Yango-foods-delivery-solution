@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS partners (
     place_lat REAL,
     place_lon REAL,
     place_address TEXT,
+    place_name TEXT,                      -- nombre de la sucursal en Yango («Wrap & Roll - Paragua»)
     account TEXT NOT NULL,                -- cuenta cliente de Yango que ve este restaurante
     enabled INTEGER NOT NULL DEFAULT 1,
     accepting_orders INTEGER NOT NULL DEFAULT 1,
@@ -36,6 +37,42 @@ CREATE TABLE IF NOT EXISTS menus (
     data TEXT NOT NULL,
     synced_at TEXT NOT NULL,
     error TEXT
+);
+
+-- Sucursales de la marca que Yango asignó a algún punto (eats-catalog/v2/brand/place) y su menú.
+CREATE TABLE IF NOT EXISTS branches (
+    place_slug TEXT PRIMARY KEY,
+    partner_id INTEGER NOT NULL REFERENCES partners(id),
+    place_id INTEGER,
+    name TEXT,
+    lat REAL,
+    lon REAL,
+    address TEXT,
+    updated_at TEXT NOT NULL
+);
+
+-- Plan de carta.bo por partner: precio por sucursal, meses que paga Yango, permanencia y acuerdo aceptado.
+CREATE TABLE IF NOT EXISTS billing (
+    partner_id INTEGER PRIMARY KEY REFERENCES partners(id),
+    price_bs REAL NOT NULL,
+    branches INTEGER,                     -- sucursales contratadas; NULL = las que conocemos en Yango
+    sponsored_months INTEGER NOT NULL,    -- meses pagados por Yango al empezar
+    min_paid_months INTEGER NOT NULL,     -- permanencia mínima después del patrocinio
+    start_date TEXT NOT NULL,             -- YYYY-MM-DD
+    paid_until TEXT,                      -- último día cubierto por pagos del partner (lo marca el equipo)
+    accepted_at TEXT,
+    accepted_name TEXT,
+    accepted_ip TEXT,
+    terms_version TEXT,
+    free_forever INTEGER NOT NULL DEFAULT 0, -- cortesía: sin cobros mientras esté activo
+    free_note TEXT,                          -- motivo (lo ve solo el equipo)
+    updated_at TEXT NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS branch_menus (
+    place_slug TEXT PRIMARY KEY,
+    data TEXT NOT NULL,
+    synced_at TEXT NOT NULL
 );
 
 CREATE TABLE IF NOT EXISTS orders (
@@ -127,28 +164,16 @@ CREATE TABLE IF NOT EXISTS kv (
     value TEXT NOT NULL,
     updated_at TEXT NOT NULL
 );
+-- Suscripciones Web Push del cliente a un pedido (avisos de estado en el teléfono).
+CREATE TABLE IF NOT EXISTS push_subs (
+    endpoint TEXT PRIMARY KEY,
+    order_token TEXT NOT NULL,
+    p256dh TEXT NOT NULL,
+    auth TEXT NOT NULL,
+    created_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS push_subs_order ON push_subs(order_token);
 """
-
-# Columnas agregadas después de la primera versión: se añaden a bases existentes al arrancar.
-MIGRATIONS = (
-    ("partners", "chain_id", "INTEGER REFERENCES chains(id)"),
-    ("partners", "commission_rate", "REAL"),
-    ("partners", "pdf_style", "TEXT NOT NULL DEFAULT '{}'"),
-    ("orders", "commission", "REAL NOT NULL DEFAULT 0"),
-    ("orders", "yango_fee", "REAL"),
-    ("orders", "channel", "TEXT NOT NULL DEFAULT 'web'"),
-    ("orders", "operator", "TEXT"),
-    ("accounts", "yango_phone", "TEXT"),
-)
-
-
-def _migrate(conn: sqlite3.Connection) -> None:
-    for table, col, ddl in MIGRATIONS:
-        cols = {r[1] for r in conn.execute(f"PRAGMA table_info({table})")}
-        if col not in cols:
-            conn.execute(f"ALTER TABLE {table} ADD COLUMN {col} {ddl}")
-    conn.execute("CREATE INDEX IF NOT EXISTS partners_chain ON partners(chain_id)")
-    conn.execute("CREATE INDEX IF NOT EXISTS orders_phone ON orders(json_extract(customer, '$.phone'))")
 
 _lock = threading.RLock()
 _conn: Optional[sqlite3.Connection] = None
@@ -171,6 +196,31 @@ def connect() -> sqlite3.Connection:
             _conn.executescript(SCHEMA)
             _migrate(_conn)
         return _conn
+
+
+# Columnas agregadas después de crear la base en producción: (tabla, columna, tipo).
+ADDED_COLUMNS = [("partners", "place_name", "TEXT"), ("billing", "free_forever", "INTEGER NOT NULL DEFAULT 0"),
+                 ("billing", "free_note", "TEXT"),
+                 # Seguimiento: cuenta de la vendor app del local y etapa del pedido leída de Yango.
+                 ("partners", "vendor_account", "TEXT"), ("orders", "track_stage", "TEXT"),
+                 ("orders", "track_raw", "TEXT"), ("orders", "track_at", "TEXT"), ("orders", "track_eta", "TEXT"),
+                 # Colocación por restaurante: NULL = la general (ORDER_PLACEMENT_ENABLED), 1 = bot, 0 = manual.
+                 ("partners", "auto_place", "INTEGER"),
+                 # Cadenas (un bot por cadena), comisión, menú PDF y pedidos telefónicos de la cabina.
+                 ("partners", "chain_id", "INTEGER REFERENCES chains(id)"), ("partners", "commission_rate", "REAL"),
+                 ("partners", "pdf_style", "TEXT NOT NULL DEFAULT '{}'"),
+                 ("orders", "commission", "REAL NOT NULL DEFAULT 0"), ("orders", "yango_fee", "REAL"),
+                 ("orders", "channel", "TEXT NOT NULL DEFAULT 'web'"), ("orders", "operator", "TEXT"),
+                 ("accounts", "yango_phone", "TEXT")]
+
+
+def _migrate(conn: sqlite3.Connection) -> None:
+    for table, col, kind in ADDED_COLUMNS:
+        cols = {r["name"] for r in conn.execute(f"PRAGMA table_info({table})")}
+        if col not in cols:
+            conn.execute(f"ALTER TABLE {table} ADD COLUMN {col} {kind}")
+    conn.execute("CREATE INDEX IF NOT EXISTS partners_chain ON partners(chain_id)")
+    conn.execute("CREATE INDEX IF NOT EXISTS orders_phone ON orders(json_extract(customer, '$.phone'))")
 
 
 def reset_for_tests() -> None:
