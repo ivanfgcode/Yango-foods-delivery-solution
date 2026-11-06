@@ -112,6 +112,16 @@ Admin → Cadenas: nombre, **cuenta Yango (bot)**, usuario y contraseña. Los lo
 cambiar el bot de la cadena cambian todos). Como el carrito de una cuenta es uno, el bot coloca los pedidos de la
 cadena de a uno; las cotizaciones y el menú siguen en paralelo. Una cuenta no se comparte entre cadenas.
 
+### Equipo (miembros de la cabina)
+
+Admin → **Equipo**: alta de miembros (nombre, usuario, contraseña, rol operador/supervisor, horario acordado y
+celular), editar, cambiar contraseña y desactivar. Cada uno entra a `/operador` con su usuario. Por periodo (hoy,
+7 o 30 días) se ve de cada miembro: en línea ahora, horas conectado, hora de entrada, llamadas, pedidos, ventas,
+ticket medio, conversión (pedidos/llamadas), pedidos por hora y duración media de llamada; en **Detalle**, día por
+día (entrada, salida, horas, llamadas, pedidos, ventas), resultado de las llamadas, pedidos por hora del día y sus
+últimos pedidos. Las horas salen de un latido de la cabina cada minuto (`operator_sessions`; más de 10 min sin
+latido cuenta como pausa). En la cabina, **Mi turno** muestra los números del día.
+
 ### Cabina de operadores
 
 Admin → Funciones → Operadores crea los usuarios. En `/operador`: **F2** nueva llamada, el celular trae al cliente

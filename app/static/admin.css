@@ -302,3 +302,18 @@ input::placeholder, textarea::placeholder { color: var(--in-tenue); }
 .checks { display: flex; flex-direction: column; gap: 2px; }
 .step-ed { border: 1px solid var(--in-filo); border-radius: 14px; padding: 12px; margin-bottom: 12px; display: grid; gap: 8px; }
 .step-ed textarea { min-height: 70px; }
+
+/* Equipo: métricas por miembro */
+.team-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; }
+.team-kpis > div { padding: 14px 16px; border: 1px solid var(--in-filo); border-radius: 16px; background: var(--in-celda); display: grid; gap: 4px; }
+.team-kpis b { font: 500 24px/1 var(--in-cifras); color: var(--in-tinta); }
+.team-kpis span { font-size: 12px; color: var(--in-suave); }
+.team-kpis.sm b { font-size: 18px; }
+.team-det { display: grid; grid-template-columns: minmax(280px, 1fr) minmax(0, 1.4fr); gap: 22px; padding: 8px 4px 14px; }
+@media (max-width: 960px) { .team-det { grid-template-columns: 1fr; } }
+.team-det h3 { margin: 14px 0 8px; font: 500 14px var(--in-titulo); color: var(--in-tinta); }
+.hours { display: grid; grid-template-columns: repeat(24, 1fr); align-items: end; gap: 3px; height: 90px; padding: 6px; border: 1px solid var(--in-filo); border-radius: 12px; }
+.hours i { display: block; min-height: 2px; border-radius: 3px; background: var(--in-nar); }
+.hours-x { display: flex; justify-content: space-between; font: 400 11px var(--in-cifras); color: var(--in-tenue); margin-top: 4px; }
+tr.sub-row > td { background: var(--in-celda); }
+#teamDays button { white-space: nowrap; padding: 0 14px; }

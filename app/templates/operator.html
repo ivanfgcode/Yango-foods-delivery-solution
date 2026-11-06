@@ -30,11 +30,11 @@ document.getElementById("loginForm").onsubmit = async (e) => {
 {% else %}
 <div class="bar">
   <b>Cabina</b><span class="muted" id="opName"></span>
-  <button class="btn acc sm" id="newCall" title="F2">📞 Nueva llamada <kbd>F2</kbd></button>
+  <button class="btn acc sm" id="newCall" title="F2"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#phone"></use></svg>Nueva llamada <kbd>F2</kbd></button>
   <span class="timer" id="timer" hidden>00:00</span>
   <div class="sp"></div>
   <span class="muted keys"><kbd>/</kbd> buscar plato · <kbd>Alt</kbd>+<kbd>→</kbd> siguiente paso · <kbd>Ctrl</kbd>+<kbd>Enter</kbd> confirmar</span>
-  <button class="btn ghost sm tema-btn" type="button" data-tema-btn aria-label="Cambiar entre versión clara y oscura"><span data-tema-ic aria-hidden="true">☀️</span><span data-tema-lbl>Claro</span></button>
+  <button class="btn ghost sm tema-btn" type="button" data-tema-btn aria-label="Cambiar entre versión clara y oscura"><svg class="ic" aria-hidden="true" data-tema-ic><use href="/static/icons.svg#sun"></use></svg><span data-tema-lbl>Claro</span></button>
   <button class="btn ghost sm" id="logout">Salir</button>
 </div>
 
@@ -63,7 +63,7 @@ document.getElementById("loginForm").onsubmit = async (e) => {
 
     <section class="card blk" data-step="direccion">
       <h3><i>3</i> Dirección</h3>
-      <div class="opmap"><div id="map"></div><div class="pin">📍</div></div>
+      <div class="opmap"><div id="map"></div><div class="pin"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#map-pin"></use></svg></div></div>
       <div class="quote" id="quote">Mueve el mapa hasta la puerta del cliente</div>
       <div class="row">
         <label class="f" style="flex:2 1 220px"><span>Dirección</span><input id="addr" autocomplete="off"></label>
@@ -85,8 +85,8 @@ document.getElementById("loginForm").onsubmit = async (e) => {
     <section class="card blk" data-step="pago">
       <h3><i>5</i> Pago al mensajero</h3>
       <div class="row">
-        <label class="radio"><input type="radio" name="pay" value="cash" checked> 💵 Efectivo</label>
-        <label class="radio"><input type="radio" name="pay" value="qr"> 📱 QR</label>
+        <label class="radio"><input type="radio" name="pay" value="cash" checked> <svg class="ic" aria-hidden="true"><use href="/static/icons.svg#banknote"></use></svg> Efectivo</label>
+        <label class="radio"><input type="radio" name="pay" value="qr"> <svg class="ic" aria-hidden="true"><use href="/static/icons.svg#qr-code"></use></svg> QR</label>
         <label class="f" id="changeF" style="flex:0 1 180px;margin:0"><span>Paga con (cambio)</span><input id="change" inputmode="decimal" placeholder="100"></label>
       </div>
     </section>
@@ -113,6 +113,7 @@ document.getElementById("loginForm").onsubmit = async (e) => {
       <button class="btn" id="endCall" disabled>Registrar y terminar</button>
       <div class="msg" id="endMsg"></div>
     </div>
+    <div class="card"><h2>Mi turno · hoy</h2><div class="myday" id="myday"><div><b>—</b><span>Horas</span></div></div><p class="muted small" id="mydayIn"></p></div>
     <div class="card"><h2>Mis últimos pedidos</h2><div id="mine" class="mine"></div></div>
   </aside>
 </div>

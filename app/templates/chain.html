@@ -28,7 +28,7 @@ document.getElementById("loginForm").onsubmit = async (e) => {
 </script>
 {% else %}
 <div class="bar"><b>{{ chain.name }}</b><span class="muted">Portal de la cadena</span><div class="sp"></div>
-  <input type="month" id="month" style="width:auto"><button class="btn ghost sm tema-btn" type="button" data-tema-btn aria-label="Cambiar entre versión clara y oscura"><span data-tema-ic aria-hidden="true">☀️</span><span data-tema-lbl>Claro</span></button><button class="btn ghost sm" id="logout">Salir</button></div>
+  <input type="month" id="month" style="width:auto"><button class="btn ghost sm tema-btn" type="button" data-tema-btn aria-label="Cambiar entre versión clara y oscura"><svg class="ic" aria-hidden="true" data-tema-ic><use href="/static/icons.svg#sun"></use></svg><span data-tema-lbl>Claro</span></button><button class="btn ghost sm" id="logout">Salir</button></div>
 <div class="page">
   <div class="stats" id="stats" style="margin-bottom:16px"></div>
   <div class="card"><h2>Tus locales</h2><p class="muted">Todos los locales de la cadena usan el mismo bot de Yango: los pedidos se cargan de a uno, en orden de llegada.</p>
@@ -57,7 +57,7 @@ document.getElementById("loginForm").onsubmit = async (e) => {
       <td><span class="pill ${p.enabled ? "ok" : "cancelado"}">${p.enabled ? "activo" : "inactivo"}</span> ${p.accepting_orders ? "" : `<span class="pill manual">pausado</span>`}</td>
       <td>${pct(p.commission_rate)}</td><td><a class="btn sm" href="${esc(p.portal)}">Diseño y pedidos →</a></td></tr>`).join("") || `<tr><td colspan="5" class="muted">Sin locales todavía.</td></tr>`;
     $("#cb").innerHTML = d.commissions.map((x) => `<tr><td>${esc(x.name)}</td><td>${x.orders}</td><td>${CUR}${x.subtotal}</td><td>${CUR}${x.delivery}</td><td><b>${CUR}${x.commission}</b></td></tr>`).join("") || `<tr><td colspan="5" class="muted">Sin pedidos en el mes.</td></tr>`;
-    $("#ob").innerHTML = d.orders.map((o) => `<tr><td>${esc(when(o.created_at))}</td><td class="mono">${esc(o.number)}</td><td>${esc(o.partner)}</td><td>${esc(o.customer)}${o.channel === "telefono" ? `<br><span class="muted">📞 teléfono</span>` : ""}</td>
+    $("#ob").innerHTML = d.orders.map((o) => `<tr><td>${esc(when(o.created_at))}</td><td class="mono">${esc(o.number)}</td><td>${esc(o.partner)}</td><td>${esc(o.customer)}${o.channel === "telefono" ? `<br><span class="muted">por teléfono</span>` : ""}</td>
       <td>${o.items.map((i) => `${i.quantity}× ${esc(i.name)}`).join("<br>")}</td><td>${CUR}${o.total}</td><td>${CUR}${o.commission}</td><td><span class="pill ${esc(o.status)}">${esc(o.status)}</span></td></tr>`).join("") || `<tr><td colspan="8" class="muted">Todavía no hay pedidos.</td></tr>`;
   }
   $("#month").onchange = load;

@@ -416,3 +416,38 @@ def test_admin_edits_partner_and_placement(client, monkeypatch):
     assert wait_status(client, r.json()["token"], {"manual"})["status"] == "manual"
     for bad in ({"account": "con espacio"}, {"min_order": "abc"}, {"name": " "}, {"yango_url": "http://x"}):
         assert client.put("/api/admin/partners/wrap-roll", headers=ADMIN, json=bad).status_code == 422
+
+
+def test_team_member_stats_and_hours(client):
+    from datetime import datetime, timedelta, timezone
+    from app import db, operators
+    r = client.post("/api/admin/operators", headers=ADMIN, json={"login": "luis", "name": "Luis Paz", "password": "equipo123",
+                                                                  "role": "supervisor", "schedule": "Lun–Vie 11:00–19:00",
+                                                                  "phone": "71234567"})
+    assert r.status_code == 200 and r.json()["role"] == "supervisor" and r.json()["schedule"] == "Lun–Vie 11:00–19:00"
+    assert client.post("/api/admin/operators", headers=ADMIN, json={"login": "x1", "name": "X", "password": "12345678",
+                                                                     "role": "jefe"}).status_code == 422
+    assert client.post("/api/operador/login", json={"login": "luis", "password": "equipo123"}).status_code == 200
+    # Simula una conexión de 2 h que empezó hoy (o justo después de medianoche local).
+    start = max(datetime.now(timezone.utc) - timedelta(hours=2), operators.period_start(1)) + timedelta(seconds=1)
+    db.execute("UPDATE operator_sessions SET started_at=? WHERE operator='luis'", (start.isoformat(),))
+    ping = client.post("/api/operador/ping").json()["today"]
+    assert ping["hours_online"] > 0 and ping["orders"] == 0
+    call = client.post("/api/operador/calls", json={"slug": "wrap-roll"}).json()
+    body = order_body(client)
+    body["slug"] = "wrap-roll"
+    o = client.post("/api/operador/orders", json=body).json()
+    client.put(f"/api/operador/calls/{call['id']}", json={"outcome": "pedido", "order_token": o["token"]})
+    team = client.get("/api/admin/team?days=1", headers=ADMIN).json()
+    m = next(x for x in team["members"] if x["login"] == "luis")
+    s = m["stats"]
+    assert s["online"] and s["calls"] == 1 and s["orders"] == 1 and s["sales"] == o["order"]["total"]
+    assert s["conversion"] == 1 and s["avg_ticket"] == o["order"]["total"] and s["outcomes"] == {"pedido": 1}
+    assert team["totals"]["online"] == 1 and team["totals"]["orders"] == 1
+    det = client.get("/api/admin/team/luis?days=30", headers=ADMIN).json()
+    assert det["stats"]["daily"][0]["orders"] == 1 and det["stats"]["daily"][0]["first_in"] and det["orders"][0]["number"] == o["number"]
+    assert sum(det["stats"]["by_hour"]) == 1
+    client.post("/api/operador/logout")
+    m = next(x for x in client.get("/api/admin/team", headers=ADMIN).json()["members"] if x["login"] == "luis")
+    assert not m["stats"]["online"]
+    assert client.get("/api/admin/team").status_code == 401

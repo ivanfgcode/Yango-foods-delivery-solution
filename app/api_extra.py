@@ -120,7 +120,9 @@ async def admin_operators(request: Request):
 async def admin_create_operator(request: Request, body: Dict[str, Any] = Body(...)):
     auth.require_admin(request)
     try:
-        return operators.create(body.get("login", ""), body.get("name", ""), body.get("password", ""))
+        return operators.create(body.get("login", ""), body.get("name", ""), body.get("password", ""),
+                                role=body.get("role") or "operador", schedule=body.get("schedule") or "",
+                                phone=body.get("phone") or "")
     except ValueError as e:
         raise _err(e)
 
@@ -130,9 +132,35 @@ async def admin_update_operator(request: Request, login: str, body: Dict[str, An
     auth.require_admin(request)
     try:
         return operators.update(login, enabled=body.get("enabled"), password=body.get("password") or None,
-                                name=body.get("name"))
+                                name=body.get("name"), role=body.get("role"), schedule=body.get("schedule"),
+                                phone=body.get("phone"))
     except ValueError as e:
         raise _err(e)
+
+
+@router.get("/api/admin/team")
+async def admin_team(request: Request, days: int = 1):
+    """Equipo: cada miembro con horas conectado, llamadas, pedidos, ventas, ticket, conversión y en línea ahora."""
+    auth.require_admin(request)
+    return operators.team(max(1, min(days, 365)))
+
+
+@router.get("/api/admin/team/{login}")
+async def admin_team_member(request: Request, login: str, days: int = 30):
+    auth.require_admin(request)
+    op = operators.get(login)
+    if not op:
+        raise HTTPException(404, "Miembro no encontrado")
+    names = {p["id"]: p["name"] for p in partners.all_partners()}
+    recent = []
+    for r in db.query("SELECT token FROM orders WHERE operator=? ORDER BY created_at DESC LIMIT 20", (login,)):
+        o = orders.get(r["token"])
+        recent.append({"number": o["number"], "partner": names.get(o["partner_id"]), "total": o["total"],
+                       "status": o["status"], "created_at": o["created_at"],
+                       "customer": f"{o['customer']['first_name']} {o['customer']['last_name']}"})
+    return {**op, "role_label": operators.ROLES.get(op.get("role") or "operador"),
+            "stats": operators.member_stats(login, max(1, min(days, 365))),
+            "orders": recent, "calls": operators.recent_calls(login, limit=30)}
 
 
 @router.get("/api/admin/call-script")
@@ -272,11 +300,16 @@ async def operator_login(response: Response, body: Dict[str, Any] = Body(...)):
         await asyncio.sleep(0.5)
         raise HTTPException(401, "Usuario o contraseña incorrectos")
     _cookie(response, auth.OPERATOR_COOKIE, auth.operator_token(op["login"]), 12 * 3600)
+    operators.touch(op["login"])
+    db.event("equipo_entrada", {"login": op["login"]})
     return {"ok": True}
 
 
 @router.post("/api/operador/logout")
-async def operator_logout(response: Response):
+async def operator_logout(request: Request, response: Response):
+    login = auth.current_operator(request)
+    if login and login != "admin":
+        operators.end_session(login)
     response.delete_cookie(auth.OPERATOR_COOKIE)
     return {"ok": True}
 
@@ -296,6 +329,17 @@ async def operator_me(request: Request):
     return {"operator": op, "partners": locs, "script": operators.get_script(), "outcomes": operators.OUTCOMES,
             "tiers": pricing.public_tiers(), "calls": operators.recent_calls(login, limit=15),
             "server_hour": datetime.now(timezone.utc).hour}
+
+
+@router.post("/api/operador/ping")
+async def operator_ping(request: Request):
+    """Latido de la cabina (cada minuto): cuenta las horas conectado y devuelve los números del día."""
+    login = auth.require_operator(request)
+    if login == "admin":
+        return {"today": None}
+    operators.touch(login)
+    st = operators.member_stats(login, 1)
+    return {"today": {k: st[k] for k in ("hours_online", "calls", "orders", "sales", "avg_ticket", "first_in")}}
 
 
 @router.get("/api/operador/customer")

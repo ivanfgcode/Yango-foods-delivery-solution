@@ -64,3 +64,4 @@ code,.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.85
 .step-ed{border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:12px;background:var(--bg)}
 .step-ed textarea{min-height:70px}
 .preview iframe#pdfFrame{background:#e7e7ea}
+.ic{width:1.05em;height:1.05em;vertical-align:-.15em;flex:none}

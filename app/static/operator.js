@@ -39,7 +39,7 @@
       await req(`/api/operador/calls/${call.id}`, {method: "PUT", body: {outcome, notes: $("#notes").value, phone: $("#phone").value,
         slug: partner && partner.slug, order_token: placed && placed.token}});
     } catch (e) { $("#endMsg").className = "msg bad"; $("#endMsg").textContent = e.message; return; }
-    call = null; clearInterval(timerH); $("#timer").hidden = true; resetForm(); setOff(true); loadMine();
+    call = null; clearInterval(timerH); $("#timer").hidden = true; resetForm(); setOff(true); loadMine(); ping();
     $("#endMsg").className = "msg ok"; $("#endMsg").textContent = "Llamada registrada ✓";
   }
   function resetForm() {
@@ -150,8 +150,8 @@
       const q = await req(`/api/${partner.slug}/quote`, {body: {lat: point.lat, lon: point.lon, subtotal: round2(subtotal())}});
       if (seq !== quoteSeq) return;
       quote = q;
-      if (!q.available) setQuote("bad", q.reason === "fuera_de_zona" ? "❌ Sin cobertura en esa dirección" : q.reason === "cerrado" ? "❌ El restaurante está cerrado" : "❌ No disponible");
-      else setQuote("ok", `✅ Envío <b>${money(q.delivery_fee)}</b>${q.fee_range ? ` (${esc(q.fee_range.label.toLowerCase())}: ${money(q.fee_range.min)}–${money(q.fee_range.max)})` : ""} · ${String(q.distance_km).replace(".", ",")} km${q.eta_min ? ` · llega en ${q.eta_min}–${q.eta_max} min` : ""}${q.surge ? " · alta demanda" : ""}${q.below_min_order ? ` · mínimo ${money(q.min_order)}` : ""}`);
+      if (!q.available) setQuote("bad", q.reason === "fuera_de_zona" ? "Sin cobertura en esa dirección" : q.reason === "cerrado" ? "El restaurante está cerrado" : "No disponible");
+      else setQuote("ok", `Envío <b>${money(q.delivery_fee)}</b>${q.fee_range ? ` (${esc(q.fee_range.label.toLowerCase())}: ${money(q.fee_range.min)}–${money(q.fee_range.max)})` : ""} · ${String(q.distance_km).replace(".", ",")} km${q.eta_min ? ` · llega en ${q.eta_min}–${q.eta_max} min` : ""}${q.surge ? " · alta demanda" : ""}${q.below_min_order ? ` · mínimo ${money(q.min_order)}` : ""}`);
     } catch (e) { if (seq === quoteSeq) { quote = null; setQuote("bad", esc(e.message)); } }
     update();
   }
@@ -268,11 +268,20 @@
       $$("#outcomes button").forEach((b) => b.classList.toggle("on", b.dataset.o === "pedido"));
       btn.textContent = `✓ Pedido #${r.number} creado`;
       goStep(me.script.findIndex((s) => s.id === "despedida") >= 0 ? me.script.findIndex((s) => s.id === "despedida") : me.script.length - 1);
-      loadMine();
+      loadMine(); ping();
     } catch (e) { $("#err").textContent = e.message; btn.disabled = false; refreshQuote(); }
     update();
   }
 
+  // Latido cada minuto: cuenta las horas conectado y trae los números del día.
+  const hrs = (h) => { const m = Math.round((h || 0) * 60); return `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, "0")} min`; };
+  async function ping() {
+    try {
+      const r = await req("/api/operador/ping", {body: {}}), t = r.today; if (!t) { $("#myday").innerHTML = `<p class="muted small">Entraste como administrador: no se cuentan horas.</p>`; return; }
+      $("#myday").innerHTML = [[hrs(t.hours_online), "Horas conectado"], [t.calls, "Llamadas"], [t.orders, "Pedidos"], [money(t.sales), "Ventas"]].map(([v, l]) => `<div><b>${esc(v)}</b><span>${l}</span></div>`).join("");
+      $("#mydayIn").textContent = t.first_in ? `Entrada: ${new Date(t.first_in).toLocaleTimeString("es-BO", {hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "America/La_Paz"})}` : "";
+    } catch (e) {}
+  }
   async function loadMine() {
     try {
       const rows = await req("/api/operador/orders");
@@ -317,7 +326,7 @@
     $("#outcomes").innerHTML = Object.entries(d.outcomes).map(([k, v]) => `<button type="button" data-o="${esc(k)}">${esc(v)}</button>`).join("");
     $$("#outcomes button").forEach((b) => (b.onclick = () => { outcome = b.dataset.o; $$("#outcomes button").forEach((x) => x.classList.toggle("on", x === b)); update(); }));
     if (d.partners.length === 1) { $("#partner").value = d.partners[0].slug; await selectPartner(d.partners[0].slug); }
-    setOff(true); goStep(0); update(); loadMine();
+    setOff(true); goStep(0); update(); loadMine(); ping(); setInterval(ping, 60000);
     initMap().catch(() => setQuote("bad", "No se pudo cargar el mapa"));
   });
 })();

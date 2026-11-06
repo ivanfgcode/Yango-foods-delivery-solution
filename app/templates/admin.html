@@ -30,7 +30,7 @@ document.getElementById("f").onsubmit = async (e) => { e.preventDefault();
 <header class="barra">
   <div class="in-ident"><span class="in-glifo" aria-hidden="true"><svg viewBox="0 0 32 32"><use href="#glifo"/></svg></span>
     <div><h1>carta.bo</h1><p class="in-sub" id="src">—</p></div></div>
-  <nav class="tabs" id="tabs" aria-label="Secciones"><i class="pildora" aria-hidden="true"></i><button class="on" data-t="summary">Resumen</button><button data-t="orders">Pedidos</button><button data-t="store">Tienda</button><button data-t="partners">Restaurantes</button><button data-t="chains">Cadenas</button><button data-t="accounts">Cuentas Yango</button><button data-t="commissions">Comisiones</button><button data-t="features">Funciones</button><button data-t="events">Eventos</button></nav>
+  <nav class="tabs" id="tabs" aria-label="Secciones"><i class="pildora" aria-hidden="true"></i><button class="on" data-t="summary">Resumen</button><button data-t="orders">Pedidos</button><button data-t="store">Tienda</button><button data-t="partners">Restaurantes</button><button data-t="chains">Cadenas</button><button data-t="team">Equipo</button><button data-t="accounts">Cuentas Yango</button><button data-t="commissions">Comisiones</button><button data-t="features">Funciones</button><button data-t="events">Eventos</button></nav>
   <a class="btn ghost sm" href="/operador" target="_blank" rel="noopener">Cabina ↗</a>
   <div class="in-cab-der">
     <button class="in-chip" id="chipBot" type="button" aria-label="Estado de las cuentas Yango"><i class="in-punto" aria-hidden="true"></i><span id="chipTxt">Cuentas</span></button>
@@ -140,6 +140,23 @@ document.getElementById("f").onsubmit = async (e) => { e.preventDefault();
     <div class="card"><h2>Restaurantes</h2><div class="tw"><table><thead><tr><th>Restaurante</th><th>Cadena / cuenta (bot)</th><th>Local Yango</th><th>Menú</th><th>Comisión</th><th>Estado</th><th></th></tr></thead><tbody id="pb"></tbody></table></div></div>
   </section>
 
+  <section id="t-team" class="sec" hidden>
+    <div class="card"><div class="row"><div style="flex:1"><h2>Equipo</h2><p class="muted">Cada miembro entra a <a href="/operador" target="_blank" rel="noopener" class="mono">/operador</a> con su usuario para atender llamadas y cargar pedidos. Las horas se cuentan mientras tiene la cabina abierta.</p></div>
+      <div class="seg" id="teamDays" style="width:auto"><button data-d="1" class="on">Hoy</button><button data-d="7">7 días</button><button data-d="30">30 días</button></div></div>
+      <div class="team-kpis" id="teamKpis"></div></div>
+    <div class="card"><h2>Nuevo miembro</h2>
+      <form id="no" class="row" style="align-items:flex-end">
+        <label class="f" style="flex:1 1 180px;margin:0"><span>Nombre</span><input name="name" required></label>
+        <label class="f" style="flex:1 1 140px;margin:0"><span>Usuario</span><input name="login" required pattern="[a-z0-9._-]+" placeholder="ana.rojas"></label>
+        <label class="f" style="flex:1 1 140px;margin:0"><span>Contraseña</span><input name="password" type="password" minlength="8" required></label>
+        <label class="f" style="flex:0 1 150px;margin:0"><span>Rol</span><select name="role"><option value="operador">Operador</option><option value="supervisor">Supervisor</option></select></label>
+        <label class="f" style="flex:1 1 180px;margin:0"><span>Horario</span><input name="schedule" maxlength="80" placeholder="Lun–Vie 11:00–19:00"></label>
+        <label class="f" style="flex:1 1 130px;margin:0"><span>Celular</span><input name="phone" inputmode="tel" maxlength="20"></label>
+        <button class="btn acc">Crear miembro</button></form><div class="msg" id="noMsg"></div></div>
+    <div class="card"><h2>Rendimiento</h2>
+      <div class="tw"><table><thead><tr><th>Miembro</th><th>Estado</th><th>Horas</th><th>Entrada</th><th>Llamadas</th><th>Pedidos</th><th>Ventas</th><th>Ticket medio</th><th>Conversión</th><th>Pedidos / hora</th><th>Llamada media</th><th></th></tr></thead><tbody id="opb"></tbody></table></div></div>
+  </section>
+
   <section id="t-accounts" class="sec" hidden>
     <div class="card" id="enterCard"><h2>Entrar a una cuenta Yango</h2>
       <div class="row" style="align-items:flex-end">
@@ -201,7 +218,7 @@ document.getElementById("f").onsubmit = async (e) => { e.preventDefault();
   </section>
 
   <section id="t-features" class="sec" hidden>
-    <div class="tabs sub" id="ftabs"><button class="on" data-f="pdf">Menú PDF</button><button data-f="ops">Operadores</button><button data-f="script">Guion de llamadas</button></div>
+    <div class="tabs sub" id="ftabs"><button class="on" data-f="pdf">Menú PDF</button><button data-f="script">Guion de llamadas</button></div>
 
     <div id="f-pdf" class="grid2" style="margin-top:12px">
       <div>
@@ -240,18 +257,6 @@ document.getElementById("f").onsubmit = async (e) => { e.preventDefault();
         </div>
       </div>
       <div class="preview"><div class="ph">Vista previa del PDF</div><iframe id="pdfFrame" title="Vista previa del menú PDF"></iframe></div>
-    </div>
-
-    <div id="f-ops" hidden style="margin-top:12px">
-      <div class="card"><h2>Nuevo operador</h2>
-        <p class="muted">Los operadores entran a <a href="/operador" target="_blank" rel="noopener">/operador</a> para atender llamadas y cargar pedidos telefónicos con el guion.</p>
-        <form id="no" class="row" style="align-items:flex-end">
-          <label class="f" style="flex:1 1 180px"><span>Nombre</span><input name="name" required></label>
-          <label class="f" style="flex:1 1 150px"><span>Usuario</span><input name="login" required pattern="[a-z0-9._-]+"></label>
-          <label class="f" style="flex:1 1 150px"><span>Contraseña</span><input name="password" type="password" minlength="8" required></label>
-          <button class="btn acc" style="margin-bottom:12px">Crear</button></form><div class="msg" id="noMsg"></div></div>
-      <div class="card"><h2>Operadores · hoy</h2><div class="tw"><table><thead><tr><th>Operador</th><th>Usuario</th><th>Llamadas hoy</th><th>Pedidos hoy</th><th>Duración media</th><th>Estado</th><th></th></tr></thead><tbody id="opb"></tbody></table></div></div>
-      <div class="card"><h2>Últimas llamadas</h2><div class="tw"><table><thead><tr><th>Hora</th><th>Operador</th><th>Celular</th><th>Restaurante</th><th>Resultado</th><th>Notas</th></tr></thead><tbody id="clb"></tbody></table></div></div>
     </div>
 
     <div id="f-script" hidden style="margin-top:12px">
@@ -475,7 +480,7 @@ document.getElementById("f").onsubmit = async (e) => { e.preventDefault();
       <td>${esc(o.customer.first_name)} ${esc(o.customer.last_name)} · ${esc(o.customer.phone)}${o.customer.nit ? `<br><span class="muted">Factura: NIT ${esc(o.customer.nit)} · ${esc(o.customer.razon_social)}</span>` : ""}<br><span class="muted">${esc(o.address.text)} · ${esc(o.address.reference)}</span><br>
         <a class="muted" target="_blank" rel="noopener" href="https://yandex.com/maps/?pt=${o.address.lon},${o.address.lat}&z=17"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg?v={{ v }}#map-pin"></use></svg>${o.address.lat}, ${o.address.lon}</a></td>
       <td>${o.items.map((i) => `${i.quantity}× ${esc(i.name)}${i.options.length ? ` <span class="muted">(${esc(i.options.map((x) => x.name).join(", "))})</span>` : ""}`).join("<br>")}</td>
-      <td>${CUR}${o.total}<br><span class="muted">envío ${CUR}${o.delivery_fee}${o.yango_fee != null && o.yango_fee !== o.delivery_fee ? ` (Yango ${CUR}${o.yango_fee})` : ""} · ${esc(o.payment.label)}<br>comisión ${CUR}${o.commission}${o.channel === "telefono" ? ` · 📞 ${esc(o.operator || "")}` : ""}</span></td>
+      <td>${CUR}${o.total}<br><span class="muted">envío ${CUR}${o.delivery_fee}${o.yango_fee != null && o.yango_fee !== o.delivery_fee ? ` (Yango ${CUR}${o.yango_fee})` : ""} · ${esc(o.payment.label)}<br>comisión ${CUR}${o.commission}${o.channel === "telefono" ? ` · teléfono: ${esc(o.operator || "")}` : ""}</span></td>
       <td><span class="pill ${esc(o.status)}">${esc(o.status)}</span>${o.yango_order_nr ? `<br><span class="mono">${esc(o.yango_order_nr)}</span>` : ""}${o.error ? `<br><span class="muted">${esc(o.error)}</span>` : ""}</td>
       <td style="white-space:nowrap">${["manual", "revision"].includes(o.status) ? `<button class="btn sm" data-a="colocado" data-t="${esc(o.token)}">Marcar colocado</button> <button class="btn ghost sm" data-a="reintentar" data-t="${esc(o.token)}">Reintentar bot</button>
         <button class="btn ghost sm" data-dry="${esc(o.token)}" title="Hace todo en Yango menos el botón final">Probar en Yango</button><br>
@@ -788,8 +793,8 @@ document.getElementById("f").onsubmit = async (e) => { e.preventDefault();
 
   // ---------------------------------------------------------------- funciones
   let ftab = "pdf";
-  $$("#ftabs button").forEach((b) => (b.onclick = () => { ftab = b.dataset.f; $$("#ftabs button").forEach((x) => x.classList.toggle("on", x === b)); ["pdf", "ops", "script"].forEach((f) => ($(`#f-${f}`).hidden = f !== ftab)); featuresTab(); }));
-  function featuresTab() { return {pdf: pdfTab, ops: opsTab, script: scriptTab}[ftab](); }
+  $$("#ftabs button").forEach((b) => (b.onclick = () => { ftab = b.dataset.f; $$("#ftabs button").forEach((x) => x.classList.toggle("on", x === b)); ["pdf", "script"].forEach((f) => ($(`#f-${f}`).hidden = f !== ftab)); featuresTab(); }));
+  function featuresTab() { return {pdf: pdfTab, script: scriptTab}[ftab](); }
 
   // Menú PDF: el estilo se guarda en el servidor (validado) y la vista previa se recarga.
   let pdf = null, pdfSlug = null, pdfPending = {}, pdfTimer;
@@ -848,21 +853,60 @@ document.getElementById("f").onsubmit = async (e) => { e.preventDefault();
     } catch (err) { $("#pdfMsg").className = "msg bad"; $("#pdfMsg").textContent = err.message; }
   };
 
-  async function opsTab() {
-    const r = await api("/operators");
-    const today = Object.fromEntries(r.today.map((x) => [x.operator, x]));
-    $("#opb").innerHTML = r.operators.map((o) => { const t = today[o.login] || {}; return `<tr><td><b>${esc(o.name)}</b></td><td class="mono">${esc(o.login)}</td><td>${t.calls || 0}</td><td>${t.orders || 0}</td><td>${t.avg_seconds ? `${Math.round(t.avg_seconds / 60 * 10) / 10} min` : "—"}</td>
-      <td><span class="pill ${o.enabled ? "ok" : "cancelado"}">${o.enabled ? "activo" : "inactivo"}</span></td>
-      <td style="white-space:nowrap"><button class="btn ghost sm" data-opw="${esc(o.login)}">Contraseña</button> <button class="btn ghost sm" data-oon="${esc(o.login)}" data-on="${o.enabled ? 1 : 0}">${o.enabled ? "Desactivar" : "Activar"}</button></td></tr>`; }).join("")
-      || `<tr><td colspan="7" class="muted">Sin operadores.</td></tr>`;
-    $("#clb").innerHTML = r.calls.map((c) => `<tr><td>${esc(when(c.started_at))}</td><td class="mono">${esc(c.operator)}</td><td class="mono">${esc(c.phone || "")}</td><td>${esc(c.partner || "")}</td><td>${c.outcome ? `<span class="pill ${c.outcome === "pedido" ? "colocado" : "manual"}">${esc(c.outcome)}</span>` : `<span class="muted">en curso</span>`}</td><td class="muted">${esc(c.notes || "")}</td></tr>`).join("")
-      || `<tr><td colspan="6" class="muted">Sin llamadas.</td></tr>`;
+  // ---------------------------------------------------------------- equipo
+  let teamDays = 1;
+  const hm = (iso) => iso ? new Date(iso).toLocaleTimeString("es-BO", {hour: "2-digit", minute: "2-digit", hour12: false, timeZone: "America/La_Paz"}) : "—";
+  const dur = (sec) => sec == null ? "—" : sec < 60 ? `${sec} s` : `${Math.floor(sec / 60)} min ${String(sec % 60).padStart(2, "0")} s`;
+  const hrs = (h) => { const m = Math.round((h || 0) * 60); return `${Math.floor(m / 60)} h ${String(m % 60).padStart(2, "0")} min`; };
+  const pct = (x) => x == null ? "—" : `${Math.round(x * 100)} %`;
+  const bs = (n) => `${CUR}${Number(n || 0).toLocaleString("es-BO", {maximumFractionDigits: 2})}`;
+  async function teamTab() {
+    const r = await api(`/team?days=${teamDays}`), t = r.totals;
+    $("#teamKpis").innerHTML = [["Miembros activos", `${t.active} de ${t.members}`], ["En línea ahora", t.online], ["Horas conectadas", hrs(t.hours_online)],
+      ["Llamadas", t.calls], ["Pedidos", t.orders], ["Ventas", bs(t.sales)]].map(([l, v]) => `<div><b>${esc(v)}</b><span>${esc(l)}</span></div>`).join("");
+    $("#opb").innerHTML = r.members.map((m) => { const s = m.stats; return `<tr data-row="${esc(m.login)}">
+      <td><b>${esc(m.name)}</b> <span class="pill">${esc(m.role_label)}</span><br><span class="muted mono">${esc(m.login)}</span>${m.schedule ? `<br><span class="muted">Horario: ${esc(m.schedule)}</span>` : ""}${m.phone ? `<br><span class="muted mono">${esc(m.phone)}</span>` : ""}</td>
+      <td>${!m.enabled ? `<span class="pill cancelado">inactivo</span>` : s.online ? `<span class="pill ok">en línea</span>` : `<span class="pill">desconectado</span>`}${s.last_seen && !s.online ? `<br><span class="muted">visto ${esc(when(s.last_seen))}</span>` : ""}</td>
+      <td class="mono">${hrs(s.hours_online)}</td><td class="mono">${s.first_in ? hm(s.first_in) : "—"}</td>
+      <td class="mono">${s.calls}</td><td class="mono"><b>${s.orders}</b>${s.cancelled ? `<br><span class="muted">${s.cancelled} cancel.</span>` : ""}</td>
+      <td class="mono">${bs(s.sales)}</td><td class="mono">${s.orders ? bs(s.avg_ticket) : "—"}</td><td class="mono">${pct(s.conversion)}</td>
+      <td class="mono">${s.orders_per_hour ?? "—"}</td><td class="mono">${dur(s.avg_call_seconds)}</td>
+      <td><div class="row" style="gap:6px;min-width:220px"><button class="btn sm acc" data-det="${esc(m.login)}">Detalle</button> <button class="btn ghost sm" data-oed="${esc(m.login)}">Editar</button> <button class="btn ghost sm" data-opw="${esc(m.login)}">Contraseña</button> <button class="btn ghost sm" data-oon="${esc(m.login)}" data-on="${m.enabled ? 1 : 0}">${m.enabled ? "Desactivar" : "Activar"}</button></div></td></tr>`; }).join("")
+      || `<tr><td colspan="12" class="muted">Todavía no hay miembros. Crea el primero arriba.</td></tr>`;
     $$("[data-opw]").forEach((b) => (b.onclick = async () => { const pw = prompt("Nueva contraseña (mín. 8)"); if (!pw) return; try { await post(`/operators/${b.dataset.opw}`, {password: pw}, "PUT"); alert("Listo"); } catch (e) { alert(e.message); } }));
-    $$("[data-oon]").forEach((b) => (b.onclick = async () => { await post(`/operators/${b.dataset.oon}`, {enabled: b.dataset.on !== "1"}, "PUT"); opsTab(); }));
+    $$("[data-oon]").forEach((b) => (b.onclick = async () => { await post(`/operators/${b.dataset.oon}`, {enabled: b.dataset.on !== "1"}, "PUT"); teamTab(); }));
+    $$("[data-oed]").forEach((b) => (b.onclick = () => {
+      const tr = b.closest("tr"), nx = tr.nextElementSibling; if (nx && nx.classList.contains("sub-row")) return nx.remove();
+      const m = r.members.find((x) => x.login === b.dataset.oed);
+      tr.insertAdjacentHTML("afterend", `<tr class="sub-row"><td colspan="12"><form class="row" style="align-items:flex-end">
+        <label class="f" style="flex:1 1 180px;margin:0"><span>Nombre</span><input name="name" value="${esc(m.name)}"></label>
+        <label class="f" style="flex:0 1 150px;margin:0"><span>Rol</span><select name="role"><option value="operador" ${m.role !== "supervisor" ? "selected" : ""}>Operador</option><option value="supervisor" ${m.role === "supervisor" ? "selected" : ""}>Supervisor</option></select></label>
+        <label class="f" style="flex:1 1 180px;margin:0"><span>Horario</span><input name="schedule" maxlength="80" value="${esc(m.schedule || "")}"></label>
+        <label class="f" style="flex:1 1 130px;margin:0"><span>Celular</span><input name="phone" maxlength="20" value="${esc(m.phone || "")}"></label>
+        <button class="btn acc sm">Guardar</button><span class="msg"></span></form></td></tr>`);
+      const f = tr.nextElementSibling.querySelector("form");
+      f.onsubmit = async (e) => { e.preventDefault(); try { await post(`/operators/${m.login}`, Object.fromEntries(new FormData(f)), "PUT"); teamTab(); } catch (err) { f.querySelector(".msg").className = "msg bad"; f.querySelector(".msg").textContent = err.message; } };
+    }));
+    $$("[data-det]").forEach((b) => (b.onclick = () => memberDetail(b)));
   }
+  async function memberDetail(b) {
+    const tr = b.closest("tr"), nx = tr.nextElementSibling; if (nx && nx.classList.contains("sub-row")) return nx.remove();
+    const d = await api(`/team/${encodeURIComponent(b.dataset.det)}?days=30`), s = d.stats, mx = Math.max(1, ...s.by_hour);
+    const OUT = {pedido: "Pedido", consulta: "Consulta", reclamo: "Reclamo", sin_cobertura: "Sin cobertura", colgo: "Colgó", otro: "Otro", en_curso: "En curso"};
+    tr.insertAdjacentHTML("afterend", `<tr class="sub-row"><td colspan="12"><div class="team-det">
+      <div><h3>Últimos 30 días</h3><div class="team-kpis sm">${[["Horas", hrs(s.hours_online)], ["Llamadas", s.calls], ["Pedidos", s.orders], ["Ventas", bs(s.sales)], ["Conversión", pct(s.conversion)], ["Llamada media", dur(s.avg_call_seconds)]].map(([l, v]) => `<div><b>${esc(v)}</b><span>${l}</span></div>`).join("")}</div>
+        <h3>Resultado de las llamadas</h3><p class="muted">${Object.entries(s.outcomes).map(([k, v]) => `${OUT[k] || esc(k)}: <b>${v}</b>`).join(" · ") || "Sin llamadas"}</p>
+        <h3>Pedidos por hora del día</h3><div class="hours">${s.by_hour.map((v, h) => `<i title="${h}:00 · ${v} pedidos" style="height:${Math.round(v / mx * 100)}%"></i>`).join("")}</div><div class="hours-x"><span>0 h</span><span>6 h</span><span>12 h</span><span>18 h</span><span>23 h</span></div></div>
+      <div><h3>Día por día</h3><div class="tw"><table><thead><tr><th>Día</th><th>Entrada</th><th>Salida</th><th>Horas</th><th>Llamadas</th><th>Pedidos</th><th>Ventas</th></tr></thead><tbody>
+        ${s.daily.map((x) => `<tr><td>${esc(new Date(x.day + "T12:00:00").toLocaleDateString("es-BO", {weekday: "short", day: "numeric", month: "short"}))}</td><td class="mono">${x.first_in || "—"}</td><td class="mono">${x.last_out || "—"}</td><td class="mono">${hrs(x.hours)}</td><td class="mono">${x.calls}</td><td class="mono">${x.orders}</td><td class="mono">${bs(x.sales)}</td></tr>`).join("") || `<tr><td colspan="7" class="muted">Sin actividad.</td></tr>`}
+        </tbody></table></div>
+        <h3>Últimos pedidos</h3><div class="tw"><table><tbody>${d.orders.map((o) => `<tr><td class="mono">${esc(when(o.created_at))}</td><td class="mono">${esc(o.number)}</td><td>${esc(o.partner)}</td><td>${esc(o.customer)}</td><td class="mono">${bs(o.total)}</td><td><span class="pill ${esc(o.status)}">${esc(o.status)}</span></td></tr>`).join("") || `<tr><td class="muted">Sin pedidos.</td></tr>`}</tbody></table></div></div>
+    </div></td></tr>`);
+  }
+  $$("#teamDays button").forEach((b) => (b.onclick = () => { teamDays = +b.dataset.d; $$("#teamDays button").forEach((x) => x.classList.toggle("on", x === b)); teamTab(); }));
   $("#no").onsubmit = async (e) => {
     e.preventDefault();
-    try { await post("/operators", Object.fromEntries(new FormData(e.target))); e.target.reset(); $("#noMsg").className = "msg ok"; $("#noMsg").textContent = "Operador creado."; opsTab(); }
+    try { await post("/operators", Object.fromEntries(new FormData(e.target))); e.target.reset(); $("#noMsg").className = "msg ok"; $("#noMsg").textContent = "Miembro creado: ya puede entrar a /operador con su usuario."; teamTab(); }
     catch (err) { $("#noMsg").className = "msg bad"; $("#noMsg").textContent = err.message; }
   };
 
@@ -884,7 +928,7 @@ document.getElementById("f").onsubmit = async (e) => { e.preventDefault();
     catch (e) { $("#scMsg").className = "msg bad"; $("#scMsg").textContent = e.message; }
   };
 
-  const loaders = {summary, orders, store: storeTab, partners: partnersTab, chains: chainsTab, accounts, commissions: commissionsTab, features: featuresTab, events};
+  const loaders = {summary, orders, store: storeTab, partners: partnersTab, chains: chainsTab, team: teamTab, accounts, commissions: commissionsTab, features: featuresTab, events};
   function refresh() { stats(); loaders[tab](); }
   function irA(t) {
     tab = t; $$("#tabs button").forEach((x) => x.classList.toggle("on", x.dataset.t === t)); pildora($("#tabs"), "button.on");

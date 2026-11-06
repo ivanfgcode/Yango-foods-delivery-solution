@@ -15,7 +15,7 @@
       b.setAttribute("aria-pressed", String(claro));
       b.title = claro ? "Cambiar a versión oscura" : "Cambiar a versión clara";
       const l = b.querySelector("[data-tema-lbl]"); if (l) l.textContent = claro ? "Oscuro" : "Claro";
-      const i = b.querySelector("[data-tema-ic]"); if (i) i.textContent = claro ? "🌙" : "☀️";
+      const u = b.querySelector("[data-tema-ic] use"); if (u) u.setAttribute("href", `/static/icons.svg#${claro ? "moon" : "sun"}`);
     });
   }
   apply(initial());

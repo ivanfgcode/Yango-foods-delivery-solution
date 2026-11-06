@@ -158,6 +158,16 @@ CREATE TABLE IF NOT EXISTS calls (
 );
 CREATE INDEX IF NOT EXISTS calls_at ON calls(started_at);
 
+-- Conexiones de cada miembro del equipo a la cabina (para horas trabajadas). Un latido por minuto mueve last_seen.
+CREATE TABLE IF NOT EXISTS operator_sessions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    operator TEXT NOT NULL,
+    started_at TEXT NOT NULL,
+    last_seen TEXT NOT NULL,
+    ended_at TEXT
+);
+CREATE INDEX IF NOT EXISTS operator_sessions_op ON operator_sessions(operator, started_at);
+
 -- Ajustes editables desde el admin (guion de llamadas, etc.).
 CREATE TABLE IF NOT EXISTS kv (
     key TEXT PRIMARY KEY,
@@ -211,7 +221,10 @@ ADDED_COLUMNS = [("partners", "place_name", "TEXT"), ("billing", "free_forever",
                  ("partners", "pdf_style", "TEXT NOT NULL DEFAULT '{}'"),
                  ("orders", "commission", "REAL NOT NULL DEFAULT 0"), ("orders", "yango_fee", "REAL"),
                  ("orders", "channel", "TEXT NOT NULL DEFAULT 'web'"), ("orders", "operator", "TEXT"),
-                 ("accounts", "yango_phone", "TEXT")]
+                 ("accounts", "yango_phone", "TEXT"),
+                 # Equipo: rol, horario acordado y celular de cada miembro.
+                 ("operators", "role", "TEXT NOT NULL DEFAULT 'operador'"), ("operators", "schedule", "TEXT"),
+                 ("operators", "phone", "TEXT")]
 
 
 def _migrate(conn: sqlite3.Connection) -> None:

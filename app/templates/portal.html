@@ -81,7 +81,7 @@ document.getElementById("loginForm").onsubmit = async (e) => {
       <div><h1 id="title">Inicio</h1><div class="sub" id="subtitle">Resumen de tu web de pedidos</div></div>
       <span class="sp"></span>
       <label class="switch" title="Pausar o reanudar pedidos en tu web"><input type="checkbox" id="accepting"><span id="acceptLbl">Recibiendo pedidos</span></label>
-      <button class="btn sm tema-btn" type="button" data-tema-btn aria-label="Cambiar entre versión clara y oscura"><span data-tema-ic aria-hidden="true">☀️</span><span data-tema-lbl>Claro</span></button>
+      <button class="btn sm tema-btn" type="button" data-tema-btn aria-label="Cambiar entre versión clara y oscura"><svg class="ic" aria-hidden="true" data-tema-ic><use href="/static/icons.svg#sun"></use></svg><span data-tema-lbl>Claro</span></button>
       <a class="btn sm" id="openStore" target="_blank" rel="noopener">{{ ic("external-link") }}<span>Ver mi web</span></a>
     </header>
 
@@ -321,7 +321,7 @@ document.getElementById("loginForm").onsubmit = async (e) => {
     const rows = await API("/orders");
     $("#ordersBody").innerHTML = rows.map((o) => `<tr><td>${esc(new Date(o.created_at).toLocaleString("es-BO", {dateStyle: "short", timeStyle: "short"}))}</td><td class="mono">${esc(o.number)}</td>
       <td>${esc(o.customer)}<br><span class="muted">${esc(o.phone)}</span>${o.invoice ? `<br><span class="muted">Factura: NIT ${esc(o.invoice.nit)} · ${esc(o.invoice.razon_social)}</span>` : ""}</td><td>${o.items.map((i) => `${i.quantity}× ${esc(i.name)}`).join("<br>")}</td>
-      <td class="mono">${money(o.total)}</td><td class="mono">${money2(o.commission || 0)}</td><td>${esc(o.payment)}${o.channel === "telefono" ? "<br><span class=muted>📞 teléfono</span>" : ""}</td><td><span class="pill ${esc(o.status)}">${esc(ST[o.status] || o.status)}</span></td><td class="mono">${esc(o.yango_order_nr || "")}</td></tr>`).join("")
+      <td class="mono">${money(o.total)}</td><td class="mono">${money2(o.commission || 0)}</td><td>${esc(o.payment)}${o.channel === "telefono" ? "<br><span class=muted>por teléfono</span>" : ""}</td><td><span class="pill ${esc(o.status)}">${esc(ST[o.status] || o.status)}</span></td><td class="mono">${esc(o.yango_order_nr || "")}</td></tr>`).join("")
       || `<tr><td colspan="9" class="empty">Todavía no hay pedidos.</td></tr>`;
     $("#recentBody").innerHTML = rows.slice(0, 6).map((o) => `<tr><td><b>${esc(o.customer)}</b><br><span class="muted">${o.items.map((i) => `${i.quantity}× ${esc(i.name)}`).join(", ")}</span></td>
       <td class="mono" style="text-align:right">${money(o.total)}<br><span class="pill ${esc(o.status)}">${esc(ST[o.status] || o.status)}</span></td></tr>`).join("")
