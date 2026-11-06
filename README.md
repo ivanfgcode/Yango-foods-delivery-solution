@@ -88,6 +88,13 @@ mensajero, errores, comisiones), antes/después de un pedido, funciones con capt
 calculadora de ahorro, precio con los meses pagados por Yango, preguntas y formulario. Cada interesado queda en
 Admin → Eventos (`lead`) y llega por Telegram. `SALES_WHATSAPP` (591…) agrega el botón de WhatsApp.
 
+La landing vende el modelo nuevo: **3 % por pedido, sin cuota fija ni permanencia**, envío por distancia (tabla de
+tramos desde `DELIVERY_TIERS`) y la calculadora compara la comisión de una app con el 3 %. También presenta el panel
+de cadena, la cabina de llamadas y el menú PDF.
+
+**Tema claro / oscuro**: todos los paneles (admin, portal del restaurante, `/cadena`, `/operador`) tienen el botón
+Claro/Oscuro. La elección se guarda en el navegador (`pp_tema`) y vale para todos los paneles (`app/static/theme.js`).
+
 ## Pantallas
 
 | Ruta | Para quién |

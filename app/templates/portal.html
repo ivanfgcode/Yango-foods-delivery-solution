@@ -7,6 +7,7 @@
 <meta name="theme-color" content="#0F1013">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap">
+<script src="/static/theme.js?v={{ v }}"></script>
 <link rel="stylesheet" href="/static/portal.css?v={{ v }}">
 </head>
 <body>
@@ -80,6 +81,7 @@ document.getElementById("loginForm").onsubmit = async (e) => {
       <div><h1 id="title">Inicio</h1><div class="sub" id="subtitle">Resumen de tu web de pedidos</div></div>
       <span class="sp"></span>
       <label class="switch" title="Pausar o reanudar pedidos en tu web"><input type="checkbox" id="accepting"><span id="acceptLbl">Recibiendo pedidos</span></label>
+      <button class="btn sm tema-btn" type="button" data-tema-btn aria-label="Cambiar entre versión clara y oscura"><span data-tema-ic aria-hidden="true">☀️</span><span data-tema-lbl>Claro</span></button>
       <a class="btn sm" id="openStore" target="_blank" rel="noopener">{{ ic("external-link") }}<span>Ver mi web</span></a>
     </header>
 
@@ -318,6 +320,7 @@ document.getElementById("loginForm").onsubmit = async (e) => {
   }
   $$("#range button").forEach((b) => (b.onclick = () => { days = +b.dataset.d; $$("#range button").forEach((x) => x.classList.toggle("on", x === b)); loadSummary(); }));
   let rz; window.addEventListener("resize", () => { clearTimeout(rz); rz = setTimeout(() => sec === "home" && summ && paintKpis(), 150); });
+  window.addEventListener("tema", () => { if (sec === "home" && summ) paintKpis(); });
   $("#copyUrl").onclick = async () => { try { await navigator.clipboard.writeText($("#webUrl").textContent); $("#copyUrl").lastChild.textContent = "Copiado"; } catch (e) {} };
 
   // ---------------------------------------------------------------- pedidos

@@ -69,15 +69,16 @@
     requestAnimationFrame(tick);
   }
   function calc() {
-    const orders = val("#cOrders"), ticket = val("#cTicket"), branches = val("#cBranches"), pct = val("#cCommission"), salary = val("#cSalary");
+    const orders = val("#cOrders"), ticket = val("#cTicket"), pct = val("#cCommission"), salary = val("#cSalary");
     $("#vOrders").textContent = nf.format(orders); $("#vTicket").textContent = nf.format(ticket);
-    $("#vBranches").textContent = branches; $("#vCommission").textContent = `${pct} %`;
-    const sales = orders * ticket, commission = sales * pct / 100, plan = C.price * branches;
+    $("#vCommission").textContent = `${pct} %`;
+    // carta.bo: solo el % por pedido (sin cuota fija), sobre los productos.
+    const sales = orders * ticket, commission = sales * pct / 100, plan = sales * parseFloat(String(C.commission).replace(",", ".")) / 100;
     $("#oSales").textContent = money(sales); $("#oCommission").textContent = money(commission);
     $("#oPlan").textContent = `- ${money(plan)}`; $("#oSalarySave").textContent = money(salary - plan);
     animateTo($("#oSave"), commission - plan);
   }
-  ["#cOrders", "#cTicket", "#cBranches", "#cCommission", "#cSalary"].forEach((id) => $(id).addEventListener("input", calc));
+  ["#cOrders", "#cTicket", "#cCommission", "#cSalary"].forEach((id) => $(id).addEventListener("input", calc));
   calc();
 
   // Formulario de contacto.

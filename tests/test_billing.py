@@ -48,7 +48,8 @@ def test_portal_requires_login_and_admin_list_has_plan(client):  # noqa: F811
 
 def test_landing_and_lead(client):  # noqa: F811
     page = client.get("/").text
-    assert "carta.bo" in page and "Bs150" in page and "los paga Yango" in page and 'href="/wrap-roll"' in page
+    assert "carta.bo" in page and "3 % por pedido" in page and "sin cuotas fijas" in page and 'href="/wrap-roll"' in page
+    assert "Hasta 1 km" in page and "Bs150" not in page  # modelo nuevo: comisión, sin plan fijo
     bad = client.post("/api/leads", json={"name": "A", "restaurant": "", "phone": "1"})
     assert bad.status_code == 422
     ok = client.post("/api/leads", json={"name": "Ana Rojas", "restaurant": "Pollos <b>Ana</b>", "phone": "71234567", "branches": "2"})

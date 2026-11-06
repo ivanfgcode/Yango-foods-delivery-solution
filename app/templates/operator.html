@@ -1,8 +1,9 @@
 <!doctype html>
-<html lang="es">
+<html lang="es" data-tema-defecto="sistema">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Cabina de operadores</title>
+<script src="/static/theme.js"></script>
 <link rel="stylesheet" href="/static/panel.css">
 <link rel="stylesheet" href="/static/operator.css">
 </head>
@@ -33,6 +34,7 @@ document.getElementById("loginForm").onsubmit = async (e) => {
   <span class="timer" id="timer" hidden>00:00</span>
   <div class="sp"></div>
   <span class="muted keys"><kbd>/</kbd> buscar plato · <kbd>Alt</kbd>+<kbd>→</kbd> siguiente paso · <kbd>Ctrl</kbd>+<kbd>Enter</kbd> confirmar</span>
+  <button class="btn ghost sm tema-btn" type="button" data-tema-btn aria-label="Cambiar entre versión clara y oscura"><span data-tema-ic aria-hidden="true">☀️</span><span data-tema-lbl>Claro</span></button>
   <button class="btn ghost sm" id="logout">Salir</button>
 </div>
 

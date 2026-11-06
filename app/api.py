@@ -127,8 +127,8 @@ async def home(request: Request):
     """Landing de carta.bo para vender el servicio a restaurantes."""
     demo = next((p["slug"] for p in partners.all_partners() if p["enabled"]), None)
     return templates.TemplateResponse(request, "landing.html", {
-        "price": settings.plan_price_bs, "sponsored": settings.plan_sponsored_months,
-        "min_paid": settings.plan_min_paid_months, "currency": settings.currency, "demo": demo,
+        "commission": f"{settings.commission_rate * 100:g}".replace(".", ","), "tiers": pricing.public_tiers(),
+        "price": settings.plan_price_bs, "currency": settings.currency, "demo": demo,
         "whatsapp": re.sub(r"\D", "", settings.sales_whatsapp)})
 
 
