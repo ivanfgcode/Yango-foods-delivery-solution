@@ -1,8 +1,14 @@
-# carta.bo · Pedidos propios con delivery de Yango
+# Carta.bo by Yango Comida · Pedidos propios con delivery de Yango
 
 Web de pedidos propia para cada partner (`dominio.com/<restaurante>`) con el delivery hecho por Yango.
 Cada partner tiene un **restaurante oculto** en Yango Foods, visible solo para una cuenta cliente nuestra
 (**un bot = una cuenta por cadena de restaurantes**, compartida por todos sus locales).
+
+
+**Marca:** producto de Yango Comida con el estilo de yango.com (Yango Text / YS Text, rojo `#FF0000`, footer negro
+con la línea legal de RideTechnology Global FZ-LLC) en la landing, el admin, el portal del restaurante, `/cadena`,
+`/operador` y el menú PDF. Las webs de cada restaurante conservan su marca y llevan solo el sello en el pie.
+Recursos comunes: `app/static/brand.css`, `app/static/brand.svg`, `app/templates/_brand.html`.
 
 ## Modelo comercial
 

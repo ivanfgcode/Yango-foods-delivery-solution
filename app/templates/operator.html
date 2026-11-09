@@ -1,15 +1,17 @@
-<!doctype html>
+{% from "_brand.html" import y_head, y_lockup, y_footer with context %}<!doctype html>
 <html lang="es" data-tema-defecto="sistema">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Cabina de operadores</title>
+<title>Cabina de llamadas · Carta.bo by Yango Comida</title>
 <script src="/static/theme.js"></script>
-<link rel="stylesheet" href="/static/panel.css">
-<link rel="stylesheet" href="/static/operator.css">
+{{ y_head() }}
+<link rel="stylesheet" href="/static/panel.css?v={{ v }}">
+<link rel="stylesheet" href="/static/operator.css?v={{ v }}">
 </head>
 <body>
 {% if not logged %}
 <div class="login card">
+  {{ y_lockup("/operador") }}
   <h2>Cabina de operadores</h2>
   <p class="muted">Atiende llamadas y carga pedidos telefónicos.</p>
   <form id="loginForm">
@@ -29,7 +31,7 @@ document.getElementById("loginForm").onsubmit = async (e) => {
 </script>
 {% else %}
 <div class="bar">
-  <b>Cabina</b><span class="muted" id="opName"></span>
+  {{ y_lockup("/operador") }}<b>Cabina</b><span class="muted" id="opName"></span>
   <button class="btn acc sm" id="newCall" title="F2"><svg class="ic" aria-hidden="true"><use href="/static/icons.svg#phone"></use></svg>Nueva llamada <kbd>F2</kbd></button>
   <span class="timer" id="timer" hidden>00:00</span>
   <div class="sp"></div>
@@ -125,5 +127,6 @@ document.getElementById("loginForm").onsubmit = async (e) => {
 <script>window.CAB = {{ {"currency": currency, "phonePrefix": phone_prefix} | tojson }};</script>
 <script src="/static/operator.js"></script>
 {% endif %}
+{{ y_footer(compact=True) }}
 </body>
 </html>

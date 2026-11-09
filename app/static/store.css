@@ -448,5 +448,11 @@ footer.foot{color:var(--muted);font-size:.82rem;text-align:center;padding:36px 1
 .glass .sheet .fo .btn,.glass .float-cart .btn .pill{background-image:linear-gradient(180deg,rgba(255,255,255,.24),rgba(255,255,255,0) 58%)}
 .glass .sheet .fo .btn{box-shadow:inset 0 1px 0 rgba(255,255,255,.4),0 12px 28px -14px color-mix(in srgb,var(--primary) 80%,transparent)}
 @supports not ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))){.glass .float-cart .btn,.glass #top .cart-btn{background:rgba(28,28,30,.9)}}
-.foot .powered{margin-top:10px;font-size:.78rem;opacity:.6}
-.foot .powered b{font-weight:800}
+
+/* Sello «Pedidos con Carta.bo by Yango Comida»: la tienda lleva la marca del restaurante; esto es solo el pie. */
+.y-seal{margin-top:18px;padding-top:16px;border-top:1px solid var(--line);display:grid;gap:8px;justify-items:center;font-size:.78rem;color:var(--muted)}
+.y-seal-by{display:inline-flex;align-items:center;gap:8px}
+.y-seal .y-lockup{font-size:15px;color:var(--text)}
+.y-seal nav{display:flex;gap:14px;flex-wrap:wrap;justify-content:center}
+.y-seal nav a{color:var(--muted);text-decoration:underline}
+.y-seal p{margin:0;max-width:560px;opacity:.85}

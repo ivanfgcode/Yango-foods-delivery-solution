@@ -1,16 +1,14 @@
-<!doctype html>
+{% from "_brand.html" import y_head, y_lockup, y_footer with context %}<!doctype html>
 <html lang="es">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>carta.bo · Tu web de pedidos con el delivery de Yango</title>
-<link rel="icon" href="/static/favicon.svg?v={{ v }}" type="image/svg+xml">
+<title>Carta.bo by Yango Comida · Tu web de pedidos con el delivery de Yango</title>
+{{ y_head() }}
 <meta name="description" content="Tu restaurante vendiendo por su propia web, sin contestar chats ni buscar moto. Menú y envío en vivo con Yango. Solo {{ commission }} % por pedido, sin cuotas fijas.">
 <meta name="theme-color" content="#0A0A0B">
-<meta property="og:title" content="carta.bo · Tu web de pedidos con el delivery de Yango">
+<meta property="og:title" content="Carta.bo by Yango Comida · Tu web de pedidos con el delivery de Yango">
 <meta property="og:description" content="Vende por tu propia web. Yango entrega. Solo {{ commission }} % por pedido, sin cuotas fijas.">
 <meta property="og:image" content="/static/landing/phone-store.jpg?v={{ v }}">
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&display=swap">
 <link rel="stylesheet" href="/static/landing.css?v={{ v }}">
 </head>
 <body>
@@ -22,14 +20,14 @@
 
 <header class="nav" id="nav">
   <div class="wrap bar">
-    <a class="logo" href="#"><span class="logo-mark"><svg><use href="#cb-mark"/></svg></span><span>carta<em>.bo</em></span></a>
+    {{ y_lockup('#', on_red=True) }}
     <nav class="links"><a href="#problemas">Problemas</a><a href="#como">Cómo funciona</a><a href="#ahorro">Ahorro</a><a href="#precio">Precio</a><a href="#preguntas">Preguntas</a></nav>
     <a class="btn pri sm" href="{{ wa }}">Quiero mi web</a>
     <button class="menu-btn" id="menuBtn" aria-label="Abrir menú" aria-expanded="false">{{ ic("menu") }}</button>
   </div>
 </header>
 <div class="drawer" id="drawer" aria-hidden="true">
-  <div class="top"><a class="logo" href="#"><span class="logo-mark"><svg><use href="#cb-mark"/></svg></span><span>carta<em>.bo</em></span></a>
+  <div class="top">{{ y_lockup('#') }}
     <button class="close" id="menuClose" aria-label="Cerrar menú">{{ ic("x") }}</button></div>
   <a class="l" href="#problemas">Problemas</a><a class="l" href="#como">Cómo funciona</a><a class="l" href="#ahorro">Ahorro</a><a class="l" href="#precio">Precio</a><a class="l" href="#preguntas">Preguntas</a>
   <a class="btn pri" href="{{ wa }}">Quiero mi web</a>
@@ -46,7 +44,7 @@
         <h1 class="rv" style="--d:1">Tu restaurante vendiendo a domicilio, sin contestar chats ni buscar moto</h1>
         <p class="lead rv" style="--d:2">Una web de pedidos con tu marca. Tu cliente elige, ve el precio exacto y el envío a su puerta, y un mensajero de Yango se lo lleva. Tú solo cocinas.</p>
         <div class="cta rv" style="--d:3">
-          <a class="btn" href="{{ wa }}">Solicitar mi web</a>
+          <a class="btn pri" href="{{ wa }}">Solicitar mi web</a>
           {% if demo %}<a class="textlink" href="/{{ demo }}" target="_blank" rel="noopener">Ver una tienda real{{ ic("arrow-right") }}</a>{% endif %}
         </div>
         <div class="trust rv" style="--d:4"><span>{{ ic("circle-check") }}{{ commission }} % por pedido, sin cuotas</span><span>{{ ic("circle-check") }}Delivery de Yango desde {{ currency }}{{ '%g' % tiers[0].min }}</span><span>{{ ic("circle-check") }}Sin instalación</span></div>
@@ -214,7 +212,7 @@
       <div class="sec-h center rv"><span class="eyebrow">{{ ic("credit-card") }}Precio simple</span><h2 class="h2">{{ commission }} % por pedido. <em>Nada más.</em></h2></div>
       <div class="price-wrap">
         <div class="price-card rv">
-          <span class="tag">carta.bo</span>
+          <span class="tag">Carta.bo by Yango Comida</span>
           <div class="price-big"><b>{{ commission }} %</b><span>por pedido</span></div>
           <div class="sub">Sin cuota mensual · sin instalación · sin permanencia</div>
           <div class="ticks" style="margin-top:24px">
@@ -274,8 +272,7 @@
   </section>
 </main>
 
-<footer><div class="wrap"><a class="logo" href="#"><span class="logo-mark"><svg><use href="#cb-mark"/></svg></span><span>carta<em>.bo</em></span></a>
-  <span>La carta de tu restaurante, con pedidos y delivery de Yango · Bolivia</span></div></footer>
+{{ y_footer() }}
 
 <script>
 window.CARTA = {commission: {{ commission | tojson }}, currency: {{ currency | tojson }}};

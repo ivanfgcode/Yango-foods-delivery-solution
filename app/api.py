@@ -1,5 +1,6 @@
 """API y páginas: tienda pública (dominio.com/<slug>), portal del partner y panel de admin."""
 import asyncio
+from datetime import datetime
 import hashlib
 import hmac
 import json
@@ -37,6 +38,7 @@ def _asset_version() -> str:
 
 
 templates.env.globals["v"] = _asset_version()
+templates.env.globals["year"] = datetime.now().year  # footer legal (© año)
 
 
 def seed_demo() -> None:
@@ -73,6 +75,7 @@ app.mount("/uploads", StaticFiles(directory=str(settings.uploads_dir)), name="up
 from app import api_extra  # noqa: E402
 
 app.include_router(api_extra.router)
+api_extra.templates.env.globals.update(templates.env.globals)  # misma versión de archivos y año
 
 
 def script_json(data: Any) -> str:

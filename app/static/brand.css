@@ -1,0 +1,53 @@
+/* Carta.bo by Yango Comida: marca común a todas las pantallas (landing, admin, portal, cadena, cabina, PDF).
+   Tipografías de Yango (yango.com): Yango Text para títulos y YS Text para el texto. Rojo Yango #FF0000. */
+@font-face { font-family: "Yango Text"; font-weight: 400; font-display: swap; src: url(https://yastatic.net/s3/distribution/lpc/fonts/yango-text/YangoText_W_Rg.woff2) format("woff2"); }
+@font-face { font-family: "Yango Text"; font-weight: 500; font-display: swap; src: url(https://yastatic.net/s3/distribution/lpc/fonts/yango-text/YangoText_W_Md.woff2) format("woff2"); }
+@font-face { font-family: "Yango Text"; font-weight: 600 700; font-display: swap; src: url(https://yastatic.net/s3/distribution/lpc/fonts/yango-text/YangoText_W_Bd.woff2) format("woff2"); }
+@font-face { font-family: "Yango Text"; font-weight: 800 900; font-display: swap; src: url(https://yastatic.net/s3/distribution/lpc/fonts/yango-text/YangoText_W_Blk.woff2) format("woff2"); }
+@font-face { font-family: "YS Text"; font-weight: 300; font-display: swap; src: url(https://yastatic.net/s3/home/fonts/ys/4/text-light.woff2) format("woff2"); }
+@font-face { font-family: "YS Text"; font-weight: 400; font-display: swap; src: url(https://yastatic.net/s3/home/fonts/ys/4/text-regular.woff2) format("woff2"); }
+@font-face { font-family: "YS Text"; font-weight: 500; font-display: swap; src: url(https://yastatic.net/s3/home/fonts/ys/4/text-medium.woff2) format("woff2"); }
+@font-face { font-family: "YS Text"; font-weight: 600 700; font-display: swap; src: url(https://yastatic.net/s3/home/fonts/ys/4/text-bold.woff2) format("woff2"); }
+
+:root {
+  --y-red: #FF0000; --y-red-dark: #D90000; --y-black: #000000; --y-ink: #212121; --y-gray: #F8F8F8;
+  --y-gray-2: #EDEDED; --y-muted: #666666; --y-line: #E6E6E6;
+  --y-title: "Yango Text", "YS Text", Arial, sans-serif;
+  --y-text: "YS Text", "Yango Text", Helvetica, Arial, sans-serif;
+}
+
+/* Logo combinado: «carta.bo by YANGO» */
+.y-lockup { display: inline-flex; align-items: center; gap: 8px; color: inherit; text-decoration: none; white-space: nowrap; }
+.y-lockup .y-carta { font: 600 1.15em/1 var(--y-title); letter-spacing: -.02em; }
+.y-lockup .y-carta i { font-style: normal; color: var(--y-red); }
+.y-lockup .y-by { font: 400 .78em/1 var(--y-text); opacity: .7; }
+.y-lockup svg.y-logo { height: .95em; width: auto; aspect-ratio: 3 / 1; color: var(--y-red); }
+.y-lockup.on-red .y-carta i, .y-lockup.on-red svg.y-logo { color: #fff; }
+.y-mark { width: 34px; height: 34px; border-radius: 10px; background: var(--y-red); color: #fff; display: grid; place-items: center; flex: none; }
+.y-mark svg { width: 15px; height: 20px; }
+
+/* Footer como yango.com: negro, columnas, redes y línea legal */
+.y-footer { background: #000; color: #fff; font-family: var(--y-text); padding: 48px 0 28px; }
+.y-footer .y-wrap { width: min(1200px, calc(100% - 32px)); margin: 0 auto; }
+.y-footer .y-cols { display: grid; grid-template-columns: 1.3fr repeat(4, minmax(0, 1fr)); gap: 28px; }
+@media (max-width: 860px) { .y-footer .y-cols { grid-template-columns: repeat(2, minmax(0, 1fr)); } .y-footer .y-cols > :first-child { grid-column: 1 / -1; } }
+.y-footer h4 { margin: 0 0 16px; font: 500 15px/1.3 var(--y-title); color: #fff; }
+.y-footer ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.y-footer a { color: #fff; text-decoration: none; font-size: 15px; line-height: 1.3; opacity: .92; }
+.y-footer a:hover { opacity: 1; text-decoration: underline; }
+.y-footer .y-lockup { font-size: 20px; }
+.y-footer .y-lockup .y-carta i, .y-footer .y-lockup svg.y-logo { color: #fff; }
+.y-footer .y-about { margin: 14px 0 0; color: #9a9a9a; font-size: 14px; line-height: 1.45; max-width: 320px; }
+.y-footer .y-bottom { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 24px; justify-content: space-between; margin-top: 40px; }
+.y-footer .y-social { display: flex; gap: 10px; }
+.y-footer .y-social a { width: 40px; height: 40px; border-radius: 50%; border: 1px solid rgba(255,255,255,.45); display: grid; place-items: center; opacity: 1; }
+.y-footer .y-social svg { width: 18px; height: 18px; fill: #fff; }
+.y-footer .y-legal { color: #8a8a8a; font-size: 13px; line-height: 1.5; }
+.y-footer .y-legal p { margin: 0; }
+/* Versión corta para paneles y tiendas */
+.y-footer.compact { padding: 22px 0; }
+.y-footer.compact .y-bottom { margin-top: 0; }
+.y-footer.compact .y-lockup { font-size: 16px; }
+.y-footer.compact .y-links { display: flex; flex-wrap: wrap; gap: 6px 18px; }
+.y-footer.compact .y-links a { font-size: 13px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }

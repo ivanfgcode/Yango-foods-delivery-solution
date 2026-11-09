@@ -1,4 +1,4 @@
-<!doctype html>
+{% from "_brand.html" import y_lockup with context %}<!doctype html>
 <html lang="es" style="{{ css_vars }}">
 <head>
 <meta charset="utf-8">
@@ -8,6 +8,7 @@
 <meta name="theme-color" content="{{ theme.background }}">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="{{ fonts_href }}">
+<link rel="stylesheet" href="/static/brand.css?v={{ v }}">
 <link rel="stylesheet" href="/static/store.css?v={{ v }}">
 <link rel="manifest" href="/{{ p.slug }}/manifest.webmanifest">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -75,7 +76,11 @@
   {% if profile.about %}<p>{{ profile.about }}</p>{% endif %}
   {% if profile.whatsapp %}<p>WhatsApp: {{ profile.whatsapp }}</p>{% endif %}
   <p>Entrega realizada por mensajeros de Yango.</p>
-  <p class="powered">Hecho con <b>carta.bo</b></p>
+  <div class="y-seal">
+    <span class="y-seal-by">Pedidos con {{ y_lockup("/") }}</span>
+    <nav><a href="https://yango.com/legal/yango_privacy_notice?lang=en" target="_blank" rel="noopener">Privacidad</a><a href="https://yango.com/legal/bo/" target="_blank" rel="noopener">Términos</a><a href="https://yango.com/es_bo/support/" target="_blank" rel="noopener">Asistencia</a></nav>
+    <p>© {{ year }} RideTechnology Global FZ-LLC · Yango brinda servicios de tecnología de la información solamente. La preparación y la entrega de los pedidos están a cargo de terceros independientes.</p>
+  </div>
 </footer>
 
 <div class="float-cart" id="floatCart"><button class="btn" type="button" id="floatCartBtn"></button></div>

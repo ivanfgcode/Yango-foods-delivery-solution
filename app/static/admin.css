@@ -1,26 +1,26 @@
-/* Admin con el lenguaje «Instrumental» del picker de restotec-yango: negro con resplandor tibio, marfil para trazos y
-   texto y un único naranja para lo que importa (la cabeza de cada serie, el máximo, lo que hay que atender).
-   charts.js lee estas variables para pintar los lienzos. */
+/* Admin de Carta.bo by Yango Comida: estilo de yango.com. Oscuro en negro y claro en blanco, con un solo acento,
+   el rojo Yango, para lo que importa (la cabeza de cada serie, el máximo, lo que hay que atender). Tipografías Yango Text
+   y YS Text (brand.css). charts.js lee estas variables para pintar los lienzos. */
 :root {
-  --in-negro: #0A0A0B; --in-panel: #111113; --in-celda: #1b1c20; --in-celda-alta: #212227;
-  --in-tinta: #e8e4d8; --in-suave: #a6a398; --in-tenue: #8a877e;
-  --in-filo: rgba(232, 228, 216, .09); --in-filo-alto: rgba(232, 228, 216, .2); --in-luz: rgba(255, 255, 255, .06);
-  --in-nar: #F2FF5C; --in-nar-t: #F2FF5C; --in-nar-suave: rgba(230, 255, 74, .25);
-  --in-ok: #7fc28a; --in-ok-suave: rgba(127, 194, 138, .16);
-  --in-sombra: rgba(0, 0, 0, .55); --in-det: #1f2025; --in-det-2: #18191d; --in-grano: .5;
+  --in-negro: #000000; --in-panel: #0F0F0F; --in-celda: #1A1A1A; --in-celda-alta: #232323;
+  --in-tinta: #FFFFFF; --in-suave: #BDBDBD; --in-tenue: #8C8C8C;
+  --in-filo: rgba(255, 255, 255, .1); --in-filo-alto: rgba(255, 255, 255, .24); --in-luz: rgba(255, 255, 255, .05);
+  --in-nar: #FF0000; --in-nar-t: #FF4D4D; --in-nar-suave: rgba(255, 0, 0, .2);
+  --in-ok: #41C543; --in-ok-suave: rgba(65, 197, 67, .16);
+  --in-sombra: rgba(0, 0, 0, .6); --in-det: #161616; --in-det-2: #111111; --in-grano: 0;
   --in-curva: cubic-bezier(.22, 1, .36, 1);
-  --in-titulo: "Inter", "Helvetica Neue", Arial, system-ui, sans-serif;
-  --in-cifras: "JetBrains Mono", ui-monospace, "SF Mono", monospace;
-  --in-radio: 18px;
+  --in-titulo: var(--y-text);
+  --in-cifras: var(--y-text);
+  --in-radio: 20px;
   color-scheme: dark;
 }
 :root[data-tema="claro"] {
-  --in-negro: #e7e3da; --in-panel: #f2efe8; --in-celda: #fbfaf6; --in-celda-alta: #ffffff;
-  --in-tinta: #1b1b1f; --in-suave: #5a5852; --in-tenue: #6c6a62;
-  --in-filo: rgba(27, 27, 31, .1); --in-filo-alto: rgba(27, 27, 31, .22); --in-luz: rgba(255, 255, 255, .9);
-  --in-nar: #6E8000; --in-nar-t: #556300; --in-nar-suave: rgba(110, 128, 0, .2);
-  --in-ok: #2e7d32; --in-ok-suave: rgba(46, 125, 50, .12);
-  --in-sombra: rgba(70, 56, 36, .28); --in-det: #ffffff; --in-det-2: #f7f5ef; --in-grano: .35;
+  --in-negro: #F8F8F8; --in-panel: #FFFFFF; --in-celda: #F8F8F8; --in-celda-alta: #FFFFFF;
+  --in-tinta: #000000; --in-suave: #444444; --in-tenue: #666666;
+  --in-filo: rgba(0, 0, 0, .09); --in-filo-alto: rgba(0, 0, 0, .2); --in-luz: rgba(255, 255, 255, .9);
+  --in-nar: #FF0000; --in-nar-t: #D90000; --in-nar-suave: rgba(255, 0, 0, .1);
+  --in-ok: #1E8A4C; --in-ok-suave: rgba(30, 138, 76, .12);
+  --in-sombra: rgba(0, 0, 0, .12); --in-det: #FFFFFF; --in-det-2: #F8F8F8; --in-grano: 0;
   color-scheme: light;
 }
 * { box-sizing: border-box; }
@@ -40,7 +40,7 @@ svg, canvas { display: block; }
 /* escena */
 .in-escena { position: relative; isolation: isolate; min-height: 100vh; padding: 20px 24px 60px; }
 .in-fondo { position: fixed; inset: 0; z-index: -1; pointer-events: none; }
-.in-resplandor { position: absolute; left: 50%; top: -34%; width: 90%; aspect-ratio: 1.7; transform: translateX(-50%); background: radial-gradient(closest-side, rgba(230, 255, 74, .06), transparent); }
+.in-resplandor { position: absolute; left: 50%; top: -34%; width: 90%; aspect-ratio: 1.7; transform: translateX(-50%); background: radial-gradient(closest-side, rgba(255, 0, 0, .07), transparent); }
 :root[data-tema="claro"] .in-resplandor { background: radial-gradient(closest-side, rgba(255, 255, 255, .85), transparent); }
 .in-grano { position: absolute; inset: 0; opacity: var(--in-grano); mix-blend-mode: soft-light;
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 .9  0 0 0 0 .88  0 0 0 0 .84  0 0 0 .22 0'/></filter><rect width='160' height='160' filter='url(%23n)'/></svg>"); }
@@ -183,7 +183,7 @@ input::placeholder, textarea::placeholder { color: var(--in-tenue); }
 .btn:hover { border-color: var(--in-filo-alto); }
 .btn:active { transform: scale(.96); }
 .btn:disabled { opacity: .45; cursor: default; }
-.btn.acc { background: var(--in-nar); border-color: var(--in-nar); color: #0A0A0B; }
+.btn.acc { background: var(--in-nar); border-color: var(--in-nar); color: #FFFFFF; }
 :root[data-tema="claro"] .btn.acc { color: #fff; }
 .btn.ghost { background: transparent; }
 .btn.sm { height: 30px; padding: 0 11px; font-size: 12px; border-radius: 10px; }
@@ -317,3 +317,11 @@ input::placeholder, textarea::placeholder { color: var(--in-tenue); }
 .hours-x { display: flex; justify-content: space-between; font: 400 11px var(--in-cifras); color: var(--in-tenue); margin-top: 4px; }
 tr.sub-row > td { background: var(--in-celda); }
 #teamDays button { white-space: nowrap; padding: 0 14px; }
+
+/* ---------------------------------------------------------------- marca Yango */
+h1, h2, .card h2, .in-cab h2, .team-kpis b { font-family: var(--y-title); }
+.btn, .seg button, .tabs button, .tabs.sub button { border-radius: 999px; }
+.barra .y-lockup { font-size: 22px; color: var(--in-tinta); }
+.barra .y-lockup + .in-sub { margin-top: 6px; }
+.seg button.on, .tabs.sub button.on { background: var(--in-nar); color: #fff; }
+.y-footer.compact { margin-top: 32px; }

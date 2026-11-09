@@ -498,3 +498,17 @@ def test_chain_team_scope_and_supervisor(client):
     assert {p["slug"] for p in client.get("/api/operador/me").json()["partners"]} >= {"wrap-roll"}  # central: todos
     assert client.get("/api/admin/team?chain=central", headers=ADMIN).json()["totals"]["members"] == 2
     assert client.get(f"/api/admin/team?chain={cid}", headers=ADMIN).json()["totals"]["members"] == 2
+
+
+def test_yango_branding_everywhere(client):
+    """Carta.bo by Yango Comida: marca, fuentes y footer legal en todas las pantallas; la tienda conserva su marca."""
+    for path in ("/", "/admin", "/cadena", "/operador", "/wrap-roll/portal"):
+        page = client.get(path).text
+        assert "brand.css" in page and "Carta.bo by Yango Comida" in page, path
+    landing = client.get("/").text
+    assert "RideTechnology Global FZ-LLC" in landing and "yango_bolivia" in landing and "fonts.googleapis.com" not in landing
+    store = client.get("/wrap-roll").text
+    assert "Pedidos con" in store and "RideTechnology Global FZ-LLC" in store
+    assert "--primary:#F25C54" in store  # la tienda sigue con los colores del restaurante
+    css = client.get("/static/brand.css").text
+    assert "Yango Text" in css and "YS Text" in css and "#FF0000" in css

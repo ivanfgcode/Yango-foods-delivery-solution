@@ -1,25 +1,25 @@
-/* carta.bo · panel del restaurante. Claro, sobrio y con un solo acento (lima).
+/* Carta.bo by Yango Comida · panel del restaurante con el estilo de yango.com: negro o blanco y el rojo Yango.
    charts.js lee las variables --in-* para pintar los gráficos con estos mismos colores. */
 :root {
-  --bg: #0A0A0B; --panel: #141416; --panel-2: #1B1B1E; --ink: #F4F4F1; --ink-2: #C9C9C4; --muted: #8E8E8A; --line: rgba(255,255,255,.09); --soft: #1D1D20;
-  --brand: #F2FF5C; --on-brand: #0A0A0B; --brand-ink: #0A0A0B; --brand-soft: rgba(230,255,74,.12);
-  --ok: #6EE7A0; --ok-soft: rgba(110,231,160,.12); --warn: #F5C451; --warn-soft: rgba(245,196,81,.12);
-  --bad: #FF8A7A; --bad-soft: rgba(255,138,122,.12); --side: #0A0A0B; --side-2: #141416; --side-ink: #F4F4F1; --side-muted: #8E8E8A;
+  --bg: #000000; --panel: #111111; --panel-2: #1A1A1A; --ink: #FFFFFF; --ink-2: #D0D0D0; --muted: #8C8C8C; --line: rgba(255,255,255,.1); --soft: #1A1A1A;
+  --brand: #FF0000; --on-brand: #FFFFFF; --brand-ink: #FFFFFF; --brand-soft: rgba(255,0,0,.16);
+  --ok: #41C543; --ok-soft: rgba(65,197,67,.14); --warn: #F5C451; --warn-soft: rgba(245,196,81,.12);
+  --bad: #FF4D4D; --bad-soft: rgba(255,77,77,.14); --side: #000000; --side-2: #111111; --side-ink: #FFFFFF; --side-muted: #8C8C8C;
   --r: 14px; --r-lg: 22px; --shadow: none;
-  --ui: "Inter", "Helvetica Neue", Arial, system-ui, sans-serif; --num: "Inter", "Helvetica Neue", Arial, system-ui, sans-serif;
+  --ui: var(--y-text); --num: var(--y-text); --title: var(--y-title);
   --ease: cubic-bezier(.22, 1, .36, 1);
-  --in-tinta: #F4F4F1; --in-nar: #F2FF5C; --in-tenue: #8E8E8A; --in-filo: rgba(255,255,255,.1); --in-suave: #C9C9C4;
-  --brand-text: #F2FF5C;
+  --in-tinta: #FFFFFF; --in-nar: #FF0000; --in-tenue: #8C8C8C; --in-filo: rgba(255,255,255,.1); --in-suave: #D0D0D0;
+  --brand-text: #FF4D4D;
   --w04: rgba(255,255,255,.04); --w05: rgba(255,255,255,.05); --w06: rgba(255,255,255,.06); --w07: rgba(255,255,255,.07); --w1: rgba(255,255,255,.1); --w12: rgba(255,255,255,.12); --w14: rgba(255,255,255,.14); --w16: rgba(255,255,255,.16); --w3: rgba(255,255,255,.3);
   color-scheme: dark;
 }
 /* Versión clara (botón Claro/Oscuro de la barra; se recuerda en todos los paneles). */
 :root[data-tema="claro"] {
-  --bg: #F4F3EE; --panel: #FFFFFF; --panel-2: #F1F0EB; --ink: #151513; --ink-2: #3B3B37; --muted: #6A6A64; --line: rgba(20,20,18,.1); --soft: #ECEBE5;
-  --brand: #E8FF3A; --on-brand: #0A0A0B; --brand-ink: #0A0A0B; --brand-soft: rgba(110,128,0,.13); --brand-text: #566500;
+  --bg: #F8F8F8; --panel: #FFFFFF; --panel-2: #F8F8F8; --ink: #000000; --ink-2: #212121; --muted: #666666; --line: rgba(0,0,0,.09); --soft: #EDEDED;
+  --brand: #FF0000; --on-brand: #FFFFFF; --brand-ink: #FFFFFF; --brand-soft: rgba(255,0,0,.08); --brand-text: #D90000;
   --ok: #1E8A4C; --ok-soft: rgba(30,138,76,.12); --warn: #9A6400; --warn-soft: rgba(154,100,0,.12);
-  --bad: #C0392B; --bad-soft: rgba(192,57,43,.1); --side: #FFFFFF; --side-2: #F4F3EE; --side-ink: #151513; --side-muted: #6A6A64;
-  --in-tinta: #151513; --in-nar: #6E8000; --in-tenue: #6A6A64; --in-filo: rgba(20,20,18,.1); --in-suave: #3B3B37;
+  --bad: #D90000; --bad-soft: rgba(217,0,0,.08); --side: #FFFFFF; --side-2: #F8F8F8; --side-ink: #000000; --side-muted: #666666;
+  --in-tinta: #000000; --in-nar: #FF0000; --in-tenue: #666666; --in-filo: rgba(0,0,0,.1); --in-suave: #212121;
   --w04: rgba(20,20,18,.04); --w05: rgba(20,20,18,.05); --w06: rgba(20,20,18,.06); --w07: rgba(20,20,18,.07); --w1: rgba(20,20,18,.1); --w12: rgba(20,20,18,.12); --w14: rgba(20,20,18,.14); --w16: rgba(20,20,18,.16); --w3: rgba(20,20,18,.3);
   color-scheme: light;
 }
@@ -47,7 +47,7 @@ h1, h2, h3, h4, p { margin: 0; }
 /* acceso */
 .auth { min-height: 100vh; display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); }
 .auth-brand { position: relative; overflow: hidden; background: var(--panel); border-right: 1px solid var(--line); color: var(--side-ink); padding: 48px; display: flex; flex-direction: column; justify-content: space-between; gap: 40px; }
-.auth-brand::before { content: ""; position: absolute; width: 620px; height: 620px; right: -220px; top: -200px; border-radius: 50%; background: radial-gradient(closest-side, rgba(230,255,74,.16), transparent); }
+.auth-brand::before { content: ""; position: absolute; width: 620px; height: 620px; right: -220px; top: -200px; border-radius: 50%; background: radial-gradient(closest-side, rgba(255,0,0,.16), transparent); }
 .auth-brand::after { content: ""; position: absolute; width: 480px; height: 480px; left: -160px; bottom: -220px; border-radius: 50%; background: radial-gradient(closest-side, var(--w05), transparent); }
 .auth-brand > * { position: relative; }
 .auth-brand h1 { font-size: clamp(2rem, 3.4vw, 3rem); line-height: 1.05; letter-spacing: -.04em; font-weight: 400; max-width: 560px; }
@@ -84,7 +84,7 @@ h1, h2, h3, h4, p { margin: 0; }
 .nav button.on .ic { color: var(--brand-text); }
 .nav .tag { margin-left: auto; font-size: .68rem; font-weight: 700; padding: 2px 7px; border-radius: 999px; background: var(--brand); color: var(--on-brand); }
 .side-foot { margin-top: auto; display: grid; gap: 8px; }
-.side-foot .plan-mini { padding: 12px; border-radius: 14px; background: linear-gradient(135deg, rgba(230,255,74,.14), rgba(230,255,74,.03)); border: 1px solid rgba(230,255,74,.28); }
+.side-foot .plan-mini { padding: 12px; border-radius: 14px; background: linear-gradient(135deg, rgba(255,0,0,.14), rgba(255,0,0,.03)); border: 1px solid rgba(255,0,0,.28); }
 .side-foot .plan-mini b { display: block; font-size: .85rem; color: var(--ink); font-weight: 600; }
 .side-foot .plan-mini small { color: var(--side-ink); opacity: .75; font-size: .75rem; }
 .bar-mini { height: 5px; border-radius: 99px; background: var(--w12); margin-top: 8px; overflow: hidden; }
@@ -131,7 +131,7 @@ label.f > span { font-size: .82rem; font-weight: 400; color: var(--ink-2); }
 input:not([type=checkbox]):not([type=radio]):not([type=color]):not([type=range]):not([type=file]), select, textarea {
   width: 100%; height: 42px; padding: 0 12px; border: 1px solid var(--w14); border-radius: 12px; background: var(--bg); color: var(--ink); outline: none; transition: border-color .2s, box-shadow .2s; }
 textarea { height: auto; min-height: 90px; padding: 10px 12px; resize: vertical; }
-input:focus, select:focus, textarea:focus { border-color: var(--brand-text); box-shadow: 0 0 0 3px rgba(230,255,74,.12); }
+input:focus, select:focus, textarea:focus { border-color: var(--brand-text); box-shadow: 0 0 0 3px rgba(255,0,0,.12); }
 .msg { min-height: 18px; font-size: .82rem; color: var(--muted); }
 .msg.ok { color: var(--ok); } .msg.bad { color: var(--bad); }
 .row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
@@ -178,7 +178,7 @@ td { padding: 12px; border-top: 1px solid var(--line); vertical-align: top; }
 
 /* plan */
 .price-card { position: relative; border-radius: var(--r-lg); padding: 28px; background: var(--panel); border: 1px solid var(--w16); color: var(--side-ink); overflow: hidden; }
-.price-card::before { content: ""; position: absolute; width: 380px; height: 380px; right: -140px; top: -160px; border-radius: 50%; background: radial-gradient(closest-side, rgba(230,255,74,.16), transparent); }
+.price-card::before { content: ""; position: absolute; width: 380px; height: 380px; right: -140px; top: -160px; border-radius: 50%; background: radial-gradient(closest-side, rgba(255,0,0,.16), transparent); }
 .price-card > * { position: relative; }
 .price-card .plan-name { display: flex; align-items: center; justify-content: space-between; gap: 10px; font-weight: 400; }
 .price { display: flex; align-items: baseline; gap: 8px; margin: 18px 0 4px; }
@@ -247,3 +247,11 @@ input[type=range] { width: 100%; accent-color: var(--brand-text); }
   .hero-plan .btn { justify-self: start; }
   .hero-plan h2 { font-size: 1.25rem; }
 }
+
+/* ---------------------------------------------------------------- marca Yango */
+h1, h2, h3, .price b, .kpi b, .plan-name { font-family: var(--title); }
+.btn { border-radius: 999px; font-weight: 500; }
+.side .y-lockup, .auth-brand .y-lockup { font-size: 20px; color: var(--side-ink); }
+.side .y-sub, .auth-brand .y-sub { display: block; margin-top: 4px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--side-muted); }
+.hero-plan, .price-card { --side-muted: rgba(255,255,255,.75); }
+.y-footer.compact { margin-top: 28px; }

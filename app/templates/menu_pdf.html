@@ -34,6 +34,8 @@ h1,h2,h3{font-family:var(--font-heading);margin:0;line-height:1.1}
 .foot b{font-family:var(--font-heading);font-size:1.3em;display:block}
 .foot p{margin:1mm 0;color:var(--muted)}
 .foot .url{color:var(--primary);font-weight:700}
+.foot .yb{margin-top:2mm;font-size:.8em}
+.foot .yb b{font-family:inherit;display:inline;font-size:inherit;color:#FF0000}
 .empty{color:var(--muted);padding:20mm 0;text-align:center}
 
 /* Plantillas */
@@ -96,6 +98,7 @@ h1,h2,h3{font-family:var(--font-heading);margin:0;line-height:1.1}
     {% if profile.hours_text %}<p>🕒 {{ profile.hours_text }}</p>{% endif %}
     {% if profile.whatsapp %}<p>WhatsApp {{ profile.whatsapp }}</p>{% endif %}
     {% if s.footer %}<p>{{ s.footer }}</p>{% endif %}
+    <p class="yb">Pedidos con <b>Carta.bo by Yango Comida</b></p>
   </div>
 </footer>
 </body>

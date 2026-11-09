@@ -1,14 +1,16 @@
-<!doctype html>
+{% from "_brand.html" import y_head, y_lockup, y_footer with context %}<!doctype html>
 <html lang="es" data-tema-defecto="sistema">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>{{ chain.name if chain else 'Portal de la cadena' }}</title>
+<title>{{ (chain.name ~ ' · ') if chain else '' }}Portal de la cadena · Carta.bo by Yango Comida</title>
 <script src="/static/theme.js"></script>
-<link rel="stylesheet" href="/static/panel.css">
+{{ y_head() }}
+<link rel="stylesheet" href="/static/panel.css?v={{ v }}">
 </head>
 <body>
 {% if not chain %}
 <div class="login card">
+  {{ y_lockup("/cadena") }}
   <h2>Portal de la cadena</h2>
   <p class="muted">Entra con el usuario de tu cadena para ver todos tus locales, pedidos y comisiones.</p>
   <form id="loginForm">
@@ -27,7 +29,7 @@ document.getElementById("loginForm").onsubmit = async (e) => {
 };
 </script>
 {% else %}
-<div class="bar"><b>{{ chain.name }}</b><span class="muted">Portal de la cadena</span><div class="sp"></div>
+<div class="bar">{{ y_lockup("/cadena") }}<b>{{ chain.name }}</b><span class="muted">Portal de la cadena</span><div class="sp"></div>
   <input type="month" id="month" style="width:auto"><button class="btn ghost sm tema-btn" type="button" data-tema-btn aria-label="Cambiar entre versión clara y oscura"><svg class="ic" aria-hidden="true" data-tema-ic><use href="/static/icons.svg#sun"></use></svg><span data-tema-lbl>Claro</span></button><button class="btn ghost sm" id="logout">Salir</button></div>
 <div class="page">
   <div class="stats" id="stats" style="margin-bottom:16px"></div>
@@ -121,5 +123,6 @@ document.getElementById("loginForm").onsubmit = async (e) => {
 })();
 </script>
 {% endif %}
+{{ y_footer(compact=True) }}
 </body>
 </html>

@@ -1,11 +1,9 @@
-<!doctype html>
+{% from "_brand.html" import y_head, y_lockup, y_footer with context %}<!doctype html>
 <html lang="es">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Admin · carta.bo</title>
-<link rel="icon" href="/static/favicon.svg?v={{ v }}" type="image/svg+xml">
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
+<title>Admin · Carta.bo by Yango Comida</title>
+{{ y_head() }}
 <link rel="stylesheet" href="/static/admin.css?v={{ v }}">
 <script>try { if (localStorage.getItem("pp_tema") === "claro") document.documentElement.dataset.tema = "claro"; } catch (e) {}</script>
 </head>
@@ -17,8 +15,7 @@
 <div class="in-fondo" aria-hidden="true"><i class="in-resplandor"></i><i class="in-grano"></i></div>
 {% if not logged %}
 <section class="in-panel acceso">
-  <div class="in-ident"><span class="in-glifo" aria-hidden="true"><svg viewBox="0 0 32 32"><use href="#glifo"/></svg></span>
-    <div><h1>carta.bo</h1><p class="in-sub">Admin · delivery con Yango</p></div></div>
+  <div class="in-ident"><div><h1 class="sr">Admin · Carta.bo by Yango Comida</h1>{{ y_lockup('/admin') }}<p class="in-sub">Admin · pedidos con Yango Comida</p></div></div>
   <form id="f"><input type="password" id="k" required placeholder="Clave de administrador" autocomplete="current-password" aria-label="Clave de administrador">
   <button class="btn acc">Entrar</button><div class="msg bad" id="m"></div></form></section>
 <script>
@@ -28,8 +25,7 @@ document.getElementById("f").onsubmit = async (e) => { e.preventDefault();
 </script>
 {% else %}
 <header class="barra">
-  <div class="in-ident"><span class="in-glifo" aria-hidden="true"><svg viewBox="0 0 32 32"><use href="#glifo"/></svg></span>
-    <div><h1>carta.bo</h1><p class="in-sub" id="src">—</p></div></div>
+  <div class="in-ident"><div><h1 class="sr">Admin · Carta.bo by Yango Comida</h1>{{ y_lockup('/admin') }}<p class="in-sub" id="src">—</p></div></div>
   <nav class="tabs" id="tabs" aria-label="Secciones"><i class="pildora" aria-hidden="true"></i><button class="on" data-t="summary">Resumen</button><button data-t="orders">Pedidos</button><button data-t="store">Tienda</button><button data-t="partners">Restaurantes</button><button data-t="chains">Cadenas</button><button data-t="team">Equipo</button><button data-t="accounts">Cuentas Yango</button><button data-t="commissions">Comisiones</button><button data-t="features">Funciones</button><button data-t="events">Eventos</button></nav>
   <a class="btn ghost sm" href="/operador" target="_blank" rel="noopener">Cabina ↗</a>
   <div class="in-cab-der">
@@ -952,5 +948,6 @@ document.getElementById("f").onsubmit = async (e) => { e.preventDefault();
 </script>
 {% endif %}
 </main>
+{% if logged %}{{ y_footer(compact=True) }}{% endif %}
 </body>
 </html>

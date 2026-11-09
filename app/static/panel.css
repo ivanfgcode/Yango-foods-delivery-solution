@@ -1,9 +1,9 @@
-/* Portal del partner y panel de admin. */
-:root{--bg:#F6F5F2;--surface:#FFFFFF;--text:#1C1B1A;--muted:#6C6862;--line:#E6E2DC;--accent:#E8402F;--ok:#2E7D32;--warn:#B26A00;--bad:#C62828;--soft:#F0EEEA}
-@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#121211;--surface:#1C1B1A;--text:#F2EFEA;--muted:#A39E97;--line:#2E2C2A;--soft:#252322}}
-:root[data-theme="dark"]{--bg:#121211;--surface:#1C1B1A;--text:#F2EFEA;--muted:#A39E97;--line:#2E2C2A;--soft:#252322}
+/* Portal de la cadena y cabina de operadores · Carta.bo by Yango Comida (estilo yango.com). */
+:root{--bg:#F8F8F8;--surface:#FFFFFF;--text:#000000;--muted:#666666;--line:#E6E6E6;--accent:#FF0000;--ok:#1E8A4C;--warn:#9A6400;--bad:#D90000;--soft:#EDEDED}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#000000;--surface:#111111;--text:#FFFFFF;--muted:#8C8C8C;--line:#262626;--soft:#1A1A1A;--bad:#FF4D4D}}
+:root[data-theme="dark"]{--bg:#000000;--surface:#111111;--text:#FFFFFF;--muted:#8C8C8C;--line:#262626;--soft:#1A1A1A;--bad:#FF4D4D}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 Inter,system-ui,-apple-system,sans-serif}
+body{margin:0;background:var(--bg);color:var(--text);font:15px/1.45 var(--y-text)}
 button,input,select,textarea{font:inherit;color:inherit}
 a{color:inherit}
 .bar{display:flex;align-items:center;gap:12px;padding:12px 20px;background:var(--surface);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
@@ -56,7 +56,7 @@ th{font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;color:var(--mu
 .stat{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:14px}
 .stat b{display:block;font-size:1.5rem}
 .stat span{color:var(--muted);font-size:.82rem}
-code,.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.85em}
+code,.mono{font-family:var(--y-text);font-variant-numeric:tabular-nums;font-size:.92em}
 .upl{display:flex;gap:8px;align-items:center}
 .upl img{width:42px;height:42px;border-radius:8px;object-fit:cover;background:var(--soft)}
 .tabs.sub{display:inline-flex;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:4px}
@@ -72,3 +72,11 @@ code,.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.85
 .hours-x{display:flex;justify-content:space-between;font-size:.75rem;color:var(--muted);margin-bottom:10px}
 tr.sub-row>td{background:var(--soft)}
 #teamDays button{white-space:nowrap}
+
+/* marca Yango */
+h1,h2,h3,.stat b{font-family:var(--y-title);font-weight:500}
+.btn{border-radius:999px}
+.btn.acc{background:var(--accent);border-color:var(--accent);color:#fff}
+.bar .y-lockup{font-size:19px;color:var(--text)}
+.login .y-lockup{font-size:22px;color:var(--text);margin-bottom:14px}
+.y-footer.compact{margin-top:28px}

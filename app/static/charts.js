@@ -20,11 +20,11 @@
     if (!hex.startsWith("#")) return hex;
     const n = parseInt(hex.slice(1), 16); return `rgba(${n >> 16 & 255},${n >> 8 & 255},${n & 255},${a})`;
   }
-  function vacio(c, w, h, k) { c.font = '12px "JetBrains Mono", monospace'; c.fillStyle = k.tenue; c.textAlign = "center"; c.fillText("sin datos", w / 2, h / 2 + 4); }
+  function vacio(c, w, h, k) { c.font = '12px "YS Text", Arial, sans-serif'; c.fillStyle = k.tenue; c.textAlign = "center"; c.fillText("sin datos", w / 2, h / 2 + 4); }
   function rrect(c, x, y, w, h, r) { c.beginPath(); c.roundRect ? c.roundRect(x, y, w, h, r) : c.rect(x, y, w, h); c.fill(); }
 
   function ejes(c, w, h, pad, max, k, pts, fv, etqEje) {
-    c.font = '11px "JetBrains Mono", monospace'; c.fillStyle = k.tenue; c.strokeStyle = k.filo; c.lineWidth = 1;
+    c.font = '11px "YS Text", Arial, sans-serif'; c.fillStyle = k.tenue; c.strokeStyle = k.filo; c.lineWidth = 1;
     for (let i = 0; i <= 4; i++) {
       const v = max * i / 4, y = h - pad.b - v / max * (h - pad.t - pad.b);
       c.beginPath(); c.moveTo(pad.l, y); c.lineTo(w - pad.r, y); c.stroke();
@@ -102,14 +102,14 @@
       const b = a + p * Math.PI * 2; c.strokeStyle = i === 0 ? k.n : alfa(k.t, .85 - i * .15);
       c.beginPath(); c.arc(cx, cy, r, a + .03, Math.max(a + .03, b - .03)); c.stroke(); a = b;
     });
-    c.font = '500 13px "JetBrains Mono", monospace'; c.fillStyle = k.t; c.textAlign = "center"; c.fillText(Math.round((partes[0] || 0) * 100) + "%", cx, cy + 4);
-    c.textAlign = "left"; c.font = '11px "JetBrains Mono", monospace'; c.fillStyle = k.tenue;
+    c.font = '500 13px "YS Text", Arial, sans-serif'; c.fillStyle = k.t; c.textAlign = "center"; c.fillText(Math.round((partes[0] || 0) * 100) + "%", cx, cy + 4);
+    c.textAlign = "left"; c.font = '11px "YS Text", Arial, sans-serif'; c.fillStyle = k.tenue;
     if (l1) c.fillText(l1, 2, h - 22); if (l2) c.fillText(l2, 2, h - 8);
   }
   function hbarras(cv, items) {
     const {c, w, h} = lienzo(cv), k = tinta(); if (!items.length) return vacio(c, w, h, k);
     const n = Math.min(items.length, 4), fila = h / n, max = items[0].v || 1;
-    c.font = '11px "JetBrains Mono", monospace';
+    c.font = '11px "YS Text", Arial, sans-serif';
     items.slice(0, n).forEach((it, i) => {
       const y = i * fila + fila / 2;
       c.fillStyle = alfa(k.t, .1); c.fillRect(0, y + 4, w, 3);
@@ -126,14 +126,14 @@
       const ww = v / tot * w; c.fillStyle = i === 0 ? k.n : alfa(k.t, Math.max(.18, .8 - i * .12));
       rrect(c, x + 1, y, Math.max(1, ww - 2), 18, 5); x += ww;
     });
-    c.font = '11px "JetBrains Mono", monospace'; c.fillStyle = k.tenue; c.textAlign = "left";
+    c.font = '11px "YS Text", Arial, sans-serif'; c.fillStyle = k.tenue; c.textAlign = "left";
     c.fillText(pie || `la mayor: ${Math.round(vals[0] / tot * 100)}%`, 0, h - 4);
   }
   // Tira de calor de 24 horas.
   function calor(cv, vals) {
     const {c, w, h} = lienzo(cv), k = tinta(), max = Math.max(...vals) || 1, cw = w / 24, top = 4, ch = h - 22;
     vals.forEach((v, i) => { c.fillStyle = v === max && v ? k.n : alfa(k.t, .06 + v / max * .74); rrect(c, i * cw + 1, top, cw - 2, ch, 3); });
-    c.font = '10px "JetBrains Mono", monospace'; c.fillStyle = k.tenue; c.textAlign = "center";
+    c.font = '10px "YS Text", Arial, sans-serif'; c.fillStyle = k.tenue; c.textAlign = "center";
     [0, 6, 12, 18, 23].forEach((i) => c.fillText(String(i).padStart(2, "0"), i * cw + cw / 2, h - 4));
   }
   window.IN = {fmt, fecha, linea, barras, dial, anillo, hbarras, tramos, calor};

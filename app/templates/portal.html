@@ -1,12 +1,10 @@
-<!doctype html>
+{% from "_brand.html" import y_head, y_lockup, y_footer with context %}<!doctype html>
 <html lang="es">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>carta.bo · {{ p.name }}</title>
-<link rel="icon" href="/static/favicon.svg?v={{ v }}" type="image/svg+xml">
+<title>{{ p.name }} · Carta.bo by Yango Comida</title>
+{{ y_head() }}
 <meta name="theme-color" content="#0F1013">
-<link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap">
 <script src="/static/theme.js?v={{ v }}"></script>
 <link rel="stylesheet" href="/static/portal.css?v={{ v }}">
 </head>
@@ -15,7 +13,7 @@
   <symbol id="cb-mark" viewBox="0 0 24 24"><path d="M6.5 3h7.5l5 5v10.5a2.5 2.5 0 0 1-2.5 2.5h-10A2.5 2.5 0 0 1 4 18.5v-13A2.5 2.5 0 0 1 6.5 3z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M14 3v5h5M8 12h5M8 16h3" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><circle cx="16" cy="16" r="1.8" fill="currentColor"/></symbol>
 </svg>
 {% macro ic(n) %}<svg class="ic" aria-hidden="true"><use href="/static/icons.svg?v={{ v }}#{{ n }}"></use></svg>{% endmacro %}
-{% macro logo() %}<span class="logo"><span class="logo-mark"><svg><use href="#cb-mark"/></svg></span><span class="logo-word">carta<em>.bo</em><small>Pedidos propios</small></span></span>{% endmacro %}
+{% macro logo() %}<div class="brand-box">{{ y_lockup("#") }}<small class="y-sub">Panel del restaurante</small></div>{% endmacro %}
 
 {% if not logged %}
 <main class="auth">
@@ -190,7 +188,7 @@ document.getElementById("loginForm").onsubmit = async (e) => {
       <section data-sec="plan" class="grid" hidden>
         <div class="grid g2">
           <div class="price-card">
-            <div class="plan-name"><span>carta.bo</span><span class="pill" id="planState">—</span></div>
+            <div class="plan-name"><span>Carta.bo by Yango Comida</span><span class="pill" id="planState">—</span></div>
             <div class="price"><b id="pPrice">{{ commission }} %</b><span>por pedido</span></div>
             <div style="color:var(--side-muted)">Sin cuota mensual · sin instalación · sin permanencia</div>
             <div class="incl">
@@ -218,7 +216,7 @@ document.getElementById("loginForm").onsubmit = async (e) => {
       <!-- acuerdo -->
       <section data-sec="terms" hidden>
         <div class="card doc">
-          <h2>Acuerdo de servicio · carta.bo</h2>
+          <h2>Acuerdo de servicio · Carta.bo by Yango Comida</h2>
           <div class="meta">Versión <span id="tVersion">—</span> · {{ p.name }}</div>
           <ol>
             <li><b>El servicio</b><p>carta.bo te da una web de pedidos con tu marca. El menú y los precios se toman de tu restaurante en Yango, y el delivery lo hacen los mensajeros de Yango.</p></li>
@@ -491,5 +489,6 @@ document.getElementById("loginForm").onsubmit = async (e) => {
 })();
 </script>
 {% endif %}
+{% if logged %}<div class="portal-foot">{{ y_footer(compact=True) }}</div>{% endif %}
 </body>
 </html>

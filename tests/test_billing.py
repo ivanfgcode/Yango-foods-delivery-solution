@@ -30,7 +30,7 @@ def test_portal_requires_login_and_shows_commission(client):  # noqa: F811
     assert client.get("/api/wrap-roll/portal/billing").status_code == 401
     assert client.get("/api/wrap-roll/portal/summary").status_code == 401
     page = client.get("/wrap-roll/portal").text
-    assert "carta.bo" in page and "3 % por pedido" in page
+    assert "Carta.bo by Yango Comida" in page and "3 % por pedido" in page
     assert "los paga Yango" not in page and "Bs150" not in page and "0 % de comisión" not in page
 
 

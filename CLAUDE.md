@@ -7,7 +7,8 @@ Lee [README.md](README.md) primero. Proyecto hermano: `ivanfgcode/restotec-yango
 * El bot no resuelve captchas. Sesiones: login asistido por teléfono (el operador escribe el SMS y resuelve el captcha desde Admin → Cuentas) o cookies JSON.
 * Mapa: Yandex Maps (los datos de Yango Maps). Nunca reutilizar la clave de mapas de food.yango.com.
 * Panel del partner (carta.bo): `app/templates/portal.html` + `app/static/portal.css`; plan y acuerdo en `app/billing.py` (si cambia el texto del acuerdo, subir `TERMS_VERSION`).
-* Admin: lenguaje «Instrumental» del picker de restotec-yango (`app/static/admin.css` + lienzos en `app/static/charts.js`). Los números del Resumen salen de `app/dashboard.py`.
+* Marca: **Carta.bo by Yango Comida**, con el estilo de yango.com. Tipografías Yango Text (títulos) y YS Text (texto) desde yastatic.net, rojo Yango `#FF0000`, negro y blanco, botones en píldora. Todo sale de `app/static/brand.css`, `app/static/brand.svg` (logo Yango) y las macros de `app/templates/_brand.html` (`y_head`, `y_lockup`, `y_footer` con la línea legal de RideTechnology Global FZ-LLC). Las webs de cada restaurante conservan su propia marca: solo llevan el sello «Pedidos con Carta.bo by Yango Comida» en el pie.
+* Admin: mismo lenguaje de paneles y lienzos (`app/static/admin.css` + `app/static/charts.js`), en negro/blanco con rojo Yango. Los números del Resumen salen de `app/dashboard.py`.
 * Íconos: Lucide en `app/static/icons.svg` (`<use href="/static/icons.svg#nombre">`). Sin emojis en la interfaz ni en las alertas.
 * El bot nunca pulsa nada de `order.never_click` ni paga con tarjeta. Pago siempre efectivo/QR al mensajero.
 * La sucursal la decide Yango con la dirección (`app/branches.py`); el servidor la recalcula al crear el pedido. Lo configurado (más vendidos, TikTok) usa ids de la sucursal principal y se traduce por nombre.
